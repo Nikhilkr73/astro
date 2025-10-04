@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌟 OpenAI Realtime Voice Astrology</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FF6347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #a0a0a0;
+            margin-bottom: 30px;
+        }
+
+        .avatar-container {
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .avatar-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .avatar-circle.listening {
+            animation: pulse 1s infinite;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.6);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .controls {
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            min-width: 150px;
+        }
+
+        .btn-connect {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-record {
+            background: linear-gradient(45deg, #FF6B6B, #EE5A52);
+            color: white;
+        }
+
+        .btn-record:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-record:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-stop {
+            background: linear-gradient(45deg, #FFA726, #FF9800);
+            color: white;
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 167, 38, 0.4);
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            font-size: 1.1em;
+        }
+
+        .messages {
+            margin-top: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 10px;
+            line-height: 1.4;
+        }
+
+        .message.system {
+            background: rgba(100, 149, 237, 0.2);
+            border-left: 4px solid #6495ED;
+        }
+
+        .message.user {
+            background: rgba(60, 179, 113, 0.2);
+            border-left: 4px solid #3CB371;
+        }
+
+        .message.astroguru {
+            background: rgba(255, 215, 0, 0.2);
+            border-left: 4px solid #FFD700;
+        }
+
+        .message.error {
+            background: rgba(220, 20, 60, 0.2);
+            border-left: 4px solid #DC143C;
+        }
+
+        .setup-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .instructions {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #FFD700;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .realtime-badge {
+            background: linear-gradient(45deg, #FF0080, #FF8C00);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin: 10px 0;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 AstroGuru Realtime</h1>
+        <div class="realtime-badge">🚀 OpenAI GPT-4o-mini Realtime</div>
+        <p class="subtitle">Direct voice-to-voice conversation with natural AI speech</p>
+
+        <div class="instructions">
+            <strong>🎤 Pure Voice Experience:</strong><br>
+            • No text conversion - direct voice-to-voice<br>
+            • Natural human-like speech responses<br>
+            • Real-time conversation with Hindi support<br>
+            • Collects birth information through voice naturally
+        </div>
+
+        <!-- Setup Panel -->
+        <div id="quickSetup" class="setup-panel">
+            <h3>🔌 Connect to AstroGuru</h3>
+            <div class="input-group">
+                <input type="text" id="userId" placeholder="Enter your User ID (e.g., your_name)" value="user_001">
+            </div>
+            <button id="connectBtn" class="btn btn-connect">Connect to AstroGuru</button>
+        </div>
+
+        <!-- Avatar -->
+        <div class="avatar-container">
+            <div id="avatarCircle" class="avatar-circle">🔮</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="startRecording" class="btn btn-record" disabled>🎤 Start Talking</button>
+            <button id="stopRecording" class="btn btn-stop" disabled>⏹️ Stop</button>
+        </div>
+
+        <!-- Status -->
+        <div id="statusIndicator" class="status">
+            🔴 Please connect first
+        </div>
+
+        <!-- Messages -->
+        <div id="messages" class="messages"></div>
+    </div>
+
+    <script src="/static/voice_realtime_script.js?v=3"></script>
+</body>
+</html>

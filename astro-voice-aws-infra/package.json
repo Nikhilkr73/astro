@@ -1,0 +1,29 @@
+{
+  "name": "astro-voice-aws-infra",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "bootstrap": "cdk bootstrap",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "synth": "cdk synth",
+    "diff": "cdk diff"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@expo/cli": "^54.0.9",
+    "@types/node": "^24.6.1",
+    "aws-cdk": "^2.1029.4",
+    "aws-cdk-lib": "^2.218.0",
+    "constructs": "^10.4.2",
+    "eas-cli": "^16.20.0",
+    "typescript": "^5.9.3"
+  }
+}
