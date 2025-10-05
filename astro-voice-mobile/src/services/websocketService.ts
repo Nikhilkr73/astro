@@ -159,6 +159,28 @@ export class WebSocketService {
   }
 
   /**
+   * Send astrologer configuration
+   */
+  static sendAstrologerConfig(astrologerId: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      console.error('❌ Cannot send config: WebSocket not connected');
+      return;
+    }
+
+    try {
+      const message = {
+        type: 'config',
+        astrologer_id: astrologerId,
+      };
+
+      this.ws.send(JSON.stringify(message));
+      console.log(`🎭 Sent astrologer config: ${astrologerId}`);
+    } catch (error) {
+      console.error('Failed to send astrologer config:', error);
+    }
+  }
+
+  /**
    * Send ping to keep connection alive
    */
   static sendPing(): void {

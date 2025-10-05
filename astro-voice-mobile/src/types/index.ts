@@ -26,11 +26,15 @@ export interface Astrologer {
   description: string;
   descriptionHindi: string;
   specialization: string[];
+  category: 'All' | 'Love' | 'Marriage' | 'Career';
   voiceProfile: VoiceProfile;
   personality: AstrologerPersonality;
   availability: boolean;
   rating: number;
+  reviews: number; // number of reviews
   experience: number; // years
+  language: 'Hindi' | 'English';
+  gender: 'Male' | 'Female';
   avatar: string;
 }
 
@@ -39,6 +43,7 @@ export interface VoiceProfile {
   pitch: 'low' | 'medium' | 'high';
   speed: 'slow' | 'medium' | 'fast';
   tone: 'formal' | 'friendly' | 'wise' | 'energetic';
+  voiceId?: 'nova' | 'onyx' | 'shimmer' | 'echo' | 'alloy';
 }
 
 export interface AstrologerPersonality {

@@ -1,0 +1,141 @@
+# Cursor AI Rules for AstroVoice Project
+
+## Session Start Protocol
+1. Always read PROJECT_STATUS.md first to understand current state
+2. Check git status to see uncommitted changes
+3. Summarize current state before proceeding with tasks
+4. Ask for clarification if project status is unclear
+
+## AWS Infrastructure
+- All AWS resources are managed via CDK (astro-voice-aws-infra/)
+- Never manually create AWS resources
+- Always deploy via: cd astro-voice-aws-infra && cdk deploy
+- Resources are in ap-south-1 (Mumbai) region
+- CloudFormation stack name: AstroVoiceStack
+
+## Code Style & Conventions
+- Use Python 3.10+ features
+- Type hints required for all function parameters
+- Docstrings required for all public functions
+- Follow FastAPI conventions for endpoints
+- Use async/await for I/O operations
+- Error handling: try/except blocks for external calls
+
+## Database
+- PostgreSQL on AWS RDS (managed by CDK)
+- Use database_manager.py for all database operations
+- Never write raw SQL in application code
+- Credentials from AWS Secrets Manager only
+- Use JSONB fields for flexible schema extensions
+
+## File Organization
+- Backend files: root directory
+- Mobile app: astro-voice-mobile/
+- Infrastructure: astro-voice-aws-infra/
+- Documentation: Keep major docs in root, consider docs/ for future
+
+## Documentation
+- Update PROJECT_STATUS.md after major changes
+- Create/update .md files for new features
+- Use markdown code blocks with language tags
+- Include examples in documentation
+- Add "Last Updated" dates to docs
+
+## Git Practices
+- Descriptive commit messages following conventional commits
+- Format: type(scope): description (e.g., "feat(db): add user sessions table")
+- Always update documentation in the same commit as code changes
+- Check .gitignore before committing sensitive data
+- Never commit: .env, credentials, user_states.json, cdk.out/
+
+## Testing
+- Test endpoints with curl before declaring done
+- Check logs after changes: tail -f backend.log
+- Use data viewer tools to verify changes: python3 view_user_data.py
+- Mobile testing: Use Expo Go app
+
+## Environment Variables
+- Store in .env file (not committed)
+- Use python-dotenv to load
+- Document required variables in env_example.txt
+- AWS credentials from Secrets Manager, not .env
+
+## Mobile App
+- React Native + Expo
+- TypeScript required
+- Keep API URLs configurable
+- WebSocket for real-time communication
+- Test on physical device with Expo Go
+
+## Security
+- No hardcoded credentials
+- Use environment variables
+- AWS IAM roles for service-to-service auth
+- Validate all user inputs
+- Sanitize data before database insertion
+
+## Error Handling
+- Always log errors with logger_utils.py
+- Return meaningful error messages to clients
+- Use appropriate HTTP status codes
+- Include request IDs for debugging
+
+## Performance
+- Use async operations for I/O
+- Implement connection pooling for database
+- Cache frequently accessed data
+- Monitor Lambda cold starts
+- Consider CDN for static assets
+
+## Logging
+- Use structured logging (JSON format)
+- Include: timestamp, level, message, context
+- Follow LOGGING_GUIDE.md conventions
+- Log to files and optionally CloudWatch
+- Never log sensitive data (passwords, tokens)
+
+## Common Commands
+- Start backend: python3 main_openai_realtime.py
+- View data: python3 view_user_data.py
+- Monitor: python3 dashboard.py
+- Check health: curl localhost:8000/health
+- Deploy AWS: cd astro-voice-aws-infra && cdk deploy
+- Kill port 8000: lsof -ti:8000 | xargs kill -9
+
+## Before Completing Tasks
+- [ ] Code changes tested locally
+- [ ] Documentation updated
+- [ ] PROJECT_STATUS.md updated if needed
+- [ ] Logs checked for errors
+- [ ] Git committed with clear message
+- [ ] Pushed to GitHub if ready
+
+## Communication Style
+- Be concise but thorough
+- Provide examples and commands
+- Explain "why" for architectural decisions
+- Link to relevant documentation
+- Summarize changes at the end
+
+## File Modifications
+- Read full file before editing
+- Preserve existing formatting and style
+- Add comments for complex logic
+- Keep functions small and focused
+- Update related tests
+
+## When Stuck
+1. Check PROJECT_STATUS.md for context
+2. Review relevant guide in docs/
+3. Check logs: tail -f backend.log
+4. Ask user for clarification
+5. Search codebase for similar patterns
+
+## Project Context
+- This is a voice-based astrology consultation app
+- Users speak to AI astrologers in Hindi/English
+- Backend: FastAPI + OpenAI Realtime API
+- Mobile: React Native + Expo
+- Infrastructure: AWS via CDK
+- Database: PostgreSQL on RDS
+

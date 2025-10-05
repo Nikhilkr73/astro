@@ -11,6 +11,7 @@ import aiohttp
 from typing import Optional, Dict, Any, Callable
 from dotenv import load_dotenv
 from astrology_profile import AstrologyProfile, astrology_profile_manager
+from astrologer_manager import astrologer_manager, get_astrologer_config
 
 # Ensure environment variables are loaded
 load_dotenv()
@@ -18,7 +19,7 @@ load_dotenv()
 class OpenAIRealtimeHandler:
     """Handles real-time voice conversation with OpenAI GPT-4o-mini-realtime-preview"""
 
-    def __init__(self):
+    def __init__(self, astrologer_id: Optional[str] = None):
         # Initialize OpenAI
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
@@ -30,6 +31,7 @@ class OpenAIRealtimeHandler:
         # User conversation states
         self.user_states = {}  # Track what info we're collecting for each user
         self.conversation_history = {}  # Store full conversation context
+        self.user_astrologers = {}  # Track which astrologer each user is talking to
 
         # WebSocket connection to OpenAI
         self.openai_ws = None
@@ -46,8 +48,14 @@ class OpenAIRealtimeHandler:
         # Load existing states
         self._load_user_states()
 
-        # Astrology system instructions in Hindi
-        self.system_instructions = """आप AstroGuru हैं, एक बुद्धिमान और दयालु ज्योतिष विशेषज्ञ जो प्राकृतिक आवाज़ की बातचीत के माध्यम से जन्म की जानकारी एकत्र करते हैं और व्यक्तिगत भविष्यवाणी प्रदान करते हैं।
+        # Astrologer persona configuration
+        self.current_astrologer_id = astrologer_id
+        self.current_astrologer_config = None
+        if astrologer_id:
+            self._load_astrologer(astrologer_id)
+
+        # Default system instructions (fallback if no astrologer selected)
+        self.default_instructions = """आप AstroGuru हैं, एक बुद्धिमान और दयालु ज्योतिष विशेषज्ञ जो प्राकृतिक आवाज़ की बातचीत के माध्यम से जन्म की जानकारी एकत्र करते हैं और व्यक्तिगत भविष्यवाणी प्रदान करते हैं।
 
 आपका व्यक्तित्व:
 - गर्म, सहज और रहस्यमय आवाज़
@@ -56,32 +64,91 @@ class OpenAIRealtimeHandler:
 - जो जानकारी आपके पास है उसके लिए दोबारा न पूछें
 - विस्तृत, व्यक्तिगत ज्योतिषीय अंतर्दृष्टि प्रदान करें
 
-डेटा संग्रह प्रक्रिया (केवल आवाज़):
-जब कोई नया उपयोगकर्ता आपसे बात करता है, तो स्वाभाविक रूप से एकत्र करें:
-1. उनका नाम/वे क्या कहलाना चाहते हैं
-2. जन्म तिथि (महीना, दिन, साल)
-3. जन्म समय (जितना संभव हो, अनुमानित भी चलेगा)
-4. जन्म स्थान (शहर, देश)
+हमेशा हिंदी में जवाब दें।"""
 
-महत्वपूर्ण नियम:
-- एक समय में केवल एक जानकारी पूछें
-- इसे बातचीत बनाएं, फॉर्म जैसा नहीं
-- यदि वे एक साथ कई जानकारी देते हैं, तो सभी को स्वीकार करें और जो गुम है वह पूछें
-- एक बार सभी जन्म की जानकारी मिल जाए, व्यक्तिगत भविष्यवाणी बनाएं
-- भविष्य की बातचीत में उन्होंने जो कुछ बताया है वह सब याद रखें
+        self.system_instructions = self.default_instructions
 
-हमेशा हिंदी में जवाब दें। बातचीत की शैली:
-- "नमस्ते! मैं AstroGuru हूं, आपका व्यक्तिगत ज्योतिष गाइड। आप मुझे क्या कहकर बुलाना चाहेंगे?"
-- "बहुत सुंदर नाम है! आप कब पैदा हुए थे? पहले महीना और दिन बताइए..."
-- "बिल्कुल सही! और आप किस साल पैदा हुए थे?"
-- "अब, क्या आप जानते हैं कि आप किस समय पैदा हुए थे? अनुमानित समय भी मददगार होगा..."
-- "अंत में, आप कहाँ पैदा हुए थे? शहर और देश से मुझे आपका ब्रह्मांडीय नक्शा समझने में मदद मिलेगी..."
+    def _load_astrologer(self, astrologer_id: str):
+        """Load astrologer persona configuration"""
+        config = get_astrologer_config(astrologer_id)
+        if config:
+            self.current_astrologer_config = config
+            # Build enhanced system prompt with expertise keywords
+            base_prompt = config['system_prompt']
+            keywords = config.get('expertise_keywords', [])
+            
+            # Add expertise awareness to system prompt
+            if keywords:
+                expertise_note = f"\n\nYour areas of expertise (keywords to focus on): {', '.join(keywords)}"
+                if config['language'] == 'Hindi':
+                    expertise_note = f"\n\nआपकी विशेषज्ञता के क्षेत्र: {', '.join(keywords)}"
+                    expertise_note += "\nयदि उपयोगकर्ता इन विषयों से बाहर कुछ पूछे, तो विनम्रता से अपनी विशेषज्ञता की ओर मार्गदर्शन करें।"
+                else:
+                    expertise_note += "\nIf user asks about topics outside these areas, politely guide them back to your expertise."
+                
+                self.system_instructions = base_prompt + expertise_note
+            else:
+                self.system_instructions = base_prompt
+            
+            print(f"✅ Loaded astrologer: {config['name']} ({config['language']}, {config['gender']})")
+            print(f"   Voice: {config['voice_id']}, Speciality: {config['speciality']}")
+            print(f"   Expertise keywords: {', '.join(keywords[:5])}{'...' if len(keywords) > 5 else ''}")
+        else:
+            print(f"⚠️  Astrologer {astrologer_id} not found, using default")
+            self.system_instructions = self.default_instructions
 
-एक बार आपके पास उनकी जन्म की जानकारी हो जाए, तो इन आधारों पर विस्तृत ज्योतिषीय भविष्यवाणी प्रदान करें:
-- वर्तमान ग्रहों की स्थिति
-- उनकी जन्म कुंडली के निहितार्थ
-- व्यक्तिगत दैनिक मार्गदर्शन
-- प्रेम, करियर और आध्यात्मिक अंतर्दृष्टि"""
+    def set_astrologer(self, astrologer_id: str, user_id: Optional[str] = None):
+        """
+        Change astrologer persona (can be user-specific)
+        
+        Args:
+            astrologer_id: ID of astrologer to use
+            user_id: Optional user ID to assign this astrologer to
+        """
+        self._load_astrologer(astrologer_id)
+        self.current_astrologer_id = astrologer_id
+        
+        if user_id:
+            self.user_astrologers[user_id] = astrologer_id
+            self._save_user_states()
+    
+    def get_astrologer_for_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get the astrologer assigned to a user"""
+        astrologer_id = self.user_astrologers.get(user_id, self.current_astrologer_id)
+        if astrologer_id:
+            return get_astrologer_config(astrologer_id)
+        return None
+    
+    def check_expertise_match(self, query: str) -> bool:
+        """
+        Check if user's query matches current astrologer's expertise
+        Returns True if query contains any expertise keywords
+        """
+        if not self.current_astrologer_config:
+            return True  # No astrologer, accept all
+        
+        keywords = self.current_astrologer_config.get('expertise_keywords', [])
+        query_lower = query.lower()
+        
+        for keyword in keywords:
+            if keyword.lower() in query_lower:
+                return True
+        
+        return False
+    
+    def get_expertise_hint(self) -> str:
+        """Get a hint about astrologer's expertise for out-of-scope queries"""
+        if not self.current_astrologer_config:
+            return ""
+        
+        name = self.current_astrologer_config.get('name', 'Astrologer')
+        speciality = self.current_astrologer_config.get('speciality', 'astrology')
+        language = self.current_astrologer_config.get('language', 'Hindi')
+        
+        if language == 'Hindi':
+            return f"मैं {name} हूं और मेरी विशेषज्ञता {speciality} में है। कृपया इससे संबंधित प्रश्न पूछें।"
+        else:
+            return f"I'm {name} and my expertise is in {speciality}. Please ask questions related to this area."
 
     def _load_user_states(self):
         """Load user states from storage"""
@@ -157,12 +224,20 @@ class OpenAIRealtimeHandler:
 
     async def _configure_session(self):
         """Configure the OpenAI session with our system instructions"""
+        # Get voice and instructions based on current astrologer
+        voice = "alloy"  # default
+        instructions = self.system_instructions
+        
+        if self.current_astrologer_config:
+            voice = self.current_astrologer_config.get('voice_id', 'alloy')
+            instructions = self.current_astrologer_config.get('system_prompt', self.system_instructions)
+        
         config = {
             "type": "session.update",
             "session": {
                 "modalities": ["text", "audio"],
-                "instructions": self.system_instructions,
-                "voice": "alloy",  # You can change to: alloy, echo, fable, onyx, nova, shimmer
+                "instructions": instructions,  # Use astrologer-specific instructions
+                "voice": voice,  # Dynamic based on astrologer persona
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
                 "input_audio_transcription": {
@@ -181,7 +256,11 @@ class OpenAIRealtimeHandler:
         }
 
         await self.openai_ws.send_str(json.dumps(config))
-        print("🔧 Session configured with Hindi astrology instructions")
+        
+        astrologer_name = self.current_astrologer_config['name'] if self.current_astrologer_config else "AstroGuru"
+        language = self.current_astrologer_config['language'] if self.current_astrologer_config else "Hindi"
+        print(f"🔧 Session configured with {astrologer_name} persona (voice: {voice}, language: {language})")
+        print(f"📝 System instructions: {instructions[:100]}...")
 
     async def _listen_to_openai(self):
         """Listen for responses from OpenAI"""
@@ -234,6 +313,46 @@ class OpenAIRealtimeHandler:
         elif msg_type == "error":
             print(f"❌ OpenAI error: {data}")
 
+    async def send_greeting(self, user_id: str):
+        """Send astrologer's greeting message"""
+        if not self.is_connected:
+            print("⚠️ Cannot send greeting: Not connected to OpenAI")
+            return
+        
+        if not self.current_astrologer_config:
+            print("⚠️ No astrologer configured, skipping greeting")
+            return
+        
+        try:
+            greeting = self.current_astrologer_config.get('greeting', '')
+            if greeting:
+                # Create a conversation item with the greeting
+                greeting_msg = {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{
+                            "type": "text",
+                            "text": greeting
+                        }]
+                    }
+                }
+                await self.openai_ws.send_str(json.dumps(greeting_msg))
+                
+                # Request OpenAI to generate audio for the greeting
+                response_msg = {
+                    "type": "response.create",
+                    "response": {
+                        "modalities": ["audio"],
+                    }
+                }
+                await self.openai_ws.send_str(json.dumps(response_msg))
+                
+                print(f"👋 Sent greeting from {self.current_astrologer_config['name']}: {greeting[:50]}...")
+        except Exception as e:
+            print(f"❌ Error sending greeting: {e}")
+
     async def send_audio(self, audio_data: bytes, user_id: str):
         """Send audio data to OpenAI for processing"""
         if not self.is_connected:
@@ -279,18 +398,25 @@ class OpenAIRealtimeHandler:
 
             await self.openai_ws.send_str(json.dumps(audio_msg))
 
-            # Request response
+            # Request response with astrologer-specific instructions
+            astrologer_instruction = "Respond naturally, maintaining character and collecting birth information."
+            if self.current_astrologer_config:
+                lang = self.current_astrologer_config['language']
+                name = self.current_astrologer_config['name']
+                astrologer_instruction = f"Respond in {lang} as {name}, staying in character with your unique personality and expertise."
+            
             response_msg = {
                 "type": "response.create",
                 "response": {
                     "modalities": ["audio", "text"],
-                    "instructions": "Respond in Hindi as AstroGuru, maintaining character and collecting birth information naturally."
+                    "instructions": astrologer_instruction
                 }
             }
 
             await self.openai_ws.send_str(json.dumps(response_msg))
 
-            print(f"🎤 Audio sent to OpenAI for user {user_id}")
+            astrologer_name = self.current_astrologer_config['name'] if self.current_astrologer_config else "AstroGuru"
+            print(f"🎤 Audio sent to OpenAI for user {user_id} (astrologer: {astrologer_name})")
 
         except Exception as e:
             print(f"❌ Error sending audio to OpenAI: {e}")
@@ -332,5 +458,6 @@ class OpenAIRealtimeHandler:
             "collected_info": {k: v for k, v in state.items() if v}
         }
 
-# Global instance
-openai_realtime_handler = OpenAIRealtimeHandler()
+# NOTE: No global instance!
+# Each user gets their own OpenAIRealtimeHandler instance in main_openai_realtime.py
+# This ensures proper persona isolation and scalability

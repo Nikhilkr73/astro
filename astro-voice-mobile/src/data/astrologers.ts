@@ -2,242 +2,151 @@ import { Astrologer } from '../types';
 
 export const astrologersData: Astrologer[] = [
   {
-    id: 'ast_001',
-    name: 'Pandit Raj Sharma',
-    nameHindi: 'पंडित राज शर्मा',
-    description: 'Experienced Vedic astrologer with deep knowledge of ancient scriptures and modern life applications. Specializes in career guidance and relationship counseling.',
-    descriptionHindi: 'वैदिक ज्योतिष के अनुभवी पंडित जी प्राचीन शास्त्रों और आधुनिक जीवन के अनुप्रयोग में गहरा ज्ञान रखते हैं। करियर मार्गदर्शन और रिश्तों की सलाह में विशेषज्ञता।',
-    specialization: ['Vedic Astrology', 'Kundli Matching', 'Career Guidance', 'Vastu Shastra'],
+    id: 'tina_kulkarni_vedic_marriage',
+    name: 'Tina Kulkarni',
+    nameHindi: 'तीना कुलकर्णी',
+    description: 'Provides accurate marriage solutions for unmarried or those facing delays in marriage.',
+    descriptionHindi: 'अविवाहित या विवाह में विलंब झेल रहे लोगों को सटीक वैवाहिक समाधान देती हैं।',
+    specialization: ['Vedic Marriage', 'विवाह योग', 'कुंडली मिलान', 'मंगल दोष'],
+    category: 'Marriage',
     voiceProfile: {
       accent: 'north_indian',
       pitch: 'medium',
       speed: 'medium',
-      tone: 'wise',
-    },
-    personality: {
-      greetingStyle: 'राम राम जी, आपका स्वागत है। मैं पंडित राज शर्मा हूँ। आपकी कैसे सेवा कर सकता हूँ?',
-      responseStyle: 'शास्त्रों के आधार पर व्यावहारिक सलाह देना और जीवन की समस्याओं का समाधान',
-      specialPhrases: [
-        'जैसा कि वेदों में कहा गया है...',
-        'आपकी कुंडली के अनुसार...',
-        'भगवान की कृपा से सब ठीक होगा',
-        'धैर्य रखिए, समय सब ठीक कर देता है'
-      ],
-      culturalReferences: ['वेद-पुराण', 'श्रीमद्भगवद्गीता', 'रामायण', 'हनुमान चालीसा']
-    },
-    availability: true,
-    rating: 4.8,
-    experience: 15,
-    avatar: '', // Will be added later
-  },
-  {
-    id: 'ast_002',
-    name: 'Acharya Sunita Devi',
-    nameHindi: 'आचार्य सुनीता देवी',
-    description: 'Expert numerologist and tarot reader with intuitive abilities. Focuses on spiritual healing and personal transformation through cosmic energy.',
-    descriptionHindi: 'अंक शास्त्र और टैरो रीडिंग की विशेषज्ञ जिनमें अंतर्ज्ञान की शक्ति है। आध्यात्मिक चिकित्सा और ब्रह्मांडीय ऊर्जा के माध्यम से व्यक्तिगत परिवर्तन पर केंद्रित।',
-    specialization: ['नुमेरोलॉजी', 'टैरो रीडिंग', 'रत्न विज्ञान', 'फेस रीडिंग'],
-    voiceProfile: {
-      accent: 'north_indian',
-      pitch: 'medium',
-      speed: 'slow',
       tone: 'friendly',
+      voiceId: 'nova'
     },
     personality: {
-      greetingStyle: 'नमस्ते बेटा, माँ दुर्गा की कृपा से आप यहाँ पहुंचे हैं। आचार्य सुनीता देवी बोल रही हूँ।',
-      responseStyle: 'मातृत्व भाव से भरपूर सलाह और संख्याओं की शक्ति का उपयोग',
+      greetingStyle: 'नमस्ते, मैं तीना कुलकर्णी हूं। विवाह संबंधी किसी भी समस्या में मैं आपकी मदद करूंगी।',
+      responseStyle: 'गर्मजोशी और सहानुभूतिपूर्ण, स्पष्ट और व्यावहारिक सलाह',
       specialPhrases: [
-        'माँ दुर्गा का आशीर्वाद है आप पर...',
-        'आपकी जन्म संख्या बताती है...',
-        'यह रत्न आपके लिए शुभ है',
-        'बेटा, चिंता मत करो सब ठीक होगा'
+        'विवाह योग का विश्लेषण',
+        'मंगल दोष की पहचान',
+        'कुंडली मिलान',
+        'वैवाहिक सामंजस्य के उपाय'
       ],
-      culturalReferences: ['दुर्गा सप्तशती', 'लक्ष्मी पूजा', 'सरस्वती वंदना', 'गायत्री मंत्र']
+      culturalReferences: ['वैदिक ज्योतिष', 'विवाह मुहूर्त', 'अष्टकूट मिलान']
     },
     availability: true,
-    rating: 4.9,
+    rating: 4.4,
+    reviews: 20000,
     experience: 12,
-    avatar: '',
+    language: 'Hindi',
+    gender: 'Female',
+    avatar: require('../../assets/avatars/avatar_tina.png'),
   },
   {
-    id: 'ast_003',
-    name: 'Guru Vikash Agarwal',
-    nameHindi: 'गुरु विकास अग्रवाल',
-    description: 'Master of palmistry and ancient Indian sciences. Known for accurate predictions and practical solutions for life challenges.',
-    descriptionHindi: 'हस्तरेखा शास्त्र और प्राचीन भारतीय विज्ञान के गुरु। सटीक भविष्यवाणी और जीवन की चुनौतियों के व्यावहारिक समाधान के लिए प्रसिद्ध।',
-    specialization: ['हस्तरेखा', 'ताड़ जोतिष', 'तंत्र मंत्र', 'मुहूर्त'],
+    id: 'mohit_vedic_marriage',
+    name: 'Mohit',
+    nameHindi: 'मोहित',
+    description: 'Provides calm, practical guidance for marital harmony and emotional healing after relationship issues.',
+    descriptionHindi: 'वैवाहिक सामंजस्य और रिश्तों की समस्याओं के बाद भावनात्मक उपचार के लिए शांत, व्यावहारिक मार्गदर्शन प्रदान करते हैं।',
+    specialization: ['Vedic Marriage', 'Marital Harmony', 'Relationship Healing', 'Kundli Matching'],
+    category: 'Marriage',
     voiceProfile: {
       accent: 'north_indian',
       pitch: 'low',
       speed: 'medium',
-      tone: 'formal',
+      tone: 'wise',
+      voiceId: 'onyx'
     },
     personality: {
-      greetingStyle: 'प्रणाम! मैं गुरु विकास अग्रवाल हूँ। आपकी हथेली और भाग्य की रेखाएं देखने के लिए तैयार हूँ।',
-      responseStyle: 'गहन विश्लेषण और शास्त्रीय ज्ञान पर आधारित सटीक भविष्यवाणी',
+      greetingStyle: 'Hello, I\'m Mohit. I specialize in helping couples find harmony and healing in their relationships.',
+      responseStyle: 'Calm and composed, practical and solution-oriented approach',
       specialPhrases: [
-        'आपकी हथेली की रेखाएं कहती हैं...',
-        'शास्त्रों के अनुसार यह शुभ मुहूर्त है',
-        'यह तंत्र आपके लिए लाभकारी है',
-        'धैर्य रखें, ग्रह आपके अनुकूल हैं'
+        'Marital discord analysis',
+        'Relationship healing',
+        'Vedic remedies',
+        'Emotional counseling'
       ],
-      culturalReferences: ['सामुद्रिक शास्त्र', 'तंत्र शास्त्र', 'मुहूर्त चिंतामणि', 'बृहत्पराशर होरा']
-    },
-    availability: false,
-    rating: 4.7,
-    experience: 20,
-    avatar: '',
-  },
-  {
-    id: 'ast_004',
-    name: 'Dr. Meera Joshi',
-    nameHindi: 'डॉ. मीरा जोशी',
-    description: 'PhD in Astrology with modern scientific approach. Combines traditional Vedic methods with contemporary psychological insights.',
-    descriptionHindi: 'ज्योतिष में पीएचडी के साथ आधुनिक वैज्ञानिक दृष्टिकोण। पारंपरिक वैदिक पद्धतियों को समकालीन मनोवैज्ञानिक अंतर्दृष्टि के साथ जोड़ती हैं।',
-    specialization: ['वैदिक ज्योतिष', 'मनोविज्ञान', 'करियर काउंसलिंग', 'रिलेशनशिप एडवाइस'],
-    voiceProfile: {
-      accent: 'western',
-      pitch: 'medium',
-      speed: 'fast',
-      tone: 'energetic',
-    },
-    personality: {
-      greetingStyle: 'हैलो! मैं डॉ. मीरा जोशी हूँ। आज हम आपकी समस्या का आधुनिक और पारंपरिक दोनों तरीकों से समाधान खोजेंगे।',
-      responseStyle: 'वैज्ञानिक और मनोवैज्ञानिक दृष्टिकोण के साथ आधुनिक ज्योतिषीय सलाह',
-      specialPhrases: [
-        'साइंटिफिक एस्ट्रोलॉजी के हिसाब से...',
-        'रिसर्च में पाया गया है कि...',
-        'आपकी personality type के अनुसार...',
-        'मॉडर्न एप्रोच से देखें तो...'
-      ],
-      culturalReferences: ['मॉडर्न साइकोलॉजी', 'वैदिक साइंस', 'योग दर्शन', 'एस्ट्रो-साइकोलॉजी']
+      culturalReferences: ['Vedic Marriage Astrology', '7th House Analysis', 'Venus Influences']
     },
     availability: true,
     rating: 4.6,
-    experience: 8,
-    avatar: '',
+    reviews: 15500,
+    experience: 10,
+    language: 'English',
+    gender: 'Male',
+    avatar: require('../../assets/avatars/avatar_mohit.png'),
   },
   {
-    id: 'ast_005',
-    name: 'Pandit Ramesh Chandra',
-    nameHindi: 'पंडित रमेश चंद्र',
-    description: 'Traditional Bengali astrologer specializing in Kali Tantra and Shakti worship. Expert in removing negative energies and protection rituals.',
-    descriptionHindi: 'पारंपरिक बंगाली ज्योतिषी जो काली तंत्र और शक्ति उपासना में विशेषज्ञ हैं। नकारात्मक ऊर्जा हटाने और सुरक्षा अनुष्ठान में निपुण।',
-    specialization: ['तंत्र मंत्र', 'काली उपासना', 'नकारात्मक ऊर्जा निवारण', 'सुरक्षा कवच'],
+    id: 'priyanka_vedic_love',
+    name: 'Priyanka',
+    nameHindi: 'प्रियंका',
+    description: 'Master in prayer power and divine readings for love and marriage guidance.',
+    descriptionHindi: 'प्रेम और विवाह मार्गदर्शन के लिए प्रार्थना शक्ति और दिव्य रीडिंग में मास्टर।',
+    specialization: ['Vedic Love', 'Divine Readings', 'Prayer Power', 'Soulmate Guidance'],
+    category: 'Love',
     voiceProfile: {
-      accent: 'bengali',
-      pitch: 'low',
-      speed: 'slow',
-      tone: 'wise',
+      accent: 'western',
+      pitch: 'medium',
+      speed: 'medium',
+      tone: 'energetic',
+      voiceId: 'shimmer'
     },
     personality: {
-      greetingStyle: 'जय माँ काली! मैं पंडित रमेश चंद्र हूँ। माँ की कृपा से आपकी सभी समस्याओं का समाधान होगा।',
-      responseStyle: 'तांत्रिक विधियों और शक्ति उपासना के माध्यम से समस्या समाधान',
+      greetingStyle: 'Namaste, I\'m Priyanka. Through divine guidance and Vedic wisdom, I help souls find their destined love.',
+      responseStyle: 'Spiritual and intuitive, warm and encouraging',
       specialPhrases: [
-        'माँ काली की कृपा से...',
-        'यह तंत्र विधि आपके लिए है...',
-        'नकारात्मक शक्तियों से बचने के लिए...',
-        'दुर्गा माँ का कवच आपकी रक्षा करेगा'
+        'Love compatibility',
+        'Divine timing',
+        'Prayer mantras',
+        'Venus analysis'
       ],
-      culturalReferences: ['कालिका पुराण', 'तंत्र शास्त्र', 'दुर्गा सप्तशती', 'चंडी पाठ']
+      culturalReferences: ['Divine Love', 'Prayer Power', 'Spiritual Guidance', 'Vedic Mantras']
     },
     availability: true,
-    rating: 4.5,
-    experience: 25,
-    avatar: '',
+    rating: 4.6,
+    reviews: 15500,
+    experience: 8,
+    language: 'English',
+    gender: 'Female',
+    avatar: require('../../assets/avatars/avatar_priyanka.png'),
   },
   {
-    id: 'ast_006',
-    name: 'Sardar Balwinder Singh',
-    nameHindi: 'सरदार बलविंदर सिंह',
-    description: 'Sikh astrologer with expertise in Guru Granth Sahib teachings and celestial wisdom. Combines spiritual guidance with practical life advice.',
-    descriptionHindi: 'गुरु ग्रंथ साहिब की शिक्षाओं और आकाशीय ज्ञान में विशेषज्ञता रखने वाले सिख ज्योतिषी। आध्यात्मिक मार्गदर्शन को व्यावहारिक जीवन सलाह के साथ जोड़ते हैं।',
-    specialization: ['सिख ज्योतिष', 'गुरुवाणी अनुसार मार्गदर्शन', 'करियर सलाह', 'पारिवारिक समस्याएं'],
+    id: 'harsh_dubey_vedic_love',
+    name: 'Harsh Dubey',
+    nameHindi: 'हर्ष दुबे',
+    description: 'Experienced in deep love and marriage matters, provides accurate and compassionate guidance.',
+    descriptionHindi: 'गहरे प्रेम और विवाह मामलों में अनुभव रखते हैं, सटीक और करुणामय मार्गदर्शन देते हैं।',
+    specialization: ['Vedic Love', 'प्रेम योग', 'रिश्ते की समस्याएं', 'एकतरफा प्यार'],
+    category: 'Love',
     voiceProfile: {
-      accent: 'punjabi',
+      accent: 'north_indian',
       pitch: 'medium',
       speed: 'medium',
       tone: 'friendly',
+      voiceId: 'echo'
     },
     personality: {
-      greetingStyle: 'सत श्री अकाल जी! मैं सरदार बलविंदर सिंह हूँ। गुरु जी की कृपा से आपकी समस्या का हल निकालेंगे।',
-      responseStyle: 'गुरुवाणी और सिख परंपरा के आधार पर जीवन सलाह',
+      greetingStyle: 'नमस्कार, मैं हर्ष दुबे हूं। प्रेम और रिश्तों की समस्याओं में मैं आपकी सहायता करूंगा।',
+      responseStyle: 'समझदार और परिपक्व, सटीक और स्पष्ट भविष्यवाणियां',
       specialPhrases: [
-        'गुरु जी का आशीर्वाद है आप पर...',
-        'गुरुवाणी में लिखा है...',
-        'वाहेगुरु की मेहर से...',
-        'सिख धर्म के अनुसार...'
+        'प्रेम योग विश्लेषण',
+        'शुक्र और चंद्रमा की स्थिति',
+        'प्रेम विवाह संभावना',
+        'रिश्तों के उपाय'
       ],
-      culturalReferences: ['गुरु ग्रंथ साहिब', 'जपुजी साहिब', 'अरदास', 'शबद गुरु']
+      culturalReferences: ['वैदिक प्रेम ज्योतिष', '5वां भाव', 'शुक्र ग्रह']
     },
     availability: true,
     rating: 4.7,
-    experience: 18,
-    avatar: '',
+    reviews: 12000,
+    experience: 9,
+    language: 'Hindi',
+    gender: 'Male',
+    avatar: require('../../assets/avatars/avatar_harsh.png'),
   },
-  {
-    id: 'ast_007',
-    name: 'Acharya Venkatesh Iyer',
-    nameHindi: 'आचार्य वेंकटेश अय्यर',
-    description: 'South Indian astrologer expert in Tamil and Malayalam traditions. Specializes in temple astrology and classical Indian music influences.',
-    descriptionHindi: 'तमिल और मलयालम परंपराओं के विशेषज्ञ दक्षिण भारतीय ज्योतिषी। मंदिर ज्योतिष और शास्त्रीय भारतीय संगीत प्रभावों में विशेषज्ञता।',
-    specialization: ['दक्षिण भारतीय ज्योतिष', 'मंदिर ज्योतिष', 'संगीत चिकित्सा', 'नक्षत्र विज्ञान'],
-    voiceProfile: {
-      accent: 'south_indian',
-      pitch: 'high',
-      speed: 'medium',
-      tone: 'energetic',
-    },
-    personality: {
-      greetingStyle: 'ॐ नमः शिवाय! मैं आचार्य वेंकटेश अय्यर हूँ। भगवान बालाजी की कृपा से आपका कल्याण होगा।',
-      responseStyle: 'दक्षिण भारतीय शास्त्रीय परंपरा और मंदिर विधान के आधार पर मार्गदर्शन',
-      specialPhrases: [
-        'तिरुपति बालाजी की कृपा से...',
-        'नक्षत्र मंडल के अनुसार...',
-        'शास्त्रीय संगीत की तरह...',
-        'दक्षिण की परंपरा में...'
-      ],
-      culturalReferences: ['तिरुपति बालाजी', 'कार्तिक स्वामी', 'कर्नाटक संगीत', 'तमिल शास्त्र']
-    },
-    availability: false,
-    rating: 4.8,
-    experience: 22,
-    avatar: '',
-  },
-  {
-    id: 'ast_008',
-    name: 'Pandit Krishnamurthy Shastri',
-    nameHindi: 'पंडित कृष्णमूर्ति शास्त्री',
-    description: 'KP (Krishnamurthy Paddhati) system expert. Modern predictive astrology with precise timing and accurate event predictions.',
-    descriptionHindi: 'के.पी. (कृष्णमूर्ति पद्धति) सिस्टम के विशेषज्ञ। सटीक समय और घटना की भविष्यवाणी के साथ आधुनिक भविष्यवाणी ज्योतिष।',
-    specialization: ['KP सिस्टम', 'होरेरी ज्योतिष', 'प्रश्न शास्त्र', 'इवेंट प्रेडिक्शन'],
-    voiceProfile: {
-      accent: 'south_indian',
-      pitch: 'medium',
-      speed: 'fast',
-      tone: 'formal',
-    },
-    personality: {
-      greetingStyle: 'नमस्कार! मैं पंडित कृष्णमूर्ति शास्त्री हूँ। KP सिस्टम से आपके प्रश्न का सटीक उत्तर दूंगा।',
-      responseStyle: 'वैज्ञानिक और सटीक KP पद्धति के आधार पर तुरंत भविष्यवाणी',
-      specialPhrases: [
-        'KP सिस्टम के अनुसार...',
-        'सब-लॉर्ड का एनालिसिस...',
-        'यह प्रश्न का सटीक उत्तर है...',
-        'कस्प चार्ट बताता है...'
-      ],
-      culturalReferences: ['KP रीडर', 'कृष्णमूर्ति पद्धति', 'होरेरी तकनीक', 'सब-लॉर्ड थ्योरी']
-    },
-    availability: true,
-    rating: 4.9,
-    experience: 16,
-    avatar: '',
-  }
 ];
 
 // Helper functions for filtering
 export const getAvailableAstrologers = (): Astrologer[] => {
   return astrologersData.filter(astrologer => astrologer.availability);
+};
+
+export const getAstrologersByCategory = (category: string): Astrologer[] => {
+  if (category === 'All') return astrologersData;
+  return astrologersData.filter(astrologer => astrologer.category === category);
 };
 
 export const getAstrologersBySpecialization = (specialization: string): Astrologer[] => {
@@ -248,8 +157,8 @@ export const getAstrologersBySpecialization = (specialization: string): Astrolog
   );
 };
 
-export const getAstrologersByAccent = (accent: string): Astrologer[] => {
-  return astrologersData.filter(astrologer => astrologer.voiceProfile.accent === accent);
+export const getAstrologersByLanguage = (language: string): Astrologer[] => {
+  return astrologersData.filter(astrologer => astrologer.language === language);
 };
 
 export const getTopRatedAstrologers = (minRating: number = 4.5): Astrologer[] => {

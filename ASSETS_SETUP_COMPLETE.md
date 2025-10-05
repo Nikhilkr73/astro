@@ -133,9 +133,9 @@ Background: Transparent, 120x120px.
 
 ### **Integration:**
 - [x] Images saved in correct folders
-- [ ] Updated `astrologers.ts`
-- [ ] Updated `AstrologerSelectionScreen.tsx`
-- [ ] Updated `AstrologerCard.tsx`
+- [x] Updated `astrologers.ts`
+- [x] Updated `AstrologerSelectionScreen.tsx`
+- [x] Updated `AstrologerCard.tsx`
 - [ ] Tested on device
 - [ ] All images display correctly
 

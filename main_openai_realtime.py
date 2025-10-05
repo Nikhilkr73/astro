@@ -25,8 +25,8 @@ import io
 # Load environment variables
 load_dotenv()
 
-# Import our OpenAI realtime handler
-from openai_realtime_handler import openai_realtime_handler
+# Import our OpenAI realtime handler class
+from openai_realtime_handler import OpenAIRealtimeHandler
 
 app = FastAPI(title="OpenAI Realtime Voice Astrology Server")
 
@@ -42,8 +42,9 @@ app.add_middleware(
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Store active connections
+# Store active connections and per-user handlers
 active_connections = {}
+user_handlers = {}  # Each user gets their own handler with their own astrologer
 
 def pcm16_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1) -> bytes:
     """Convert raw PCM16 audio to WAV format"""
@@ -143,7 +144,7 @@ async def voice_realtime():
         return HTMLResponse(f.read())
 
 @app.websocket("/ws-mobile/{user_id}")
-async def mobile_websocket_endpoint(websocket: WebSocket, user_id: str):
+async def mobile_websocket_endpoint(websocket: WebSocket, user_id: str, astrologer_id: str = None):
     """WebSocket endpoint for mobile app - direct Realtime API integration"""
     await websocket.accept()
     print(f"📱 Mobile WebSocket connected: {user_id}")
@@ -151,10 +152,17 @@ async def mobile_websocket_endpoint(websocket: WebSocket, user_id: str):
     # Accumulate PCM audio chunks for this connection
     pcm_chunks = []
     
+    # Create a dedicated handler for this user
+    if user_id not in user_handlers:
+        user_handlers[user_id] = OpenAIRealtimeHandler()
+        print(f"✨ Created new handler for user {user_id}")
+    
+    handler = user_handlers[user_id]
+    
     try:
         # Connect to OpenAI if not already connected
-        if not openai_realtime_handler.is_connected:
-            await openai_realtime_handler.connect_to_openai()
+        if not handler.is_connected:
+            await handler.connect_to_openai()
         
         # Set up callback to accumulate PCM audio
         async def forward_audio_to_mobile(audio_delta: str):
@@ -209,16 +217,34 @@ async def mobile_websocket_endpoint(websocket: WebSocket, user_id: str):
             except Exception as e:
                 print(f"❌ Error forwarding text: {e}")
         
-        openai_realtime_handler.set_audio_callback(forward_audio_to_mobile)
-        openai_realtime_handler.audio_done_callback = send_accumulated_audio
-        openai_realtime_handler.text_callback = forward_text_to_mobile
+        handler.set_audio_callback(forward_audio_to_mobile)
+        handler.audio_done_callback = send_accumulated_audio
+        handler.text_callback = forward_text_to_mobile
         
         while True:
             # Receive message from mobile
             message = await websocket.receive_json()
             msg_type = message.get("type")
             
-            if msg_type == "audio":
+            if msg_type == "config":
+                # Mobile sending configuration (astrologer selection)
+                astrologer_id = message.get("astrologer_id")
+                if astrologer_id:
+                    print(f"🎭 Setting astrologer to: {astrologer_id} for user {user_id}")
+                    # Set the astrologer (loads persona)
+                    handler.set_astrologer(astrologer_id, user_id)
+                    # Reconfigure the session with new astrologer
+                    if handler.is_connected:
+                        await handler._configure_session()
+                        # Send greeting from astrologer
+                        await handler.send_greeting(user_id)
+                    await websocket.send_json({
+                        "type": "config_ack",
+                        "astrologer_id": astrologer_id,
+                        "message": f"Astrologer set to {astrologer_id}"
+                    })
+            
+            elif msg_type == "audio":
                 # Mobile sent audio
                 audio_base64 = message.get("audio", "")
                 audio_bytes = base64.b64decode(audio_base64)
@@ -232,33 +258,49 @@ async def mobile_websocket_endpoint(websocket: WebSocket, user_id: str):
                     pcm_audio = audio_bytes
                 
                 print(f"📱 Sending {len(pcm_audio)} bytes to Realtime API for user {user_id}")
-                await openai_realtime_handler.send_audio(pcm_audio, user_id)
+                await handler.send_audio(pcm_audio, user_id)
             
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
                 
     except WebSocketDisconnect:
         print(f"📱 Mobile WebSocket disconnected: {user_id}")
+        # Cleanup handler
+        if user_id in user_handlers:
+            await user_handlers[user_id].disconnect()
+            del user_handlers[user_id]
+            print(f"🧹 Cleaned up handler for user {user_id}")
     except Exception as e:
         print(f"❌ Mobile WebSocket error: {e}")
         await websocket.close()
+        # Cleanup handler
+        if user_id in user_handlers:
+            await user_handlers[user_id].disconnect()
+            del user_handlers[user_id]
 
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     """WebSocket endpoint for web voice communication"""
     await manager.connect(websocket, user_id)
 
+    # Create a dedicated handler for this user
+    if user_id not in user_handlers:
+        user_handlers[user_id] = OpenAIRealtimeHandler()
+        print(f"✨ Created new handler for web user {user_id}")
+    
+    handler = user_handlers[user_id]
+
     # Set up audio callback for OpenAI responses
     async def audio_callback(audio_delta: str):
         """Stream audio from OpenAI to client"""
         await manager.send_audio(user_id, audio_delta)
 
-    openai_realtime_handler.set_audio_callback(audio_callback)
+    handler.set_audio_callback(audio_callback)
 
     try:
         # Connect to OpenAI if not already connected
-        if not openai_realtime_handler.is_connected:
-            await openai_realtime_handler.connect_to_openai()
+        if not handler.is_connected:
+            await handler.connect_to_openai()
 
         while True:
             # Receive message from client
@@ -277,7 +319,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     pcm_data = convert_webm_to_pcm16(webm_data)
 
                     # Send PCM16 audio to OpenAI realtime API
-                    await openai_realtime_handler.send_audio(pcm_data, user_id)
+                    await handler.send_audio(pcm_data, user_id)
 
                 except Exception as e:
                     print(f"❌ Error processing audio: {e}")
@@ -290,22 +332,24 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(user_id)
         print(f"🔌 User {user_id} disconnected")
+        # Cleanup handler
+        if user_id in user_handlers:
+            await user_handlers[user_id].disconnect()
+            del user_handlers[user_id]
     except Exception as e:
         print(f"❌ WebSocket error for user {user_id}: {e}")
         manager.disconnect(user_id)
+        # Cleanup handler
+        if user_id in user_handlers:
+            await user_handlers[user_id].disconnect()
+            del user_handlers[user_id]
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
     print("🚀 Starting OpenAI Realtime Voice Astrology Server...")
-    print("✅ OpenAI realtime handler ready")
-
-    # Test OpenAI connection
-    try:
-        await openai_realtime_handler.connect_to_openai()
-        print("✅ OpenAI connection test successful")
-    except Exception as e:
-        print(f"⚠️ OpenAI connection test failed: {e}")
+    print("✅ Per-user handler architecture ready")
+    print("✅ Each user gets their own astrologer persona")
 
 @app.get("/health")
 async def health_check():
@@ -353,7 +397,11 @@ async def process_text(request: Request):
 async def shutdown_event():
     """Cleanup on shutdown"""
     print("🛑 Shutting down server...")
-    await openai_realtime_handler.disconnect()
+    # Cleanup all user handlers
+    for user_id, handler in list(user_handlers.items()):
+        await handler.disconnect()
+        print(f"🧹 Disconnected handler for user {user_id}")
+    user_handlers.clear()
 
 if __name__ == "__main__":
     print("🌟 Starting OpenAI Realtime Voice Astrology Server")

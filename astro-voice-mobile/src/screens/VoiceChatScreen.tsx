@@ -47,6 +47,8 @@ export default function VoiceChatScreen() {
           onConnected: () => {
             console.log('✅ WebSocket connected for voice chat');
             setIsConnected(true);
+            // Send astrologer configuration
+            WebSocketService.sendAstrologerConfig(astrologerId);
           },
           onDisconnected: () => {
             console.log('❌ WebSocket disconnected');
