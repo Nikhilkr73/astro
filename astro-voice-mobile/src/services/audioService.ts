@@ -146,10 +146,15 @@ export class AudioService {
       // Stop any existing playback
       await this.stopSound();
 
-      // Create and load new sound
+      console.log('🎵 Loading audio from URI...');
+      
+      // Create and load new sound with optimized settings for long audio
       const { sound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: false },
+        { 
+          shouldPlay: false,
+          progressUpdateIntervalMillis: 500, // Update status every 500ms
+        },
         onStatusUpdate ? (status) => {
           const playbackStatus: PlaybackStatus = {
             isLoaded: status.isLoaded || false,
@@ -157,16 +162,38 @@ export class AudioService {
             duration: status.isLoaded ? status.durationMillis || 0 : 0,
             position: status.isLoaded ? status.positionMillis || 0 : 0,
           };
+          
+          // Log playback progress for debugging
+          if (status.isLoaded && status.isPlaying) {
+            const progress = status.durationMillis > 0 
+              ? ((status.positionMillis / status.durationMillis) * 100).toFixed(1)
+              : 0;
+            console.log(`▶️  Playing: ${(status.positionMillis / 1000).toFixed(1)}s / ${(status.durationMillis / 1000).toFixed(1)}s (${progress}%)`);
+          }
+          
+          if (status.didJustFinish) {
+            console.log('✅ Audio playback completed');
+          }
+          
           onStatusUpdate(playbackStatus);
         } : undefined
       );
 
       this.sound = sound;
+      
+      // Get and log audio duration
+      const status = await sound.getStatusAsync();
+      if (status.isLoaded) {
+        console.log(`📊 Audio loaded: ${(status.durationMillis / 1000).toFixed(1)}s duration`);
+      }
+      
+      // Start playback
       await this.sound.playAsync();
+      console.log('▶️  Audio playback started');
 
       return { success: true };
     } catch (error: any) {
-      console.error('Failed to play sound:', error);
+      console.error('❌ Failed to play sound:', error);
       return { success: false, error: error.message || 'Failed to play sound' };
     }
   }

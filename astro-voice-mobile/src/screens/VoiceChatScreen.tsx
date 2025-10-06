@@ -56,12 +56,14 @@ export default function VoiceChatScreen() {
           },
           onAudioResponse: (audioBase64) => {
             console.log('🔊 Received complete audio response from Realtime API');
+            console.log(`📦 Audio size: ${audioBase64.length} characters`);
             
             // Create astrologer message with complete audio (WAV format)
+            // Duration will be determined by actual audio length, not hardcoded
             const astrologerMessage: VoiceMessage = {
               id: Date.now().toString(),
               uri: `data:audio/wav;base64,${audioBase64}`,
-              duration: 5000,
+              duration: 0, // Will be updated when audio loads
               timestamp: new Date(),
               isUser: false,
               text: 'Voice response from astrologer',
