@@ -36,9 +36,9 @@ export class WebSocketService {
       try {
         this.callbacks = callbacks;
         
-        // Get WebSocket URL - use local network IP for mobile devices
-        // TODO: Make this configurable from environment
-        const wsUrl = `ws://192.168.0.107:8000/ws-mobile/${userId}`;
+        // Get WebSocket URL from configuration service
+        const baseUrl = configService.getWebSocketEndpoint();
+        const wsUrl = `${baseUrl}/ws-mobile/${userId}`;
         console.log(`🔌 Connecting to WebSocket: ${wsUrl}`);
         
         this.ws = new WebSocket(wsUrl);

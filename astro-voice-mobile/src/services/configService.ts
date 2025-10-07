@@ -29,8 +29,8 @@ const defaultConfig: AppConfig = {
   APP_VERSION: '1.0.0',
   ENVIRONMENT: 'development',
   API: {
-    REST_API_URL: 'http://192.168.0.107:8000',
-    WEBSOCKET_API_URL: 'ws://192.168.0.107:8000',
+    REST_API_URL: 'http://10.126.109.101:8000',
+    WEBSOCKET_API_URL: 'ws://10.126.109.101:8000',
     REGION: 'ap-south-1',
   },
   FEATURES: {
@@ -39,6 +39,14 @@ const defaultConfig: AppConfig = {
     OFFLINE_MODE: true,
     PUSH_NOTIFICATIONS: false,
   },
+};
+
+// Production configuration for deployed API
+// Update these URLs after deploying to Railway/Render/Heroku
+const productionConfig: ApiConfig = {
+  REST_API_URL: 'https://your-app-name.railway.app', // Replace with your actual deployment URL
+  WEBSOCKET_API_URL: 'wss://your-app-name.railway.app', // Replace with your actual deployment URL
+  REGION: 'ap-south-1',
 };
 
 // AWS Production configuration (updated with actual deployment values)
@@ -91,6 +99,24 @@ class ConfigService {
    */
   public getApiConfig(): ApiConfig {
     return this.config.API;
+  }
+
+  /**
+   * Switch to production configuration
+   */
+  public switchToProduction(): void {
+    this.config.API = { ...productionConfig };
+    this.config.ENVIRONMENT = 'production';
+    console.log('🚀 Switched to production configuration:', this.config.API);
+  }
+
+  /**
+   * Switch to development configuration
+   */
+  public switchToDevelopment(): void {
+    this.config.API = { ...defaultConfig.API };
+    this.config.ENVIRONMENT = 'development';
+    console.log('🔧 Switched to development configuration:', this.config.API);
   }
 
   /**
