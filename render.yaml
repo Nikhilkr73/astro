@@ -3,12 +3,8 @@ services:
     name: astrovoice-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python3 main_openai_realtime.py
+    startCommand: uvicorn main_openai_realtime:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: OPENAI_API_KEY
         sync: false
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: 8000
     healthCheckPath: /health

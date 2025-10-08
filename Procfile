@@ -1,1 +1,1 @@
-web: python3 main_openai_realtime.py
+web: uvicorn main_openai_realtime:app --host 0.0.0.0 --port $PORT
