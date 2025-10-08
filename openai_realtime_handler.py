@@ -24,7 +24,10 @@ class OpenAIRealtimeHandler:
         if not self.api_key:
             raise Exception("❌ Missing OPENAI_API_KEY in environment variables")
 
-        print("✅ OpenAI API key loaded successfully")
+        # Load model configuration (default to gpt-4o-mini-realtime-preview)
+        self.model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-4o-mini-realtime-preview")
+        print(f"✅ OpenAI API key loaded successfully")
+        print(f"🤖 Using model: {self.model}")
 
         # Conversation memory and persona
         self.user_states = {}
@@ -158,19 +161,19 @@ class OpenAIRealtimeHandler:
         if self.is_connected:
             return
 
-        print("🔌 Connecting to OpenAI Realtime API...")
+        print(f"🔌 Connecting to OpenAI Realtime API with model: {self.model}")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "OpenAI-Beta": "realtime=v1"
         }
 
+        # Build WebSocket URL with configured model
+        ws_url = f"wss://api.openai.com/v1/realtime?model={self.model}"
+        
         self.session = aiohttp.ClientSession()
-        self.openai_ws = await self.session.ws_connect(
-            "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview",
-            headers=headers
-        )
+        self.openai_ws = await self.session.ws_connect(ws_url, headers=headers)
         self.is_connected = True
-        print("✅ Connected to OpenAI Realtime API")
+        print(f"✅ Connected to OpenAI Realtime API using {self.model}")
 
         await self._configure_session()
         asyncio.create_task(self._listen_to_openai())

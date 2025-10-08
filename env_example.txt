@@ -4,6 +4,13 @@ GOOGLE_API_KEY=your_google_api_key_here
 # OpenAI API Key (backup option)
 OPENAI_API_KEY=your_openai_api_key_here
 
+# OpenAI Realtime Model Configuration
+# Options: 
+#   - gpt-4o-mini-realtime-preview (default, stable)
+#   - gpt-realtime-mini (new model for exploration)
+#   - gpt-4o-realtime-preview (full GPT-4o realtime)
+OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview
+
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000

@@ -54,6 +54,7 @@ A production-ready voice-based AI astrology consultation system powered by OpenA
 - ✅ **Data Export** - JSON/CSV export capabilities
 - ✅ **Comprehensive Logging** - Structured logging with emoji indicators
 - ✅ **Health Checks** - API health monitoring endpoints
+- ✅ **Model Switching** - Easy configuration to test different OpenAI Realtime models
 
 ## 🏗️ Technology Stack
 
@@ -304,6 +305,7 @@ npx expo start
 - `ASTROLOGER_PERSONA_GUIDE.md` - How to create/modify AI personas
 - `USER_DATA_TOOLS_SUMMARY.md` - Using data viewer and export tools
 - `AWS_DATA_VIEWER_GUIDE.md` - Viewing data in AWS
+- `MODEL_EXPLORATION_GUIDE.md` - Testing and comparing different AI models
 
 ### **Specifications**
 - `PROJECT_SPEC.md` - Complete technical specification
@@ -436,10 +438,52 @@ cd astro-voice-mobile && npx expo start --clear
 # Required
 OPENAI_API_KEY=sk-...
 
+# Model Configuration
+OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview  # Default
+# Options: gpt-4o-mini-realtime-preview, gpt-realtime-mini, gpt-4o-realtime-preview
+
 # Optional
 LOG_LEVEL=INFO
 PORT=8000
 ```
+
+## 🤖 Model Configuration & Switching
+
+The system supports multiple OpenAI Realtime models for flexibility and experimentation:
+
+### Quick Model Switch
+
+```bash
+# View current model
+./switch_model.sh
+
+# Switch to new model
+./switch_model.sh gpt-realtime-mini
+
+# Switch to full GPT-4o (higher quality, higher cost)
+./switch_model.sh gpt-4o-realtime-preview
+
+# Switch back to default
+./switch_model.sh gpt-4o-mini-realtime-preview
+```
+
+### Available Models
+
+1. **gpt-4o-mini-realtime-preview** (Default)
+   - Production-ready, cost-effective
+   - Fast response times (~200-500ms)
+   - Good for most consultations
+
+2. **gpt-realtime-mini** (New)
+   - Latest model for exploration
+   - Performance characteristics TBD
+
+3. **gpt-4o-realtime-preview** (Premium)
+   - Highest quality reasoning
+   - Better context understanding
+   - Higher cost
+
+See `MODEL_EXPLORATION_GUIDE.md` for detailed testing and comparison guide.
 
 ## 🚀 Roadmap
 
