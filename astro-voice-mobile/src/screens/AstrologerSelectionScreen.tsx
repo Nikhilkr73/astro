@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
-  Platform,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -174,56 +174,56 @@ export default function AstrologerSelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.background
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.lg
   },
   headerContent: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.md
   },
   kundliLogoImage: {
     width: 48,
     height: 48,
-    marginRight: Spacing.sm,
+    marginRight: Spacing.sm
   },
   brandName: {
     fontSize: Fonts.sizes.title,
     fontWeight: Fonts.weights.bold as any,
     color: Colors.textOnPrimary,
-    letterSpacing: 1,
+    letterSpacing: 1
   },
   headerTitle: {
     fontSize: Fonts.sizes.lg,
     fontWeight: Fonts.weights.medium as any,
     color: Colors.textOnPrimary,
-    marginBottom: 4,
+    marginBottom: 4
   },
   headerSubtitle: {
     fontSize: Fonts.sizes.sm,
     color: Colors.textOnPrimary,
-    opacity: 0.9,
+    opacity: 0.9
   },
   categoryContainer: {
     backgroundColor: Colors.cardBackground,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.border
   },
   categoryScrollContent: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.xl,
+    gap: Spacing.xl
   },
   categoryTab: {
     alignItems: 'center',
-    minWidth: 70,
+    minWidth: 70
   },
   categoryIconContainer: {
     width: 60,
@@ -232,20 +232,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.sm
   },
   categoryIconImage: {
     width: 36,
-    height: 36,
+    height: 36
   },
   categoryLabel: {
     fontSize: Fonts.sizes.sm,
     fontWeight: Fonts.weights.medium as any,
-    color: Colors.textSecondary,
+    color: Colors.textSecondary
   },
   categoryLabelActive: {
     color: Colors.primary,
-    fontWeight: Fonts.weights.semiBold as any,
+    fontWeight: Fonts.weights.semiBold as any
   },
   categoryIndicator: {
     position: 'absolute',
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 3,
     backgroundColor: Colors.accent,
-    borderRadius: 2,
+    borderRadius: 2
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -261,52 +261,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: Colors.cardBackground
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   sectionDot: {
     width: 4,
     height: 20,
     backgroundColor: Colors.accent,
     marginRight: Spacing.sm,
-    borderRadius: 2,
+    borderRadius: 2
   },
   sectionTitle: {
     fontSize: Fonts.sizes.md,
     fontWeight: Fonts.weights.semiBold as any,
-    color: Colors.textPrimary,
+    color: Colors.textPrimary
   },
   scrollView: {
-    flex: 1,
+    flex: 1
   },
   scrollContent: {
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.sm
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
-    paddingHorizontal: 40,
+    paddingHorizontal: 40
   },
   emptyStateIcon: {
     fontSize: 64,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.md
   },
   emptyTitle: {
     fontSize: Fonts.sizes.xl,
     fontWeight: Fonts.weights.semiBold as any,
     color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.sm
   },
   emptySubtitle: {
     fontSize: Fonts.sizes.md,
     color: Colors.textTertiary,
-    textAlign: 'center',
+    textAlign: 'center'
   },
   bottomSpacer: {
-    height: Spacing.xl,
-  },
+    height: Spacing.xl
+  }
 });

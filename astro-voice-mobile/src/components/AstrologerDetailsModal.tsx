@@ -7,7 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Dimensions,
+  Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,7 @@ export default function AstrologerDetailsModal({
   visible,
   astrologer,
   onClose,
-  onStartChat,
+  onStartChat
 }: AstrologerDetailsModalProps) {
   if (!astrologer) return null;
 
@@ -267,7 +267,7 @@ export default function AstrologerDetailsModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
   },
   header: {
     flexDirection: 'row',
@@ -275,22 +275,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 50,
     paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 16
   },
   closeButton: {
-    padding: 8,
+    padding: 8
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#fff'
   },
   placeholder: {
-    width: 40,
+    width: 40
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: 16
   },
   profileSection: {
     flexDirection: 'row',
@@ -298,24 +298,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     backgroundColor: '#f8f9fa',
-    borderRadius: 16,
+    borderRadius: 16
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 16,
+    marginRight: 16
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f0f0f0'
   },
   avatarPlaceholder: {
     width: 80,
     height: 80,
     borderRadius: 40,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   statusIndicator: {
     position: 'absolute',
@@ -325,66 +325,63 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#fff'
   },
   statusText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#fff'
   },
   profileInfo: {
-    flex: 1,
+    flex: 1
   },
   name: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 4
   },
   englishName: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 8
   },
   statsContainer: {
-    flexDirection: 'row',
-    gap: 16,
+    flexDirection: 'row'
   },
   stat: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    alignItems: 'center'
   },
   statText: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '500',
+    fontWeight: '500'
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 24
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 12
   },
   description: {
     fontSize: 16,
     color: '#555',
     lineHeight: 24,
-    marginBottom: 8,
+    marginBottom: 8
   },
   englishDescription: {
     fontSize: 14,
     color: '#777',
     lineHeight: 20,
-    fontStyle: 'italic',
+    fontStyle: 'italic'
   },
   specializationsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'wrap'
   },
   specializationCard: {
     backgroundColor: '#f0f8ff',
@@ -393,22 +390,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: (width - 56) / 3, // 3 columns with margins
     borderWidth: 1,
-    borderColor: '#e3f2fd',
+    borderColor: '#e3f2fd'
   },
   specializationIcon: {
     fontSize: 24,
-    marginBottom: 4,
+    marginBottom: 4
   },
   specializationName: {
     fontSize: 12,
     color: '#1565c0',
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   voiceProfileGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'wrap'
   },
   voiceCard: {
     backgroundColor: '#fff5f5',
@@ -417,48 +413,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: (width - 56) / 2, // 2 columns
     borderWidth: 1,
-    borderColor: '#ffebee',
+    borderColor: '#ffebee'
   },
   voiceIcon: {
     fontSize: 20,
-    marginBottom: 4,
+    marginBottom: 4
   },
   voiceLabel: {
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 2
   },
   voiceValue: {
     fontSize: 14,
     color: '#d32f2f',
     fontWeight: '600',
-    textAlign: 'center',
+    textAlign: 'center'
   },
   personalitySection: {
-    marginBottom: 12,
+    marginBottom: 12
   },
   personalityLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#FF6B35',
-    marginBottom: 4,
+    marginBottom: 4
   },
   personalityText: {
     fontSize: 14,
     color: '#555',
-    lineHeight: 20,
+    lineHeight: 20
   },
   phraseText: {
     fontSize: 13,
     color: '#666',
     lineHeight: 18,
-    marginLeft: 8,
+    marginLeft: 8
   },
   culturalGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexWrap: 'wrap'
   },
   culturalTag: {
     backgroundColor: '#fff3e0',
@@ -466,36 +461,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#ffe0b2',
+    borderColor: '#ffe0b2'
   },
   culturalText: {
     fontSize: 12,
     color: '#f57c00',
-    fontWeight: '500',
+    fontWeight: '500'
   },
   bottomSpacer: {
-    height: 100,
+    height: 100
   },
   footer: {
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#f0f0f0'
   },
   chatButton: {
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: 'hidden'
   },
   chatButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 16
   },
   chatButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
-  },
+    color: '#fff'
+  }
 });

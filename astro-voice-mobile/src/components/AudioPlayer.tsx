@@ -25,7 +25,7 @@ export default function AudioPlayer({
   showProgress = true,
   showDuration = true,
   buttonSize = 50,
-  accentColor = '#FF6B35',
+  accentColor = '#FF6B35'
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +33,7 @@ export default function AudioPlayer({
     isLoaded: false,
     isPlaying: false,
     duration: 0,
-    position: 0,
+    position: 0
   });
   const [sliderValue, setSliderValue] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -128,7 +128,7 @@ export default function AudioPlayer({
         isLoaded: false,
         isPlaying: false,
         duration: 0,
-        position: 0,
+        position: 0
       });
       setSliderValue(0);
     } catch (error) {
@@ -190,7 +190,7 @@ export default function AudioPlayer({
               width: buttonSize,
               height: buttonSize,
               borderRadius: buttonSize / 2,
-              backgroundColor: accentColor,
+              backgroundColor: accentColor
             },
           ]}
           onPress={handlePlayPause}
@@ -256,13 +256,12 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
+    padding: 10
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 15,
+    justifyContent: 'center'
   },
   playButton: {
     justifyContent: 'center',
@@ -270,11 +269,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 2
     },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 4
   },
   stopButton: {
     width: 35,
@@ -283,33 +282,33 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'transparent'
   },
   progressContainer: {
     width: '100%',
     marginTop: 15,
-    paddingHorizontal: 10,
+    paddingHorizontal: 10
   },
   slider: {
     width: '100%',
-    height: 40,
+    height: 40
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 10,
-    marginTop: 5,
+    marginTop: 5
   },
   timeText: {
     fontSize: 12,
     color: '#666',
-    fontFamily: 'monospace',
+    fontFamily: 'monospace'
   },
   statusText: {
     marginTop: 10,
     fontSize: 12,
     color: '#999',
-    textAlign: 'center',
-  },
+    textAlign: 'center'
+  }
 });

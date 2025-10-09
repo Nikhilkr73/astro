@@ -102,37 +102,36 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 30,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.3)'
   },
   statRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   statDivider: {
     width: 1,
     height: 30,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginHorizontal: 20,
+    marginHorizontal: 20
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 4
   },
   statLabel: {
     fontSize: 12,
     color: '#fff',
     opacity: 0.8,
-    textAlign: 'center',
+    textAlign: 'center'
   },
-  featuresContainer: {
-    gap: 20,
-    marginBottom: 30,
+  featuresContainer: {,
+    marginBottom: 30
   },
   featureCard: {
     backgroundColor: '#fff',
@@ -144,7 +143,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
-    position: 'relative',
+    position: 'relative'
   },
   featureTitle: {
     fontSize: 18,
@@ -165,34 +164,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
-    gap: 4,
+    borderRadius: 12
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
   },
   liveText: {
     fontSize: 10,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   comingSoon: {
     marginTop: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
     backgroundColor: '#FFA726',
-    borderRadius: 12,
+    borderRadius: 12
   },
   comingSoonText: {
     fontSize: 10,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   quickActions: {
-    alignItems: 'center',
+    alignItems: 'center'
   },
   quickAction: {
     flexDirection: 'row',
@@ -201,13 +199,12 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.3)'
   },
   quickActionText: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '600',
-  },
+    fontWeight: '600'
+  }
 });

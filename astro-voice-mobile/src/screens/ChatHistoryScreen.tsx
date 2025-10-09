@@ -1,49 +1,265 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+/**
+ * Chat History Screen
+ * 
+ * List of past chat sessions with astrologers.
+ */
 
-const mockHistory = [
-  { id: '1', astrologer: 'पंडित राज शर्मा', date: '2024-01-15', duration: '15 मिनट', topic: 'करियर समाधान' },
-  { id: '2', astrologer: 'आचार्य सुनीता जी', date: '2024-01-10', duration: '20 मिनट', topic: 'रिश्ते की समस्या' },
-  { id: '3', astrologer: 'गुरु विकास अग्रवाल', date: '2024-01-05', duration: '25 मिनट', topic: 'स्वास्थ्य संबंधी सलाह' },
+import React from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Feather';
+import { Avatar, Badge } from '../components/ui';
+import { Astrologer } from '../data/astrologers';
+import { colors, typography, spacing, borderRadius, shadows } from '../config/designTokens';
+
+interface ChatSession {
+  id: string;
+  astrologer: Astrologer;
+  lastMessage: string;
+  timestamp: string;
+  duration: string;
+  unread?: number;
+}
+
+interface ChatHistoryScreenProps {
+  onChatClick: (session: ChatSession) => void;
+}
+
+// Sample data
+const sampleSessions: ChatSession[] = [
+  {
+    id: '1',
+    astrologer: {
+      id: 1,
+      name: "Pandit Rajesh Kumar",
+      category: "Vedic Astrology",
+      rating: 4.8,
+      reviews: 1250,
+      experience: "15+ years",
+      languages: ["Hindi", "English"],
+      isOnline: true,
+      image: "https://images.unsplash.com/photo-1662302392561-b1deecd3579d?w=400",
+      chatRate: 8,
+      callRate: 12
+    },
+    lastMessage: "Thank you for the consultation. May the stars guide you.",
+    timestamp: "2 hours ago",
+    duration: "12 min",
+    unread: 2
+  },
+  {
+    id: '2',
+    astrologer: {
+      id: 2,
+      name: "Dr. Priya Sharma",
+      category: "Numerology",
+      rating: 4.9,
+      reviews: 890,
+      experience: "12+ years",
+      languages: ["Hindi", "English", "Bengali"],
+      isOnline: false,
+      image: "https://images.unsplash.com/photo-1731056995482-6def83b56fbf?w=400",
+      chatRate: 8,
+      callRate: 12
+    },
+    lastMessage: "Your numbers suggest a positive change coming soon.",
+    timestamp: "Yesterday",
+    duration: "18 min"
+  },
 ];
 
-export default function ChatHistoryScreen() {
+export function ChatHistoryScreen({ onChatClick }: ChatHistoryScreenProps) {
+  const renderChatSession = ({ item }: { item: ChatSession }) => (
+    <TouchableOpacity
+      style={styles.sessionCard}
+      onPress={() => onChatClick(item)}
+      activeOpacity={0.7}
+    >
+      <Avatar
+        source={{ uri: item.astrologer.image }}
+        size="lg"
+        border
+        style={styles.avatar}
+      />
+      
+      <View style={styles.sessionContent}>
+        <View style={styles.sessionHeader}>
+          <Text style={styles.astrologerName} numberOfLines={1}>
+            {item.astrologer.name}
+          </Text>
+          <Text style={styles.timestamp}>{item.timestamp}</Text>
+        </View>
+        
+        <Badge variant="primary" style={styles.categoryBadge}>
+          {item.astrologer.category}
+        </Badge>
+        
+        <Text style={styles.lastMessage} numberOfLines={2}>
+          {item.lastMessage}
+        </Text>
+        
+        <View style={styles.sessionFooter}>
+          <View style={styles.durationContainer}>
+            <Icon name="clock" size={12} color={colors.mutedForeground} />
+            <Text style={styles.duration}>{item.duration}</Text>
+          </View>
+          {item.unread && item.unread > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{item.unread}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>बातचीत का इतिहास</Text>
-      <ScrollView style={styles.scrollView}>
-        {mockHistory.map((chat) => (
-          <TouchableOpacity key={chat.id} style={styles.chatItem}>
-            <View style={styles.chatIcon}>
-              <Ionicons name="chatbubbles" size={24} color="#FF6B35" />
-            </View>
-            <View style={styles.chatInfo}>
-              <Text style={styles.astrologerName}>{chat.astrologer}</Text>
-              <Text style={styles.topic}>{chat.topic}</Text>
-              <View style={styles.metadata}>
-                <Text style={styles.date}>{chat.date}</Text>
-                <Text style={styles.duration}>{chat.duration}</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Chat History</Text>
+      </View>
+      
+      <FlatList
+        data={sampleSessions}
+        renderItem={renderChatSession}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Icon name="message-circle" size={64} color={colors.mutedForeground} />
+            <Text style={styles.emptyTitle}>No Chat History</Text>
+            <Text style={styles.emptyText}>Start a conversation with an astrologer</Text>
+          </View>
+        )}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20, textAlign: 'center' },
-  scrollView: { flex: 1 },
-  chatItem: { backgroundColor: '#fff', borderRadius: 15, padding: 15, marginBottom: 15, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3.84, elevation: 5 },
-  chatIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  chatInfo: { flex: 1 },
-  astrologerName: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  topic: { fontSize: 14, color: '#666', marginBottom: 5 },
-  metadata: { flexDirection: 'row', gap: 15 },
-  date: { fontSize: 12, color: '#999' },
-  duration: { fontSize: 12, color: '#FF6B35', fontWeight: 'bold' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  
+  header: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.base
+  },
+  
+  headerTitle: {
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground
+  },
+  
+  listContent: {
+    paddingHorizontal: spacing.xl
+  },
+  
+  sessionCard: {
+    flexDirection: 'row',
+    paddingVertical: spacing.base
+  },
+  
+  avatar: {
+    flexShrink: 0
+  },
+  
+  sessionContent: {
+    flex: 1
+  },
+  
+  sessionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs
+  },
+  
+  astrologerName: {
+    flex: 1,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground
+  },
+  
+  timestamp: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground
+  },
+  
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.xs
+  },
+  
+  lastMessage: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
+    lineHeight: 18,
+    marginBottom: spacing.xs
+  },
+  
+  sessionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  
+  duration: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground
+  },
+  
+  unreadBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  
+  unreadText: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.primaryForeground
+  },
+  
+  separator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs
+  },
+  
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['5xl']
+  },
+  
+  emptyTitle: {
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm
+  },
+  
+  emptyText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
+    textAlign: 'center'
+  }
 });

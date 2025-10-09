@@ -12,8 +12,9 @@ import tempfile
 import struct
 import wave
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,8 +26,9 @@ import io
 # Load environment variables
 load_dotenv()
 
-# Import our OpenAI realtime handler class
+# Import our OpenAI handler classes
 from openai_realtime_handler import OpenAIRealtimeHandler
+from openai_chat_handler import OpenAIChatHandler
 
 app = FastAPI(title="OpenAI Realtime Voice Astrology Server")
 
@@ -45,6 +47,30 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Store active connections and per-user handlers
 active_connections = {}
 user_handlers = {}  # Each user gets their own handler with their own astrologer
+
+# Text chat handlers (for text mode)
+chat_handlers: Dict[str, OpenAIChatHandler] = {}
+
+# Pydantic models for request validation
+class ChatMessageRequest(BaseModel):
+    """Request model for text chat message"""
+    user_id: str
+    astrologer_id: str
+    message: str
+
+
+def get_or_create_chat_handler(user_id: str, astrologer_id: str) -> OpenAIChatHandler:
+    """
+    Get existing chat handler or create new one.
+    Mirrors voice handler management pattern.
+    """
+    handler_key = f"{user_id}_{astrologer_id}"
+    
+    if handler_key not in chat_handlers:
+        print(f"📝 Creating new chat handler for {user_id} with {astrologer_id}")
+        chat_handlers[handler_key] = OpenAIChatHandler(astrologer_id)
+    
+    return chat_handlers[handler_key]
 
 def pcm16_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1) -> bytes:
     """Convert raw PCM16 audio to WAV format"""
@@ -121,18 +147,52 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def root():
-    """Redirect to voice-only interface"""
+    """Homepage with links to voice and text interfaces"""
     return HTMLResponse("""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>OpenAI Realtime Voice Astrology</title>
+        <title>AstroVoice - AI Astrology Platform</title>
         <meta charset="UTF-8">
+        <style>
+            body {
+                font-family: 'Segoe UI', sans-serif;
+                background: linear-gradient(135deg, #1a1a2e, #16213e);
+                color: white;
+                padding: 50px;
+                text-align: center;
+            }
+            h1 {
+                font-size: 3em;
+                margin-bottom: 20px;
+                background: linear-gradient(45deg, #FFD700, #FFA500);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            .mode-link {
+                display: inline-block;
+                margin: 20px;
+                padding: 30px 50px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                text-decoration: none;
+                color: white;
+                font-size: 1.5em;
+                transition: all 0.3s;
+            }
+            .mode-link:hover {
+                transform: translateY(-5px);
+                background: rgba(255, 255, 255, 0.2);
+            }
+        </style>
     </head>
     <body>
-        <h1>🌟 OpenAI Realtime Voice Astrology</h1>
-        <p>Direct voice-to-voice conversation with AstroGuru</p>
-        <p><a href="/voice_realtime">🎤 Start Voice Conversation</a></p>
+        <h1>🔮 AstroVoice</h1>
+        <p style="font-size: 1.2em; color: #a0a0a0;">AI Astrology Consultation Platform</p>
+        <div style="margin-top: 50px;">
+            <a href="/voice_realtime" class="mode-link">🎤 Voice Mode<br><small style="font-size: 0.6em;">Real-time voice chat</small></a>
+            <a href="/text-chat" class="mode-link">💬 Text Mode<br><small style="font-size: 0.6em;">Hinglish text chat</small></a>
+        </div>
     </body>
     </html>
     """)
@@ -141,6 +201,12 @@ async def root():
 async def voice_realtime():
     """OpenAI Realtime voice interface"""
     with open("static/voice_realtime_index.html", "r") as f:
+        return HTMLResponse(f.read())
+
+@app.get("/text-chat")
+async def text_chat():
+    """Text chat interface for testing"""
+    with open("static/text_chat_index.html", "r") as f:
         return HTMLResponse(f.read())
 
 @app.websocket("/ws-mobile/{user_id}")
@@ -393,6 +459,166 @@ async def process_text(request: Request):
             "response_text": "Sorry, there was an error."
         }
 
+# ==================== TEXT CHAT ENDPOINTS ====================
+
+@app.post("/api/chat/send")
+async def send_chat_message(request: ChatMessageRequest):
+    """
+    Send text message to astrologer and get response.
+    Production endpoint with full error handling.
+    
+    Args:
+        request: ChatMessageRequest with user_id, astrologer_id, message
+        
+    Returns:
+        Dict with response, tokens_used, thinking_phase, etc.
+    """
+    try:
+        print(f"💬 Text chat request from {request.user_id} to {request.astrologer_id}")
+        
+        # Input validation
+        if not request.message or len(request.message.strip()) == 0:
+            return {
+                "success": False,
+                "error": "Message cannot be empty",
+                "message": ""
+            }
+        
+        if len(request.message) > 1000:
+            return {
+                "success": False,
+                "error": "Message too long (max 1000 characters)",
+                "message": ""
+            }
+        
+        # Get or create handler
+        handler = get_or_create_chat_handler(request.user_id, request.astrologer_id)
+        
+        # Send message and get response
+        response = await handler.send_message(request.user_id, request.message)
+        
+        print(f"✅ Text response sent to {request.user_id}")
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error in send_chat_message: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Sorry, I encountered an error. Please try again."
+        }
+
+@app.get("/api/chat/history/{user_id}/{astrologer_id}")
+async def get_chat_history(
+    user_id: str, 
+    astrologer_id: str,
+    limit: int = 50
+):
+    """
+    Get conversation history for text mode.
+    
+    Args:
+        user_id: User identifier
+        astrologer_id: Astrologer identifier
+        limit: Maximum messages to return (default 50)
+        
+    Returns:
+        Dict with conversation history
+    """
+    try:
+        print(f"📖 Fetching chat history for {user_id} with {astrologer_id}")
+        
+        handler = get_or_create_chat_handler(user_id, astrologer_id)
+        history = await handler.get_conversation_history(user_id, limit)
+        
+        return {
+            "success": True,
+            "history": history,
+            "user_id": user_id,
+            "astrologer_id": astrologer_id,
+            "total_messages": len(history)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in get_chat_history: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "history": []
+        }
+
+@app.delete("/api/chat/history/{user_id}/{astrologer_id}")
+async def clear_chat_history(user_id: str, astrologer_id: str):
+    """
+    Clear conversation history for user and astrologer.
+    
+    Args:
+        user_id: User identifier
+        astrologer_id: Astrologer identifier
+        
+    Returns:
+        Dict with success status
+    """
+    try:
+        print(f"🗑️  Clearing chat history for {user_id} with {astrologer_id}")
+        
+        handler = get_or_create_chat_handler(user_id, astrologer_id)
+        success = await handler.clear_conversation_history(user_id)
+        
+        return {
+            "success": success,
+            "message": "History cleared successfully" if success else "Failed to clear history"
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in clear_chat_history: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/chat/stats/{user_id}/{astrologer_id}")
+async def get_chat_stats(user_id: str, astrologer_id: str):
+    """
+    Get conversation statistics for analytics.
+    
+    Args:
+        user_id: User identifier
+        astrologer_id: Astrologer identifier
+        
+    Returns:
+        Dict with conversation stats
+    """
+    try:
+        handler = get_or_create_chat_handler(user_id, astrologer_id)
+        stats = handler.get_stats(user_id)
+        
+        return {
+            "success": True,
+            **stats
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in get_chat_stats: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/health/chat")
+async def chat_health_check():
+    """Health check endpoint for text chat system"""
+    return {
+        "status": "healthy",
+        "mode": "text_chat",
+        "active_handlers": len(chat_handlers),
+        "timestamp": datetime.now().isoformat()
+    }
+
+# ==================== SHUTDOWN EVENT ====================
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
@@ -411,9 +637,13 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "8000"))
 
     print(f"🎯 Server will run on {host}:{port}")
+    print(f"🏠 Homepage: http://localhost:{port}/")
     print(f"🎤 Voice interface: http://localhost:{port}/voice_realtime")
+    print(f"💬 Text Chat interface: http://localhost:{port}/text-chat")
     print(f"📱 Mobile API: http://localhost:{port}/api/process-audio")
+    print(f"💬 Text Chat API: http://localhost:{port}/api/chat/send")
     print(f"❤️  Health check: http://localhost:{port}/health")
+    print(f"❤️  Chat health: http://localhost:{port}/health/chat")
     print(f"🔌 WebSocket: ws://localhost:{port}/ws/{{user_id}}")
 
     # Start server

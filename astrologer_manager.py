@@ -138,17 +138,23 @@ class AstrologerManager:
         
         return default_voice
     
-    def build_system_prompt(self, astrologer: Dict[str, Any]) -> str:
+    def build_system_prompt(self, astrologer: Dict[str, Any], mode: str = "voice") -> str:
         """
         Build complete system prompt for an astrologer
         
         Args:
             astrologer: Astrologer data
+            mode: "voice" or "text" mode
             
         Returns:
             Complete system prompt with language instructions
         """
-        base_prompt = astrologer.get('system_prompt', '')
+        # Use mode-specific prompt if available
+        if mode == "text":
+            base_prompt = astrologer.get('text_system_prompt') or astrologer.get('system_prompt', '')
+        else:
+            base_prompt = astrologer.get('system_prompt', '')
+        
         language = astrologer.get('language', 'English')
         
         # Add language-specific instructions
@@ -161,13 +167,13 @@ class AstrologerManager:
     
     def get_astrologer_config(self, astrologer_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get complete configuration for an astrologer (for OpenAI Realtime API)
+        Get complete configuration for an astrologer (for OpenAI Realtime API and Chat API)
         
         Args:
             astrologer_id: Astrologer ID
             
         Returns:
-            Configuration dict with voice, system prompt, greeting, etc.
+            Configuration dict with voice, system prompt, text_system_prompt, greeting, etc.
         """
         astrologer = self.get_astrologer_by_id(astrologer_id)
         if not astrologer:
@@ -180,7 +186,8 @@ class AstrologerManager:
             'language': astrologer.get('language'),
             'gender': astrologer.get('gender'),
             'voice_id': astrologer.get('voice_id'),
-            'system_prompt': self.build_system_prompt(astrologer),
+            'system_prompt': self.build_system_prompt(astrologer, mode="voice"),
+            'text_system_prompt': self.build_system_prompt(astrologer, mode="text"),
             'greeting': astrologer.get('greeting'),
             'persona': astrologer.get('persona'),
             'expertise_keywords': astrologer.get('expertise_keywords', []),

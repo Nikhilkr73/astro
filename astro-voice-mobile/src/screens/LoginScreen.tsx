@@ -1,300 +1,440 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+/**
+ * Login Screen
+ * 
+ * Email/Phone login with OTP verification.
+ * Two-step process: Enter mobile number → Verify OTP
+ */
 
-type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
+import { Button, Input } from '../components/ui';
+import { colors, typography, spacing, borderRadius, shadows } from '../config/designTokens';
 
-interface Props {
-  navigation: LoginScreenNavigationProp;
+interface LoginScreenProps {
+  onLogin: () => void;
+  onSkip?: () => void;
+  onNavigate?: (screen: string) => void;
 }
 
-export default function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [needsVerification, setNeedsVerification] = useState(false);
-  const [loading, setLoading] = useState(false);
+export function LoginScreen({ onLogin, onSkip, onNavigate }: LoginScreenProps) {
+  const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
+  const [mobile, setMobile] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
-  const { signIn, signUp, confirmSignUp } = useAuth();
-
-  const handleAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill all required fields');
-      return;
+  // Resend timer countdown
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => {
+        setResendTimer(resendTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
+  }, [resendTimer]);
 
-    if (isSignUp && password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (isSignUp) {
-        const result = await signUp(email, password, phone);
-        if (result.success) {
-          if (result.needsConfirmation) {
-            setNeedsVerification(true);
-            Alert.alert('Verification Required', 'Please enter the code sent to your email');
-          } else {
-            Alert.alert('Success', 'Account created successfully');
-            navigation.navigate('Home');
-          }
-        } else {
-          Alert.alert('Error', result.error || 'Problem with signup');
-        }
-      } else {
-        const result = await signIn(email, password);
-        if (result.success) {
-          Alert.alert('Success', 'Successfully logged in');
-          navigation.navigate('Home');
-        } else {
-          Alert.alert('Error', result.error || 'Problem with login');
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Network problem');
-    } finally {
-      setLoading(false);
+  const handleMobileSubmit = () => {
+    if (mobile && mobile.length === 10) {
+      setIsSendingOtp(true);
+      // Simulate OTP sending
+      setTimeout(() => {
+        setIsSendingOtp(false);
+        setStep('otp');
+        setResendTimer(30);
+      }, 1500);
     }
   };
 
-  const handleVerification = async () => {
-    if (!verificationCode) {
-      Alert.alert('Error', 'Please enter verification code');
-      return;
-    }
+  const handleOtpChange = (value: string, index: number) => {
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setOtpError('');
 
-    setLoading(true);
-    try {
-      const result = await confirmSignUp(email, verificationCode);
-      if (result.success) {
-        Alert.alert('Success', 'Account verified! Please login now');
-        setNeedsVerification(false);
-        setIsSignUp(false);
-        setVerificationCode('');
-      } else {
-        Alert.alert('Error', result.error || 'Problem with verification');
-      }
-    } finally {
-      setLoading(false);
+    // Auto-submit when all 6 digits entered
+    if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
+      handleOtpSubmit(newOtp.join(''));
     }
   };
 
-  return (
-    <LinearGradient
-      colors={['#FF6B35', '#F7931E', '#FFD23F']}
-      style={styles.container}
-    >
+  const handleOtpSubmit = (otpValue?: string) => {
+    const otpString = otpValue || otp.join('');
+    if (otpString.length === 6) {
+      setIsVerifying(true);
+      setTimeout(() => {
+        if (otpString === '111111') {
+          setIsVerifying(false);
+          setOtpError('Invalid OTP. Please try again.');
+          setOtp(['', '', '', '', '', '']);
+        } else {
+          setOtpError('');
+          onLogin();
+        }
+      }, 1500);
+    }
+  };
+
+  const handleResendOtp = () => {
+    if (resendTimer === 0) {
+      setResendTimer(30);
+      setOtp(['', '', '', '', '', '']);
+      setOtpError('');
+    }
+  };
+
+  if (step === 'otp') {
+    return (
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Astro Voice</Text>
-          <Text style={styles.subtitle}>
-            {isSignUp ? 'Create New Account' : 'Login to Your Account'}
-          </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Back Button */}
+          <TouchableOpacity onPress={() => setStep('mobile')} style={styles.backButton}>
+            <Icon name="chevron-left" size={24} color={colors.foreground} />
+          </TouchableOpacity>
 
-          <View style={styles.form}>
-            {needsVerification ? (
-              <>
-                <Text style={styles.verificationText}>
-                  Verification code sent to {email}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Verification Code"
-                  placeholderTextColor="#666"
-                  value={verificationCode}
-                  onChangeText={setVerificationCode}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-                <TouchableOpacity
-                  style={[styles.button, loading && styles.buttonDisabled]}
-                  onPress={handleVerification}
-                  disabled={loading}
-                >
-                  <Text style={styles.buttonText}>
-                    {loading ? 'Verifying...' : 'Verify'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => setNeedsVerification(false)}
-                >
-                  <Text style={styles.switchText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={[styles.logoContainer, shadows.primary]}>
+              <Icon name="star" size={32} color={colors.primaryForeground} />
+            </View>
+            <Text style={styles.title}>Verify OTP</Text>
+            <Text style={styles.subtitle}>
+              Enter the 6-digit code sent to{'\n'}+91 {mobile}
+            </Text>
+          </View>
+
+          {/* OTP Input */}
+          <View style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <View key={index} style={[styles.otpBox, otpError && styles.otpBoxError]}>
+                <Text style={styles.otpText}>{digit}</Text>
+              </View>
+            ))}
+          </View>
+
+          {otpError && (
+            <View style={styles.errorContainer}>
+              <Icon name="alert-circle" size={16} color={colors.destructive} />
+              <Text style={styles.errorText}>{otpError}</Text>
+            </View>
+          )}
+
+          {/* Resend OTP */}
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendText}>Didn't receive code? </Text>
+            {resendTimer > 0 ? (
+              <Text style={styles.resendTimer}>Resend in {resendTimer}s</Text>
             ) : (
-              <>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  placeholderTextColor="#666"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="#666"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
-
-                {isSignUp && (
-                  <>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Confirm Password"
-                      placeholderTextColor="#666"
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      secureTextEntry
-                    />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Phone Number (Optional)"
-                      placeholderTextColor="#666"
-                      value={phone}
-                      onChangeText={setPhone}
-                      keyboardType="phone-pad"
-                    />
-                  </>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.button, loading && styles.buttonDisabled]}
-                  onPress={handleAuth}
-                  disabled={loading}
-                >
-                  <Text style={styles.buttonText}>
-                    {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Log In'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.switchButton}
-                  onPress={() => setIsSignUp(!isSignUp)}
-                >
-                  <Text style={styles.switchText}>
-                    {isSignUp ? 'Already have account? Log In' : 'Need new account? Sign Up'}
-                  </Text>
-                </TouchableOpacity>
-              </>
+              <TouchableOpacity onPress={handleResendOtp}>
+                <Text style={styles.resendLink}>Resend OTP</Text>
+              </TouchableOpacity>
             )}
           </View>
-        </View>
+
+          {/* Verify Button */}
+          <Button
+            onPress={() => handleOtpSubmit()}
+            loading={isVerifying}
+            disabled={otp.some(d => d === '')}
+            fullWidth
+            style={styles.button}
+          >
+            Verify & Continue
+          </Button>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Logo & Branding */}
+        <View style={styles.brandingContainer}>
+          <View style={[styles.logoContainer, shadows.primary]}>
+            <Icon name="star" size={32} color={colors.primaryForeground} />
+          </View>
+          <View style={styles.brandingText}>
+            <Text style={styles.brandTitle}>Kundli</Text>
+            <Text style={styles.brandSubtitle}>Connect with expert astrologers</Text>
+          </View>
+        </View>
+
+        {/* Mobile Number Input */}
+        <View style={styles.inputSection}>
+          <Text style={styles.label}>Mobile Number</Text>
+          <View style={styles.phoneInputContainer}>
+            <View style={styles.countryCode}>
+              <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+            </View>
+            <Input
+              value={mobile}
+              onChangeText={(text) => setMobile(text.replace(/\D/g, '').slice(0, 10))}
+              placeholder="Enter 10-digit mobile number"
+              keyboardType="phone-pad"
+              maxLength={10}
+              containerStyle={styles.phoneInput}
+            />
+          </View>
+
+          <Button
+            onPress={handleMobileSubmit}
+            loading={isSendingOtp}
+            disabled={mobile.length !== 10}
+            fullWidth
+            style={styles.button}
+          >
+            <Text>Continue</Text>
+            <Icon name="arrow-right" size={20} color={colors.primaryForeground} />
+          </Button>
+        </View>
+
+        {/* Terms & Privacy */}
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.termsLink} onPress={() => onNavigate?.('terms')}>
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => onNavigate?.('privacy')}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </View>
+
+        {/* Skip Button */}
+        {onSkip && (
+          <TouchableOpacity onPress={onSkip} style={styles.skipButton}>
+            <Text style={styles.skipText}>Skip for now</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  keyboardView: {
-    flex: 1,
+  
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing['2xl'],
+    paddingBottom: spacing['4xl'],
   },
-  content: {
-    flex: 1,
+  
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  
+  brandingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing['5xl'],
+  },
+  
+  logoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius['2xl'],
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
   },
+  
+  brandingText: {
+    alignItems: 'flex-start',
+    marginLeft: spacing.md,
+  },
+  
+  brandTitle: {
+    fontSize: typography.fontSize['3xl'],
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground,
+  },
+  
+  brandSubtitle: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
+  },
+  
+  header: {
+    alignItems: 'center',
+    marginBottom: spacing['4xl'],
+  },
+  
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
+  
   subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 40,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
     textAlign: 'center',
-    opacity: 0.9,
+    lineHeight: 24,
   },
-  form: {
+  
+  inputSection: {
+    marginBottom: spacing['4xl'],
+  },
+  
+  label: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.foreground,
+    marginBottom: spacing.md,
+  },
+  
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
     width: '100%',
-    maxWidth: 300,
   },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 15,
-    fontSize: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+  
+  countryCode: {
+    height: 48,
+    minWidth: 80,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.inputBackground,
+    borderRadius: borderRadius.xl,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 107, 0, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+  
+  countryCodeText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.foreground,
+  },
+  
+  phoneInput: {
+    flex: 1,
+    minWidth: 0, // Important: allows flex item to shrink below content size
+    marginLeft: spacing.sm,
+  },
+  
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderRadius: borderRadius.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.inputBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: spacing.xs,
+  },
+  
+  otpBoxError: {
+    borderColor: colors.destructive,
+  },
+  
+  otpText: {
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.foreground,
+  },
+  
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    justifyContent: 'center',
+  },
+  
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.destructive,
+    marginLeft: spacing.sm,
+  },
+  
+  resendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing['2xl'],
+  },
+  
+  resendText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
+  },
+  
+  resendTimer: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.mutedForeground,
+  },
+  
+  resendLink: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.primary,
+  },
+  
   button: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 15,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    marginBottom: spacing.lg,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  
+  termsContainer: {
+    marginTop: spacing['2xl'],
   },
-  buttonText: {
-    color: '#FF6B35',
-    fontSize: 18,
-    fontWeight: 'bold',
+  
+  termsText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.mutedForeground,
     textAlign: 'center',
+    lineHeight: 20,
   },
-  switchButton: {
-    marginTop: 20,
+  
+  termsLink: {
+    color: colors.primary,
+    fontFamily: typography.fontFamily.medium,
   },
-  switchText: {
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
+  
+  skipButton: {
+    alignSelf: 'center',
+    marginTop: spacing.xl,
+    paddingVertical: spacing.sm,
   },
-  verificationText: {
-    color: '#fff',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 15,
-    opacity: 0.9,
+  
+  skipText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.mutedForeground,
   },
 });
