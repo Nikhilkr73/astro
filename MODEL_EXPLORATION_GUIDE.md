@@ -1,15 +1,16 @@
-# 🤖 OpenAI Realtime Model Exploration Guide
+# 🤖 OpenAI Model Exploration Guide
 
-**Branch:** `explore/gpt-realtime-mini`  
 **Last Updated:** October 8, 2025
 
 ## Overview
 
-This guide explains how to switch between different OpenAI Realtime API models to explore performance, quality, and cost differences.
+This guide explains how to switch between different OpenAI models (both Realtime for voice and Chat for text) to explore performance, quality, and cost differences.
 
 ## Available Models
 
-### 1. **gpt-4o-mini-realtime-preview** (Default)
+### Realtime Models (Voice Chat)
+
+#### 1. **gpt-4o-mini-realtime-preview** (Default)
 - ✅ **Status:** Stable, production-ready
 - 💰 **Cost:** Lower cost
 - ⚡ **Speed:** Fast response times (~200-500ms)
@@ -17,7 +18,7 @@ This guide explains how to switch between different OpenAI Realtime API models t
 - 🗣️ **Voice Quality:** Good
 - 🧠 **Intelligence:** Good for most astrology consultations
 
-### 2. **gpt-realtime-mini** (New - Exploring)
+#### 2. **gpt-realtime-mini** (New - Exploring)
 - 🆕 **Status:** New model for exploration
 - 💰 **Cost:** TBD (likely similar to gpt-4o-mini)
 - ⚡ **Speed:** TBD (to be measured)
@@ -25,7 +26,7 @@ This guide explains how to switch between different OpenAI Realtime API models t
 - 🗣️ **Voice Quality:** TBD
 - 🧠 **Intelligence:** TBD
 
-### 3. **gpt-4o-realtime-preview** (Full GPT-4)
+#### 3. **gpt-4o-realtime-preview** (Full GPT-4)
 - 🚀 **Status:** Most capable, higher cost
 - 💰 **Cost:** Higher cost
 - ⚡ **Speed:** Slower but more intelligent
@@ -33,22 +34,50 @@ This guide explains how to switch between different OpenAI Realtime API models t
 - 🗣️ **Voice Quality:** Excellent
 - 🧠 **Intelligence:** Best reasoning and context understanding
 
+### Chat Models (Text Chat)
+
+#### 1. **gpt-4o-mini** (Default)
+- ✅ **Status:** Production-ready, cost-effective
+- 💰 **Cost:** ~$0.15 per 1M input tokens
+- ⚡ **Speed:** Very fast (~100-300ms)
+- 🎯 **Use Case:** Text consultations, general queries
+- 📝 **Text Quality:** Good, concise responses
+- 🧠 **Intelligence:** Good for most use cases
+
+#### 2. **gpt-4o** (Premium)
+- 🚀 **Status:** Highest quality
+- 💰 **Cost:** ~$2.50 per 1M input tokens
+- ⚡ **Speed:** Fast (~200-500ms)
+- 🎯 **Use Case:** Complex consultations, premium users
+- 📝 **Text Quality:** Excellent, nuanced responses
+- 🧠 **Intelligence:** Best reasoning and context
+
+#### 3. **gpt-3.5-turbo** (Legacy)
+- 💵 **Status:** Budget option
+- 💰 **Cost:** ~$0.50 per 1M input tokens
+- ⚡ **Speed:** Very fast (~50-200ms)
+- 🎯 **Use Case:** Simple queries, high volume
+- 📝 **Text Quality:** Acceptable
+- 🧠 **Intelligence:** Basic but functional
+
 ## Quick Start
 
 ### Method 1: Using the Switch Script (Easiest)
 
 ```bash
-# View current model
+# View current configuration (both voice and chat)
 ./switch_model.sh
 
-# Switch to new model
-./switch_model.sh gpt-realtime-mini
+# Switch voice/realtime model
+./switch_model.sh realtime gpt-realtime-mini
+./switch_model.sh realtime gpt-4o-realtime-preview
 
-# Switch back to default
-./switch_model.sh gpt-4o-mini-realtime-preview
+# Switch text chat model
+./switch_model.sh chat gpt-4o
+./switch_model.sh chat gpt-3.5-turbo
 
-# Try full GPT-4o
-./switch_model.sh gpt-4o-realtime-preview
+# View configuration
+./switch_model.sh both
 ```
 
 ### Method 2: Manual Configuration
@@ -63,9 +92,13 @@ cp env_example.txt .env
 nano .env
 ```
 
-2. **Set the model:**
+2. **Set the models:**
 ```env
+# For voice chat
 OPENAI_REALTIME_MODEL=gpt-realtime-mini
+
+# For text chat
+OPENAI_CHAT_MODEL=gpt-4o
 ```
 
 3. **Save and restart backend:**

@@ -35,11 +35,13 @@ class OpenAIChatHandler:
         if not self.api_key:
             raise Exception("❌ Missing OPENAI_API_KEY in environment variables")
 
-        print("✅ OpenAI API key loaded successfully (Chat Mode)")
+        # Load model configuration (default to gpt-4o-mini)
+        self.model = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
+        print(f"✅ OpenAI API key loaded successfully (Chat Mode)")
+        print(f"💬 Using chat model: {self.model}")
 
         # Initialize OpenAI async client
         self.client = AsyncOpenAI(api_key=self.api_key)
-        self.model = "gpt-4o-mini"
 
         # Conversation memory and persona (same as voice handler)
         self.user_states = {}

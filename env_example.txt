@@ -4,12 +4,19 @@ GOOGLE_API_KEY=your_google_api_key_here
 # OpenAI API Key (backup option)
 OPENAI_API_KEY=your_openai_api_key_here
 
-# OpenAI Realtime Model Configuration
+# OpenAI Realtime Model Configuration (for voice chat)
 # Options: 
 #   - gpt-4o-mini-realtime-preview (default, stable)
 #   - gpt-realtime-mini (new model for exploration)
 #   - gpt-4o-realtime-preview (full GPT-4o realtime)
 OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview
+
+# OpenAI Chat Model Configuration (for text chat)
+# Options:
+#   - gpt-4o-mini (default, cost-effective)
+#   - gpt-4o (premium, highest quality)
+#   - gpt-3.5-turbo (legacy, cheapest)
+OPENAI_CHAT_MODEL=gpt-4o-mini
 
 # Server Configuration
 HOST=0.0.0.0

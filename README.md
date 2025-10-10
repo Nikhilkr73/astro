@@ -439,8 +439,10 @@ cd astro-voice-mobile && npx expo start --clear
 OPENAI_API_KEY=sk-...
 
 # Model Configuration
-OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview  # Default
-# Options: gpt-4o-mini-realtime-preview, gpt-realtime-mini, gpt-4o-realtime-preview
+OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview  # Voice chat
+OPENAI_CHAT_MODEL=gpt-4o-mini                       # Text chat
+# Realtime options: gpt-4o-mini-realtime-preview, gpt-realtime-mini, gpt-4o-realtime-preview
+# Chat options: gpt-4o-mini, gpt-4o, gpt-3.5-turbo
 
 # Optional
 LOG_LEVEL=INFO
@@ -449,26 +451,27 @@ PORT=8000
 
 ## 🤖 Model Configuration & Switching
 
-The system supports multiple OpenAI Realtime models for flexibility and experimentation:
+The system supports multiple OpenAI models for both voice and text chat:
 
 ### Quick Model Switch
 
 ```bash
-# View current model
+# View current configuration
 ./switch_model.sh
 
-# Switch to new model
-./switch_model.sh gpt-realtime-mini
+# Switch voice/realtime model
+./switch_model.sh realtime gpt-realtime-mini
 
-# Switch to full GPT-4o (higher quality, higher cost)
-./switch_model.sh gpt-4o-realtime-preview
+# Switch text chat model
+./switch_model.sh chat gpt-4o
 
-# Switch back to default
-./switch_model.sh gpt-4o-mini-realtime-preview
+# View both configurations
+./switch_model.sh both
 ```
 
 ### Available Models
 
+#### Voice/Realtime Models
 1. **gpt-4o-mini-realtime-preview** (Default)
    - Production-ready, cost-effective
    - Fast response times (~200-500ms)
@@ -482,6 +485,22 @@ The system supports multiple OpenAI Realtime models for flexibility and experime
    - Highest quality reasoning
    - Better context understanding
    - Higher cost
+
+#### Text Chat Models
+1. **gpt-4o-mini** (Default)
+   - Cost-effective text conversations
+   - Fast response times
+   - Good quality for most uses
+
+2. **gpt-4o** (Premium)
+   - Highest quality reasoning
+   - Best for complex consultations
+   - Higher cost
+
+3. **gpt-3.5-turbo** (Legacy)
+   - Cheapest option
+   - Faster but lower quality
+   - Good for simple queries
 
 See `MODEL_EXPLORATION_GUIDE.md` for detailed testing and comparison guide.
 
