@@ -169,37 +169,41 @@ const VoiceCallScreen = () => {
     try {
       if (Platform.OS !== 'web') {
         console.log('⚠️ Voice recording only supported on web platform');
+        console.log('📱 Android/iOS voice recording not implemented yet');
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 24000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true
-        } 
-      });
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        audioChunksRef.current = [];
-        sendAudioToServer(audioBlob);
-      };
-      
-      console.log('🎤 Audio recording initialized');
+      // Web-only recording code
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.mediaDevices) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 24000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+          } 
+        });
+        
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          audioChunksRef.current = [];
+          sendAudioToServer(audioBlob);
+        };
+        
+        console.log('🎤 Audio recording initialized');
+      }
       
     } catch (error) {
       console.error('❌ Failed to initialize audio recording:', error);
@@ -229,7 +233,12 @@ const VoiceCallScreen = () => {
 
   const sendAudioToServer = async (audioBlob: Blob) => {
     try {
-      if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
+      if (Platform.OS !== 'web') {
+        console.log('⚠️ Audio sending only supported on web platform');
+        return;
+      }
+
+      if (typeof window !== 'undefined' && window.btoa && websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
         const arrayBuffer = await audioBlob.arrayBuffer();
         const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
         
@@ -278,78 +287,82 @@ const VoiceCallScreen = () => {
     try {
       if (Platform.OS !== 'web') {
         console.log('⚠️ Audio playback only supported on web platform');
+        console.log('📱 Android/iOS audio playback not implemented yet');
         return;
       }
 
-      console.log('🔊 Playing audio response...');
-      console.log('🔊 Format:', format);
-      console.log('🔊 Base64 length:', base64Audio.length);
-      
-      // Decode base64 audio data
-      const audioData = atob(base64Audio);
-      console.log('🔊 Decoded audio data length:', audioData.length);
-      
-      // Try the specified format first, then fallback to others
-      const formatMap = {
-        'mp3': { type: 'audio/mpeg', description: 'MP3' },
-        'wav': { type: 'audio/wav', description: 'WAV' },
-        'ogg': { type: 'audio/ogg', description: 'OGG' },
-        'webm': { type: 'audio/webm', description: 'WebM' }
-      };
-      
-      const primaryFormat = formatMap[format] || formatMap['wav'];
-      const formats = [primaryFormat, ...Object.values(formatMap).filter(f => f !== primaryFormat)];
-      
-      for (const format of formats) {
-        try {
-          console.log(`🔊 Trying ${format.description} format...`);
-          
-          const audioBlob = new Blob([audioData], { type: format.type });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          
-          // Create audio element and play
-          const audio = new Audio(audioUrl);
-          
-          // Add event listeners for debugging
-          audio.onloadstart = () => console.log(`🎵 ${format.description} loading started`);
-          audio.oncanplay = () => console.log(`🎵 ${format.description} can play`);
-          audio.onplay = () => console.log(`🎵 ${format.description} playback started`);
-          audio.onended = () => console.log(`🎵 ${format.description} playback ended`);
-          audio.onerror = (e) => console.error(`🎵 ${format.description} error:`, e);
-          
-          // Try to play the audio
-          await audio.play();
-          console.log(`✅ ${format.description} audio playback initiated`);
-          
-          // Clean up after a delay
-          setTimeout(() => {
-            URL.revokeObjectURL(audioUrl);
-          }, 10000); // Keep URL alive for 10 seconds
-          
-          return; // Success, exit the function
-          
-        } catch (formatError) {
-          console.log(`❌ ${format.description} failed:`, formatError.message);
-          continue; // Try next format
+      // Web-only audio playback code
+      if (typeof window !== 'undefined' && window.Audio) {
+        console.log('🔊 Playing audio response...');
+        console.log('🔊 Format:', format);
+        console.log('🔊 Base64 length:', base64Audio.length);
+        
+        // Decode base64 audio data
+        const audioData = atob(base64Audio);
+        console.log('🔊 Decoded audio data length:', audioData.length);
+        
+        // Try the specified format first, then fallback to others
+        const formatMap = {
+          'mp3': { type: 'audio/mpeg', description: 'MP3' },
+          'wav': { type: 'audio/wav', description: 'WAV' },
+          'ogg': { type: 'audio/ogg', description: 'OGG' },
+          'webm': { type: 'audio/webm', description: 'WebM' }
+        };
+        
+        const primaryFormat = formatMap[format] || formatMap['wav'];
+        const formats = [primaryFormat, ...Object.values(formatMap).filter(f => f !== primaryFormat)];
+        
+        for (const format of formats) {
+          try {
+            console.log(`🔊 Trying ${format.description} format...`);
+            
+            const audioBlob = new Blob([audioData], { type: format.type });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Create audio element and play
+            const audio = new Audio(audioUrl);
+            
+            // Add event listeners for debugging
+            audio.onloadstart = () => console.log(`🎵 ${format.description} loading started`);
+            audio.oncanplay = () => console.log(`🎵 ${format.description} can play`);
+            audio.onplay = () => console.log(`🎵 ${format.description} playback started`);
+            audio.onended = () => console.log(`🎵 ${format.description} playback ended`);
+            audio.onerror = (e) => console.error(`🎵 ${format.description} error:`, e);
+            
+            // Try to play the audio
+            await audio.play();
+            console.log(`✅ ${format.description} audio playback initiated`);
+            
+            // Clean up after a delay
+            setTimeout(() => {
+              URL.revokeObjectURL(audioUrl);
+            }, 10000); // Keep URL alive for 10 seconds
+            
+            return; // Success, exit the function
+            
+          } catch (formatError) {
+            console.log(`❌ ${format.description} failed:`, formatError.message);
+            continue; // Try next format
+          }
         }
+        
+        // If all formats failed, try a different approach
+        console.log('🔊 All formats failed, trying alternative approach...');
+        
+        // Create a simple WAV file with proper headers
+        const wavData = createSimpleWav(audioData);
+        const wavBlob = new Blob([wavData], { type: 'audio/wav' });
+        const wavUrl = URL.createObjectURL(wavBlob);
+        
+        const audio = new Audio(wavUrl);
+        audio.onerror = (e) => console.error('🎵 Custom WAV error:', e);
+        await audio.play();
+        console.log('✅ Custom WAV playback initiated');
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(wavUrl);
+        }, 10000);
       }
-      
-      // If all formats failed, try a different approach
-      console.log('🔊 All formats failed, trying alternative approach...');
-      
-      // Create a simple WAV file with proper headers
-      const wavData = createSimpleWav(audioData);
-      const wavBlob = new Blob([wavData], { type: 'audio/wav' });
-      const wavUrl = URL.createObjectURL(wavBlob);
-      
-      const audio = new Audio(wavUrl);
-      audio.onerror = (e) => console.error('🎵 Custom WAV error:', e);
-      await audio.play();
-      console.log('✅ Custom WAV playback initiated');
-      
-      setTimeout(() => {
-        URL.revokeObjectURL(wavUrl);
-      }, 10000);
       
     } catch (error) {
       console.error('❌ Failed to play audio:', error);
@@ -357,49 +370,59 @@ const VoiceCallScreen = () => {
   };
 
   const createSimpleWav = (pcmData: string) => {
-    // Create a simple WAV header for 24kHz, 16-bit, mono
-    const sampleRate = 24000;
-    const channels = 1;
-    const bitsPerSample = 16;
-    const byteRate = sampleRate * channels * bitsPerSample / 8;
-    const blockAlign = channels * bitsPerSample / 8;
-    const dataSize = pcmData.length;
-    const fileSize = 36 + dataSize;
-    
-    const header = new ArrayBuffer(44);
-    const view = new DataView(header);
-    
-    // RIFF header
-    view.setUint32(0, 0x46464952, false); // "RIFF"
-    view.setUint32(4, fileSize, true);
-    view.setUint32(8, 0x45564157, false); // "WAVE"
-    
-    // fmt chunk
-    view.setUint32(12, 0x20746d66, false); // "fmt "
-    view.setUint32(16, 16, true); // chunk size
-    view.setUint16(20, 1, true); // audio format (PCM)
-    view.setUint16(22, channels, true); // channels
-    view.setUint32(24, sampleRate, true); // sample rate
-    view.setUint32(28, byteRate, true); // byte rate
-    view.setUint16(32, blockAlign, true); // block align
-    view.setUint16(34, bitsPerSample, true); // bits per sample
-    
-    // data chunk
-    view.setUint32(36, 0x61746164, false); // "data"
-    view.setUint32(40, dataSize, true); // data size
-    
-    // Combine header and data
-    const headerArray = new Uint8Array(header);
-    const dataArray = new Uint8Array(pcmData.length);
-    for (let i = 0; i < pcmData.length; i++) {
-      dataArray[i] = pcmData.charCodeAt(i);
+    if (Platform.OS !== 'web') {
+      console.log('⚠️ WAV creation only supported on web platform');
+      return new ArrayBuffer(0);
     }
-    
-    const result = new Uint8Array(headerArray.length + dataArray.length);
-    result.set(headerArray);
-    result.set(dataArray, headerArray.length);
-    
-    return result.buffer;
+
+    try {
+      // Create a simple WAV header for 24kHz, 16-bit, mono
+      const sampleRate = 24000;
+      const channels = 1;
+      const bitsPerSample = 16;
+      const byteRate = sampleRate * channels * bitsPerSample / 8;
+      const blockAlign = channels * bitsPerSample / 8;
+      const dataSize = pcmData.length;
+      const fileSize = 36 + dataSize;
+      
+      const header = new ArrayBuffer(44);
+      const view = new DataView(header);
+      
+      // RIFF header
+      view.setUint32(0, 0x46464952, false); // "RIFF"
+      view.setUint32(4, fileSize, true);
+      view.setUint32(8, 0x45564157, false); // "WAVE"
+      
+      // fmt chunk
+      view.setUint32(12, 0x20746d66, false); // "fmt "
+      view.setUint32(16, 16, true); // chunk size
+      view.setUint16(20, 1, true); // audio format (PCM)
+      view.setUint16(22, channels, true); // channels
+      view.setUint32(24, sampleRate, true); // sample rate
+      view.setUint32(28, byteRate, true); // byte rate
+      view.setUint16(32, blockAlign, true); // block align
+      view.setUint16(34, bitsPerSample, true); // bits per sample
+      
+      // data chunk
+      view.setUint32(36, 0x61746164, false); // "data"
+      view.setUint32(40, dataSize, true); // data size
+      
+      // Combine header and data
+      const headerArray = new Uint8Array(header);
+      const dataArray = new Uint8Array(pcmData.length);
+      for (let i = 0; i < pcmData.length; i++) {
+        dataArray[i] = pcmData.charCodeAt(i);
+      }
+      
+      const result = new Uint8Array(headerArray.length + dataArray.length);
+      result.set(headerArray);
+      result.set(dataArray, headerArray.length);
+      
+      return result.buffer;
+    } catch (error) {
+      console.error('❌ Failed to create WAV:', error);
+      return new ArrayBuffer(0);
+    }
   };
 
   const endCall = () => {
