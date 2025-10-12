@@ -16,6 +16,9 @@
       "reactNativeDirectoryCheck": {
         "exclude": ["react-native-fast-image", "react-native-vector-icons"]
       }
+    },
+    "install": {
+      "exclude": ["react", "react-dom", "react-native", "react-native-reanimated", "react-native-safe-area-context", "react-native-screens", "@types/react", "typescript"]
     }
   },
   "dependencies": {
