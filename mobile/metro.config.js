@@ -1,18 +1,17 @@
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+// Learn more: https://docs.expo.dev/guides/customizing-metro
+const { getDefaultConfig } = require('expo/metro-config');
 
 /**
  * Metro configuration
- * https://facebook.github.io/metro/docs/configuration
- *
- * @type {import('metro-config').MetroConfig}
+ * https://docs.expo.dev/guides/customizing-metro/
  */
-const config = {
-  resolver: {
-    alias: {
-      'react-native-vector-icons': 'react-native-vector-icons/dist',
-    },
-    platforms: ['ios', 'android', 'native', 'web'],
-  },
+const config = getDefaultConfig(__dirname);
+
+// Customize the config as needed
+config.resolver.alias = {
+  'react-native-vector-icons': 'react-native-vector-icons/dist',
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+
+module.exports = config;
