@@ -41,6 +41,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register mobile API endpoints
+try:
+    from backend.api.mobile_endpoints import router as mobile_router
+    app.include_router(mobile_router)
+    print("✅ Mobile API endpoints registered")
+except ImportError as e:
+    print(f"⚠️  Could not import mobile endpoints: {e}")
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

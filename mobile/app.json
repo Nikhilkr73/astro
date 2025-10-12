@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Kundli - Astrology App",
+    "slug": "astrology-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#6366f1"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "backgroundColor": "#6366f1"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

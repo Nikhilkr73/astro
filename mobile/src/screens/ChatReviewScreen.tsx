@@ -1,0 +1,462 @@
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  SafeAreaView,
+  Alert,
+  Modal,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../types';
+import apiService from '../services/apiService';
+import storage from '../utils/storage';
+
+type ChatReviewScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatReview'>;
+type ChatReviewScreenRouteProp = RouteProp<RootStackParamList, 'ChatReview'>;
+
+const ChatReviewScreen = () => {
+  const navigation = useNavigation<ChatReviewScreenNavigationProp>();
+  const route = useRoute<ChatReviewScreenRouteProp>();
+  const { astrologer, sessionDuration, conversationId } = route.params;
+  
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState('');
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleRatingPress = (selectedRating: number) => {
+    setRating(selectedRating);
+  };
+
+  const handleSubmitReview = async () => {
+    if (rating === 0) {
+      Alert.alert('Rating Required', 'Please select a rating before submitting.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      // Get user ID
+      const userId = await storage.getUserId();
+      if (!userId) {
+        Alert.alert('Error', 'User not found. Please login again.');
+        return;
+      }
+      
+      // Submit review to API
+      console.log('📝 Submitting review...');
+      const response = await apiService.submitReview({
+        user_id: userId,
+        astrologer_id: astrologer.id.toString(),
+        conversation_id: conversationId,
+        rating: rating,
+        review_text: review || undefined,
+        session_duration: sessionDuration,
+      });
+      
+      if (response.success) {
+        console.log('✅ Review submitted:', response.review_id);
+        // Show thank you modal
+        setShowThankYou(true);
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to submit review:', error);
+      Alert.alert(
+        'Submission Failed',
+        error.response?.data?.detail || 'Failed to submit review. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSkipReview = () => {
+    Alert.alert(
+      'Skip Review',
+      'Are you sure you want to skip the review? You can always rate later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Skip', 
+          style: 'destructive',
+          onPress: () => navigation.navigate('Main')
+        }
+      ]
+    );
+  };
+
+  const handleThankYouClose = () => {
+    setShowThankYou(false);
+    navigation.navigate('Main');
+  };
+
+  const renderStars = () => {
+    return (
+      <View style={styles.starsContainer}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity
+            key={star}
+            style={styles.starButton}
+            onPress={() => handleRatingPress(star)}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.star,
+              star <= rating ? styles.starFilled : styles.starEmpty
+            ]}>
+              ⭐
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Rate Your Experience</Text>
+          <Text style={styles.subtitle}>How was your consultation with {astrologer.name}?</Text>
+        </View>
+
+        {/* Astrologer Info */}
+        <View style={styles.astrologerInfo}>
+          <Image 
+            source={{ uri: astrologer.image }}
+            style={styles.profileImage}
+          />
+          <View style={styles.astrologerDetails}>
+            <Text style={styles.astrologerName}>{astrologer.name}</Text>
+            <Text style={styles.astrologerCategory}>{astrologer.category}</Text>
+            <View style={styles.sessionInfo}>
+              <Text style={styles.sessionDuration}>Session Duration: {sessionDuration}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Rating Section */}
+        <View style={styles.ratingSection}>
+          <Text style={styles.ratingTitle}>Rate Your Experience</Text>
+          <Text style={styles.ratingSubtitle}>Tap a star to rate</Text>
+          {renderStars()}
+          {rating > 0 && (
+            <Text style={styles.ratingText}>
+              {rating === 1 && 'Poor'}
+              {rating === 2 && 'Fair'}
+              {rating === 3 && 'Good'}
+              {rating === 4 && 'Very Good'}
+              {rating === 5 && 'Excellent'}
+            </Text>
+          )}
+        </View>
+
+        {/* Review Section */}
+        <View style={styles.reviewSection}>
+          <Text style={styles.reviewTitle}>Write a Review (Optional)</Text>
+          <TouchableOpacity style={styles.reviewInput}>
+            <Text style={styles.reviewPlaceholder}>
+              Share your experience with other users...
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.skipButton}
+            onPress={handleSkipReview}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.submitButton,
+              (rating === 0 || isSubmitting) && styles.submitButtonDisabled
+            ]}
+            onPress={handleSubmitReview}
+            disabled={rating === 0 || isSubmitting}
+            activeOpacity={0.8}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={[
+                styles.submitButtonText,
+                rating === 0 && styles.submitButtonTextDisabled
+              ]}>
+                Submit Review
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Thank You Modal */}
+      <Modal
+        visible={showThankYou}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleThankYouClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.thankYouModal}>
+            <Text style={styles.thankYouIcon}>🎉</Text>
+            <Text style={styles.thankYouTitle}>Thank You!</Text>
+            <Text style={styles.thankYouText}>
+              Your review has been submitted successfully. It helps other users make better choices.
+            </Text>
+            <TouchableOpacity 
+              style={styles.thankYouButton}
+              onPress={handleThankYouClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.thankYouButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  scrollContent: {
+    padding: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  astrologerInfo: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
+    marginRight: 16,
+  },
+  astrologerDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  astrologerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  astrologerCategory: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  sessionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sessionDuration: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  ratingSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  ratingTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  ratingSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 20,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  starButton: {
+    marginHorizontal: 8,
+  },
+  star: {
+    fontSize: 32,
+  },
+  starFilled: {
+    opacity: 1,
+  },
+  starEmpty: {
+    opacity: 0.3,
+  },
+  ratingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  reviewSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  reviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  reviewInput: {
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 100,
+    backgroundColor: '#f9fafb',
+  },
+  reviewPlaceholder: {
+    fontSize: 14,
+    color: '#9ca3af',
+    lineHeight: 20,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skipButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  submitButton: {
+    flex: 2,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#d1d5db',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  submitButtonTextDisabled: {
+    color: '#9ca3af',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  thankYouModal: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    maxWidth: 300,
+    width: '100%',
+  },
+  thankYouIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  thankYouTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  thankYouText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  thankYouButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+  },
+  thankYouButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+});
+
+export default ChatReviewScreen;
+

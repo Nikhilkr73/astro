@@ -75,20 +75,26 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Prepare data with JSON wrapping for metadata
+                    prepared_data = {**user_data}
+                    if 'metadata' in prepared_data and prepared_data['metadata']:
+                        prepared_data['metadata'] = Json(prepared_data['metadata'])
+                    
                     cursor.execute("""
                         INSERT INTO users (
-                            user_id, email, full_name, display_name,
+                            user_id, email, phone_number, full_name, display_name,
                             language_preference, subscription_type, metadata
                         ) VALUES (
-                            %(user_id)s, %(email)s, %(full_name)s, %(display_name)s,
+                            %(user_id)s, %(email)s, %(phone_number)s, %(full_name)s, %(display_name)s,
                             %(language_preference)s, %(subscription_type)s, %(metadata)s
                         )
                         ON CONFLICT (user_id) DO UPDATE SET
                             email = EXCLUDED.email,
+                            phone_number = EXCLUDED.phone_number,
                             full_name = EXCLUDED.full_name,
                             updated_at = CURRENT_TIMESTAMP
                         RETURNING user_id
-                    """, user_data)
+                    """, prepared_data)
                     
                     result = cursor.fetchone()
                     print(f"✅ User created/updated: {result['user_id']}")
@@ -236,6 +242,8 @@ class DatabaseManager:
                     """, (message_id, conversation_id, sender_type,
                           message_type, content, audio_url, transcription))
                     
+                    result = cursor.fetchone()
+                    
                     # Update conversation stats
                     cursor.execute("""
                         UPDATE conversations SET
@@ -244,8 +252,7 @@ class DatabaseManager:
                         WHERE conversation_id = %s
                     """, (conversation_id,))
                     
-                    result = cursor.fetchone()
-                    return result['message_id']
+                    return result['message_id'] if result else message_id
         except Exception as e:
             print(f"❌ Error adding message: {e}")
             return None
@@ -317,6 +324,239 @@ class DatabaseManager:
         except Exception as e:
             print(f"❌ Error creating reading: {e}")
             return None
+    
+    # =============================================================================
+    # WALLET OPERATIONS
+    # =============================================================================
+    
+    def create_wallet(self, user_id: str, initial_balance: float = 0.00) -> Optional[str]:
+        """Create wallet for new user"""
+        try:
+            wallet_id = f"wallet_{user_id}"
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        INSERT INTO wallets (wallet_id, user_id, balance, currency)
+                        VALUES (%s, %s, %s, 'INR')
+                        ON CONFLICT (user_id) DO UPDATE SET
+                            updated_at = CURRENT_TIMESTAMP
+                        RETURNING wallet_id
+                    """, (wallet_id, user_id, initial_balance))
+                    
+                    result = cursor.fetchone()
+                    print(f"✅ Wallet created/updated: {result['wallet_id']}")
+                    return result['wallet_id']
+        except Exception as e:
+            print(f"❌ Error creating wallet: {e}")
+            return None
+    
+    def get_wallet(self, user_id: str) -> Optional[Dict]:
+        """Get user wallet details"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT * FROM wallets WHERE user_id = %s
+                    """, (user_id,))
+                    return dict(cursor.fetchone()) if cursor.rowcount > 0 else None
+        except Exception as e:
+            print(f"❌ Error getting wallet: {e}")
+            return None
+    
+    def update_wallet_balance(self, wallet_id: str, new_balance: float) -> bool:
+        """Update wallet balance"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE wallets SET
+                            balance = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE wallet_id = %s
+                    """, (new_balance, wallet_id))
+                    return True
+        except Exception as e:
+            print(f"❌ Error updating wallet balance: {e}")
+            return False
+    
+    def add_transaction(self, transaction_data: Dict[str, Any]) -> Optional[str]:
+        """Record wallet transaction"""
+        try:
+            transaction_id = f"txn_{transaction_data['user_id']}_{int(datetime.now().timestamp() * 1000)}"
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get current balance
+                    cursor.execute("""
+                        SELECT balance FROM wallets WHERE wallet_id = %s
+                    """, (transaction_data['wallet_id'],))
+                    
+                    wallet = cursor.fetchone()
+                    if not wallet:
+                        print(f"❌ Wallet not found: {transaction_data['wallet_id']}")
+                        return None
+                    
+                    current_balance = float(wallet['balance'])
+                    amount = float(transaction_data['amount'])
+                    transaction_type = transaction_data['transaction_type']
+                    
+                    # Calculate new balance
+                    if transaction_type == 'recharge':
+                        new_balance = current_balance + amount
+                    elif transaction_type == 'deduction':
+                        new_balance = max(0, current_balance - amount)
+                    elif transaction_type == 'refund':
+                        new_balance = current_balance + amount
+                    else:
+                        new_balance = current_balance
+                    
+                    # Insert transaction
+                    cursor.execute("""
+                        INSERT INTO transactions (
+                            transaction_id, user_id, wallet_id, transaction_type,
+                            amount, balance_before, balance_after, payment_method,
+                            payment_status, payment_reference, reference_type,
+                            reference_id, description, metadata
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        )
+                        RETURNING transaction_id
+                    """, (
+                        transaction_id,
+                        transaction_data['user_id'],
+                        transaction_data['wallet_id'],
+                        transaction_type,
+                        amount,
+                        current_balance,
+                        new_balance,
+                        transaction_data.get('payment_method', 'upi'),
+                        transaction_data.get('payment_status', 'completed'),
+                        transaction_data.get('payment_reference'),
+                        transaction_data.get('reference_type', 'recharge'),
+                        transaction_data.get('reference_id'),
+                        transaction_data.get('description'),
+                        Json(transaction_data.get('metadata', {}))
+                    ))
+                    
+                    result = cursor.fetchone()
+                    
+                    # Update wallet balance
+                    cursor.execute("""
+                        UPDATE wallets SET
+                            balance = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE wallet_id = %s
+                    """, (new_balance, transaction_data['wallet_id']))
+                    
+                    print(f"✅ Transaction created: {result['transaction_id'] if result else transaction_id}")
+                    return result['transaction_id'] if result else transaction_id
+        except Exception as e:
+            print(f"❌ Error adding transaction: {e}")
+            return None
+    
+    def get_user_transactions(self, user_id: str, limit: int = 20) -> List[Dict]:
+        """Get user transaction history"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT * FROM transactions
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                    """, (user_id, limit))
+                    
+                    return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error getting transactions: {e}")
+            return []
+    
+    # =============================================================================
+    # SESSION REVIEW OPERATIONS
+    # =============================================================================
+    
+    def create_session_review(self, review_data: Dict[str, Any]) -> Optional[str]:
+        """Store chat session review"""
+        try:
+            review_id = f"review_{review_data['user_id']}_{int(datetime.now().timestamp())}"
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        INSERT INTO session_reviews (
+                            review_id, user_id, astrologer_id, conversation_id,
+                            rating, review_text, session_duration, metadata
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING review_id
+                    """, (
+                        review_id,
+                        review_data['user_id'],
+                        review_data['astrologer_id'],
+                        review_data.get('conversation_id'),
+                        review_data['rating'],
+                        review_data.get('review_text'),
+                        review_data.get('session_duration'),
+                        Json(review_data.get('metadata', {}))
+                    ))
+                    
+                    result = cursor.fetchone()
+                    
+                    # Update astrologer rating
+                    cursor.execute("""
+                        UPDATE astrologers SET
+                            total_reviews = total_reviews + 1,
+                            rating = (
+                                SELECT AVG(rating)::DECIMAL(3,2) FROM session_reviews
+                                WHERE astrologer_id = %s
+                            ),
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE astrologer_id = %s
+                    """, (review_data['astrologer_id'], review_data['astrologer_id']))
+                    
+                    print(f"✅ Review created: {result['review_id'] if result else review_id}")
+                    return result['review_id'] if result else review_id
+        except Exception as e:
+            print(f"❌ Error creating review: {e}")
+            return None
+    
+    def get_astrologer_reviews(self, astrologer_id: str, limit: int = 20) -> List[Dict]:
+        """Get reviews for an astrologer"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT sr.*, u.display_name as user_name
+                        FROM session_reviews sr
+                        JOIN users u ON sr.user_id = u.user_id
+                        WHERE sr.astrologer_id = %s
+                        ORDER BY sr.created_at DESC
+                        LIMIT %s
+                    """, (astrologer_id, limit))
+                    
+                    return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error getting reviews: {e}")
+            return []
+    
+    def update_conversation_end(self, conversation_id: str, duration_seconds: int) -> bool:
+        """Update conversation when ended"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            status = 'completed',
+                            ended_at = CURRENT_TIMESTAMP,
+                            total_duration_seconds = %s
+                        WHERE conversation_id = %s
+                    """, (duration_seconds, conversation_id))
+                    
+                    print(f"✅ Conversation ended: {conversation_id}")
+                    return True
+        except Exception as e:
+            print(f"❌ Error ending conversation: {e}")
+            return False
     
     # =============================================================================
     # ANALYTICS & REPORTS

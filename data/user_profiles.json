@@ -1,0 +1,77 @@
+{
+  "test_astro_user": {
+    "user_id": "test_astro_user",
+    "name": "Test User",
+    "birth_date": "1990-05-15",
+    "birth_time": "14:30",
+    "birth_location": "New York, USA",
+    "birth_timezone": "America/New_York",
+    "email": null,
+    "birth_latitude": null,
+    "birth_longitude": null,
+    "preferred_system": "vedic",
+    "language": "en",
+    "reading_style": "detailed",
+    "notification_preferences": {
+      "daily_horoscope": true,
+      "weekly_forecast": true,
+      "important_transits": true,
+      "new_moon_full_moon": true
+    },
+    "subscription_type": "free",
+    "created_at": "2025-09-29T21:08:24.809146",
+    "last_reading_date": "2025-09-29T21:09:16.244169",
+    "total_readings": 1,
+    "favorite_topics": []
+  },
+  "astro_1759160666": {
+    "user_id": "astro_1759160666",
+    "name": "Amit Gupta",
+    "birth_date": "0190-09-16",
+    "birth_time": "03:25",
+    "birth_location": "Ranchi",
+    "birth_timezone": "UTC",
+    "email": "",
+    "birth_latitude": null,
+    "birth_longitude": null,
+    "preferred_system": "vedic",
+    "language": "en",
+    "reading_style": "detailed",
+    "notification_preferences": {
+      "daily_horoscope": true,
+      "weekly_forecast": true,
+      "important_transits": true,
+      "new_moon_full_moon": true
+    },
+    "subscription_type": "free",
+    "created_at": "2025-09-29T21:14:26.493410",
+    "last_reading_date": null,
+    "total_readings": 0,
+    "favorite_topics": []
+  },
+  "test_user_voice": {
+    "user_id": "test_user_voice",
+    "name": "Sarah",
+    "birth_date": "1990-05-15",
+    "birth_time": "03:30",
+    "birth_location": "New York City,  USA",
+    "birth_timezone": null,
+    "email": null,
+    "birth_latitude": null,
+    "birth_longitude": null,
+    "preferred_system": "vedic",
+    "language": "en",
+    "reading_style": "detailed",
+    "notification_preferences": {
+      "daily_horoscope": true,
+      "weekly_forecast": true,
+      "important_transits": true,
+      "new_moon_full_moon": true
+    },
+    "subscription_type": "free",
+    "created_at": "2025-09-29T21:33:27.476522",
+    "last_reading_date": null,
+    "total_readings": 0,
+    "favorite_topics": []
+  }
+}
