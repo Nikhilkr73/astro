@@ -1,0 +1,357 @@
+{
+  "planetary_remedies": {
+    "mangal": {
+      "planet_name": "Mangal (Mars)",
+      "english_name": "Mars",
+      "issues": ["marriage delay", "conflicts", "anger", "accidents", "mangal dosh"],
+      "remedies": [
+        {
+          "remedy": "Tuesday fasting",
+          "hindi": "Mangalvar ka vrat",
+          "how_it_works": "Fasting on Tuesday, Mars's day, reduces its malefic effects by honoring the planet's energy",
+          "why_effective": "Mars appreciates discipline and restraint. Fasting shows devotion and weakens negative Mars influence.",
+          "instructions": "Fast from sunrise to sunset on Tuesdays. Eat only one meal after sunset."
+        },
+        {
+          "remedy": "Red lentil donation",
+          "hindi": "Masoor dal ka daan",
+          "how_it_works": "Donating red items (Mars's color) transfers negative Mars energy to others who can bear it",
+          "why_effective": "Red lentils represent Mars. Giving them away symbolically removes Mars-related obstacles from your life.",
+          "instructions": "Donate red lentils to poor people or temples on Tuesdays."
+        },
+        {
+          "remedy": "Hanuman Chalisa recitation",
+          "hindi": "Hanuman Chalisa paath",
+          "how_it_works": "Lord Hanuman rules over Mars. His devotion neutralizes Mars's aggressive energy",
+          "why_effective": "Hanuman is Mars personified in divine form. His blessings directly pacify Mars in your chart.",
+          "instructions": "Recite Hanuman Chalisa daily, especially on Tuesdays."
+        },
+        {
+          "remedy": "Wear red coral gemstone",
+          "hindi": "Moonga pehenna",
+          "how_it_works": "Red coral absorbs Mars's energy and channels it positively through your body",
+          "why_effective": "This gemstone is Mars's stone. It strengthens weak Mars or balances strong Mars energy.",
+          "instructions": "Wear red coral ring on right hand ring finger after proper energization."
+        }
+      ]
+    },
+    "shukra": {
+      "planet_name": "Shukra (Venus)",
+      "english_name": "Venus",
+      "issues": ["love problems", "marriage delay", "relationship issues", "luxury problems"],
+      "remedies": [
+        {
+          "remedy": "Friday fasting",
+          "hindi": "Shukravar ka vrat",
+          "how_it_works": "Friday is Venus's day. Fasting on this day strengthens Venus's positive influence on love and marriage",
+          "why_effective": "Venus governs love and relationships. Honoring Venus on her day brings her blessings for marriage.",
+          "instructions": "Fast on Fridays. Eat white foods like kheer, white sweets after sunset."
+        },
+        {
+          "remedy": "White sweets donation to young girls",
+          "hindi": "Chhoti ladkiyon ko white sweets ka daan",
+          "how_it_works": "Young girls represent Goddess Lakshmi (Venus's wife). Feeding them pleases Venus",
+          "why_effective": "Venus loves when you show kindness to young unmarried girls. This directly improves your marriage prospects.",
+          "instructions": "Every Friday, donate white sweets, white clothes, or food to young girls below 9 years."
+        },
+        {
+          "remedy": "Lakshmi Puja on Fridays",
+          "hindi": "Shukravar ko Lakshmi Puja",
+          "how_it_works": "Goddess Lakshmi is Venus's representative. Worshipping her strengthens Venus in your kundli",
+          "why_effective": "Venus brings wealth, love, and beauty. Lakshmi Puja directly activates these Venus qualities.",
+          "instructions": "Light a ghee lamp for Goddess Lakshmi every Friday evening. Offer white flowers."
+        },
+        {
+          "remedy": "Wear diamond or white sapphire",
+          "hindi": "Heera ya safed pukhraj pehenna",
+          "how_it_works": "These gemstones channel Venus's energy into your aura, strengthening love and attraction",
+          "why_effective": "Diamond is Venus's gemstone. It enhances your charm, beauty, and relationship magnetism.",
+          "instructions": "Wear diamond or white sapphire in silver ring on right hand middle finger."
+        }
+      ]
+    },
+    "shani": {
+      "planet_name": "Shani (Saturn)",
+      "english_name": "Saturn",
+      "issues": ["career delays", "obstacles", "sade sati", "hardships", "chronic problems"],
+      "remedies": [
+        {
+          "remedy": "Saturday oil donation",
+          "hindi": "Shanivar ko tel ka daan",
+          "how_it_works": "Mustard oil represents Saturn's dark energy. Donating it removes Saturn's burden from your life",
+          "why_effective": "Saturn appreciates service to the poor. This act of charity pleases Saturn and reduces his malefic effects.",
+          "instructions": "Donate mustard oil to poor people or Shani temple every Saturday."
+        },
+        {
+          "remedy": "Feed black sesame to birds",
+          "hindi": "Kale til chidiyon ko khilana",
+          "how_it_works": "Black items belong to Saturn. Feeding birds transfers your Saturn-related karma to them",
+          "why_effective": "Birds carry messages to planets. Saturn's energy lightens when you feed black sesame to them.",
+          "instructions": "Mix black sesame seeds with atta and make small balls. Feed to crows on Saturdays."
+        },
+        {
+          "remedy": "Shani mantra chanting",
+          "hindi": "Shani mantra jaap",
+          "how_it_works": "Sound vibrations of Shani mantra directly communicate with Saturn, requesting his mercy",
+          "why_effective": "Saturn is the karmic judge. Chanting his mantra shows respect and asks for reduced punishment.",
+          "instructions": "Chant 'Om Sham Shanicharaya Namah' 108 times every Saturday."
+        },
+        {
+          "remedy": "Wear blue sapphire",
+          "hindi": "Neelam pehenna",
+          "how_it_works": "Blue sapphire is Saturn's stone. It can quickly change your fortune if Saturn is favorable",
+          "why_effective": "This powerful stone directly channels Saturn's energy. Must be tested before wearing permanently.",
+          "instructions": "Wear blue sapphire only after 3-day trial. Keep in pocket first to test effects."
+        }
+      ]
+    },
+    "guru": {
+      "planet_name": "Guru (Jupiter)",
+      "english_name": "Jupiter",
+      "issues": ["knowledge problems", "financial issues", "children problems", "wisdom lack"],
+      "remedies": [
+        {
+          "remedy": "Thursday worship",
+          "hindi": "Guruvar ki puja",
+          "how_it_works": "Thursday is Jupiter's day. Worshipping on this day activates Jupiter's blessings for wisdom and wealth",
+          "why_effective": "Jupiter is the guru of gods. Honoring him on his day brings knowledge, wealth, and children.",
+          "instructions": "Visit temple on Thursdays. Wear yellow clothes. Eat yellow foods like turmeric, chana dal."
+        },
+        {
+          "remedy": "Donate yellow items to teachers",
+          "hindi": "Guruon ko peele cheezen daan karna",
+          "how_it_works": "Teachers represent Jupiter's energy. Respecting them strengthens Jupiter in your chart",
+          "why_effective": "Jupiter is the teacher planet. Honoring teachers directly pleases Jupiter.",
+          "instructions": "Donate yellow clothes, turmeric, yellow sweets to teachers or priests on Thursdays."
+        },
+        {
+          "remedy": "Feed banana to cows",
+          "hindi": "Gayon ko kela khilana",
+          "how_it_works": "Cows are sacred to Jupiter. Feeding them with Jupiter's fruit (banana) brings his blessings",
+          "why_effective": "Jupiter loves when you serve cows. This act brings prosperity and removes obstacles.",
+          "instructions": "Feed bananas or yellow fruits to cows every Thursday morning."
+        },
+        {
+          "remedy": "Wear yellow sapphire",
+          "hindi": "Pukhraj pehenna",
+          "how_it_works": "Yellow sapphire channels Jupiter's wisdom and wealth energy directly into your life",
+          "why_effective": "This is Jupiter's gemstone. It brings knowledge, money, good luck, and children.",
+          "instructions": "Wear yellow sapphire in gold ring on right hand index finger on Thursday."
+        }
+      ]
+    },
+    "budh": {
+      "planet_name": "Budh (Mercury)",
+      "english_name": "Mercury",
+      "issues": ["communication problems", "business failures", "speech issues", "nervous problems"],
+      "remedies": [
+        {
+          "remedy": "Wednesday green gram donation",
+          "hindi": "Budhvar ko moong dal ka daan",
+          "how_it_works": "Green items belong to Mercury. Donating them removes Mercury-related communication blocks",
+          "why_effective": "Mercury governs speech and business. This donation improves your communication and business skills.",
+          "instructions": "Donate green moong dal, green vegetables to poor on Wednesdays."
+        },
+        {
+          "remedy": "Feed green grass to cows",
+          "hindi": "Gayon ko hari ghaas khilana",
+          "how_it_works": "Green is Mercury's color. Feeding cows with green grass activates Mercury's blessings",
+          "why_effective": "Cows are pure souls. Mercury appreciates when you serve them, improving your intellect.",
+          "instructions": "Feed fresh green grass to cows every Wednesday."
+        },
+        {
+          "remedy": "Worship Lord Ganesha",
+          "hindi": "Ganesh ji ki puja",
+          "how_it_works": "Lord Ganesha rules Mercury. His worship removes Mercury-related obstacles in communication",
+          "why_effective": "Ganesha is the remover of obstacles. He directly enhances Mercury's positive effects.",
+          "instructions": "Offer durva grass to Ganesha on Wednesdays. Chant his mantras."
+        },
+        {
+          "remedy": "Wear emerald gemstone",
+          "hindi": "Panna pehenna",
+          "how_it_works": "Emerald is Mercury's stone. It sharpens your mind, improves speech, and boosts business",
+          "why_effective": "This gemstone directly channels Mercury's intellectual and communicative powers.",
+          "instructions": "Wear emerald in gold ring on right hand little finger on Wednesday."
+        }
+      ]
+    },
+    "rahu_ketu": {
+      "planet_name": "Rahu-Ketu (Shadow Planets)",
+      "english_name": "North and South Node",
+      "issues": ["sudden changes", "confusion", "illusions", "past life karma", "unexpected problems"],
+      "remedies": [
+        {
+          "remedy": "Donate to lepers and handicapped",
+          "hindi": "Kushtharogion aur viklangon ko daan",
+          "how_it_works": "Rahu-Ketu create suffering. Serving those who suffer transfers your Rahu-Ketu karma to good deeds",
+          "why_effective": "These shadow planets appreciate when you help outcasts. This directly reduces their malefic effects.",
+          "instructions": "Donate food, clothes, or money to handicapped people regularly."
+        },
+        {
+          "remedy": "Sarpa Puja",
+          "hindi": "Naag puja",
+          "how_it_works": "Rahu-Ketu are serpent deities. Worshipping serpents directly pleases them",
+          "why_effective": "Serpent worship is ancient remedy for Rahu-Ketu. It removes their negative influence completely.",
+          "instructions": "Visit Nag temple or perform serpent worship on Nag Panchami or any Saturday."
+        },
+        {
+          "remedy": "Coconut water offering",
+          "hindi": "Nariyal paani ka tarpan",
+          "how_it_works": "Coconut represents Rahu's head. Offering it satisfies Rahu's hunger for attention",
+          "why_effective": "Rahu loves coconut offerings. This simple act can dramatically reduce Rahu dosh.",
+          "instructions": "Offer coconut to running water or temples on Saturdays."
+        },
+        {
+          "remedy": "Wear gomed or cat's eye",
+          "hindi": "Gomed ya lahsuniya pehenna",
+          "how_it_works": "Gomed (Rahu) and cat's eye (Ketu) stones balance these shadow planets' energy",
+          "why_effective": "These gemstones control unpredictable Rahu-Ketu. They bring stability and remove confusion.",
+          "instructions": "Wear gomed for Rahu or cat's eye for Ketu after consulting an astrologer."
+        }
+      ]
+    },
+    "surya": {
+      "planet_name": "Surya (Sun)",
+      "english_name": "Sun",
+      "issues": ["confidence issues", "father problems", "authority issues", "health problems", "low vitality"],
+      "remedies": [
+        {
+          "remedy": "Surya Namaskar at sunrise",
+          "hindi": "Suryoday par Surya Namaskar",
+          "how_it_works": "Sun Salutation honors the Sun god directly. It absorbs Sun's healing energy into your body",
+          "why_effective": "Sun governs vitality and confidence. This practice strengthens weak Sun and boosts your energy.",
+          "instructions": "Do 12 rounds of Surya Namaskar facing the rising sun daily."
+        },
+        {
+          "remedy": "Donate wheat on Sundays",
+          "hindi": "Ravivaar ko gehun ka daan",
+          "how_it_works": "Wheat is Sun's grain. Donating it removes Sun-related obstacles from your path",
+          "why_effective": "Sun appreciates charity of his items. This improves your social status and confidence.",
+          "instructions": "Donate wheat, jaggery, or copper items to needy on Sundays."
+        },
+        {
+          "remedy": "Offer water to Sun",
+          "hindi": "Suryoday par jal arpan",
+          "how_it_works": "Water offering at sunrise shows devotion to Sun. It invites his blessings for success",
+          "why_effective": "Sun is the king of planets. Daily water offering pleases him and strengthens your horoscope.",
+          "instructions": "Offer water mixed with red flowers to rising Sun from a copper vessel."
+        },
+        {
+          "remedy": "Wear ruby gemstone",
+          "hindi": "Manik pehenna",
+          "how_it_works": "Ruby is Sun's stone. It radiates Sun's royal energy, boosting your confidence and authority",
+          "why_effective": "This gemstone directly enhances Sun's power in your chart, bringing leadership and vitality.",
+          "instructions": "Wear ruby in gold ring on right hand ring finger on Sunday morning."
+        }
+      ]
+    },
+    "chandra": {
+      "planet_name": "Chandra (Moon)",
+      "english_name": "Moon",
+      "issues": ["emotional problems", "mother issues", "mental stress", "mood swings", "anxiety"],
+      "remedies": [
+        {
+          "remedy": "Monday fasting and white foods",
+          "hindi": "Somvaar ka vrat aur safed bhojan",
+          "how_it_works": "Monday is Moon's day. Fasting strengthens Moon's calming influence on your mind",
+          "why_effective": "Moon governs emotions. Fasting on her day brings mental peace and emotional stability.",
+          "instructions": "Fast on Mondays. Eat only white foods like milk, rice, white sweets after evening."
+        },
+        {
+          "remedy": "Donate white items",
+          "hindi": "Safed cheezon ka daan",
+          "how_it_works": "White represents Moon's pure energy. Giving white items removes Moon's negative effects",
+          "why_effective": "Moon loves purity and cleanliness. White donations please the Moon mother.",
+          "instructions": "Donate white rice, milk, white clothes to poor people on Mondays."
+        },
+        {
+          "remedy": "Chandra mantra and milk offering",
+          "hindi": "Chandra mantra aur doodh ka abhishek",
+          "how_it_works": "Moon mantras and milk offerings directly connect with lunar energy, calming your mind",
+          "why_effective": "Moon is mother energy. Milk offerings please her like feeding a mother.",
+          "instructions": "Chant 'Om Chandraya Namah' 108 times. Offer milk to Shiva on Mondays."
+        },
+        {
+          "remedy": "Wear pearl gemstone",
+          "hindi": "Moti pehenna",
+          "how_it_works": "Pearl is Moon's gem. It balances emotions, reduces anxiety, and brings mental clarity",
+          "why_effective": "This gemstone channels Moon's cooling energy, perfect for emotional and mental problems.",
+          "instructions": "Wear pearl in silver ring on right hand little finger on Monday."
+        }
+      ]
+    }
+  },
+  "house_specific_remedies": {
+    "saptam_bhava": {
+      "house_number": 7,
+      "represents": "Marriage, spouse, partnerships",
+      "common_issues": ["Marriage delay", "Partner problems", "Divorce tendencies"],
+      "remedies": [
+        "Worship Goddess Parvati and Lord Shiva together",
+        "Donate to married couples",
+        "Feed cows with green grass",
+        "Wear gemstone of 7th house lord planet"
+      ]
+    },
+    "dasham_bhava": {
+      "house_number": 10,
+      "represents": "Career, profession, fame",
+      "common_issues": ["Career stagnation", "Job loss", "No recognition"],
+      "remedies": [
+        "Offer water to Sun daily",
+        "Donate to your workplace or profession-related charities",
+        "Wear gemstone of 10th house lord",
+        "Respect your father and elders"
+      ]
+    },
+    "pancham_bhava": {
+      "house_number": 5,
+      "represents": "Love, romance, children, creativity",
+      "common_issues": ["Love failures", "Children problems", "Creative blocks"],
+      "remedies": [
+        "Worship Lord Krishna",
+        "Donate to pregnant women and children",
+        "Feed Brahmins and scholars",
+        "Wear gemstone of 5th house lord"
+      ]
+    }
+  },
+  "dosh_specific_remedies": {
+    "mangal_dosh": {
+      "description": "Mars in 1st, 4th, 7th, 8th, or 12th house causing marriage problems",
+      "explanation": "Mangal Dosh creates aggressive energy in marriage house, leading to conflicts and delays",
+      "primary_remedies": [
+        "Tuesday fasting (reduces Mars's malefic effects)",
+        "Hanuman Chalisa daily (Hanuman controls Mars energy)",
+        "Red coral gemstone (balances Mars)",
+        "Marry another Manglik (neutralizes the dosh)"
+      ],
+      "temple_remedies": [
+        "Perform Mangal Shanti Puja at temple",
+        "Visit Hanuman temple on Tuesdays",
+        "Perform Kumbh Vivah before actual marriage"
+      ]
+    },
+    "kaal_sarp_dosh": {
+      "description": "All planets trapped between Rahu and Ketu",
+      "explanation": "This creates serpent's grip on your life, causing repeated obstacles and delays",
+      "primary_remedies": [
+        "Nag Puja on Nag Panchami",
+        "Donate to handicapped people",
+        "Recite Maha Mrityunjaya Mantra",
+        "Visit Trimbakeshwar temple"
+      ]
+    },
+    "pitra_dosh": {
+      "description": "Afflicted ancestors causing problems through 9th house or Sun",
+      "explanation": "Unsatisfied ancestors' souls block your progress until you honor them",
+      "primary_remedies": [
+        "Perform Tarpan for ancestors",
+        "Donate on Amavasya (new moon)",
+        "Feed Brahmins in ancestors' name",
+        "Visit Gaya for Pind Daan ceremony"
+      ]
+    }
+  }
+}
+

@@ -13,9 +13,12 @@ OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview
 
 # OpenAI Chat Model Configuration (for text chat)
 # Options:
-#   - gpt-4o-mini (default, cost-effective)
-#   - gpt-4o (premium, highest quality)
-#   - gpt-3.5-turbo (legacy, cheapest)
+#   - gpt-4o-mini (default, cost-effective, good balance)
+#   - gpt-4o (premium, best emotional intelligence & Hinglish)
+#   - gpt-4.1-mini (faster, slightly better than 4o-mini)
+#   - gpt-5 (next-gen when available, maximum realism)
+#   - gpt-4-turbo (fast and powerful)
+# Switch models: ./switch_chat_model.sh [model-name]
 OPENAI_CHAT_MODEL=gpt-4o-mini
 
 # Server Configuration

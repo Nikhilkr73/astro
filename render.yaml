@@ -7,4 +7,12 @@ services:
     envVars:
       - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_REALTIME_MODEL
+        value: gpt-4o-mini-realtime-preview
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
     healthCheckPath: /health

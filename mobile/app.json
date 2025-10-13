@@ -5,20 +5,32 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#6366f1"
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#6366f1",
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.astrovoice.kundli",
+      "buildNumber": "1"
     },
     "android": {
-      "backgroundColor": "#6366f1"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6366f1"
+      },
+      "backgroundColor": "#6366f1",
+      "package": "com.astrovoice.kundli",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "scheme": "kundli"
   }
 }
