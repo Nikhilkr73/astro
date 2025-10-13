@@ -386,17 +386,35 @@ async def send_chat_message(message_data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ConversationEndData(BaseModel):
+    """Conversation end data model"""
+    conversation_id: str
+    duration_seconds: int
+
+
 @router.post("/chat/end")
-async def end_chat(conversation_id: str):
+async def end_chat(end_data: ConversationEndData):
     """End a chat session"""
     try:
+        print(f"📞 Ending conversation: {end_data.conversation_id}")
+        print(f"   Duration: {end_data.duration_seconds} seconds")
+        
+        # In a real implementation, this would:
+        # 1. Update conversation status in database
+        # 2. Calculate final cost based on duration
+        # 3. Deduct from wallet
+        # 4. Save session summary
+        
         return {
             "success": True,
-            "conversation_id": conversation_id,
+            "conversation_id": end_data.conversation_id,
+            "duration_seconds": end_data.duration_seconds,
             "ended_at": datetime.now().isoformat()
         }
     except Exception as e:
         print(f"❌ Error ending chat: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -53,8 +53,21 @@ const VoiceCallScreen = () => {
         
         // Get wallet balance
         const walletResponse = await apiService.getWalletBalance(userId);
-        if (walletResponse.success) {
+        if (walletResponse.balance !== undefined) {
           setWalletBalance(walletResponse.balance);
+        }
+        
+        // Start chat session in backend to get conversation ID
+        console.log('💾 Creating voice conversation in backend...');
+        const sessionResponse = await apiService.startChatSession(
+          userId,
+          astrologer.id.toString(),
+          'voice_call'
+        );
+        
+        if (sessionResponse.success && sessionResponse.conversation_id) {
+          setConversationId(sessionResponse.conversation_id);
+          console.log('✅ Voice conversation created:', sessionResponse.conversation_id);
         }
         
         // Start voice session
@@ -425,30 +438,48 @@ const VoiceCallScreen = () => {
     }
   };
 
-  const endCall = () => {
-    setIsSessionEnded(true);
-    
-    // Stop recording
-    if (mediaRecorderRef.current && isRecording) {
-      stopRecording();
-    }
-    
-    // Close WebSocket
-    if (websocketRef.current) {
-      websocketRef.current.close();
-    }
-    
-    // Stop media stream
-    if (mediaRecorderRef.current && mediaRecorderRef.current.stream) {
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-    }
-    
-    console.log('📞 Call ended');
-    
-    // Navigate back after a short delay
-    setTimeout(() => {
+  const endCall = async () => {
+    try {
+      setIsSessionEnded(true);
+      
+      // Stop recording
+      if (mediaRecorderRef.current && isRecording) {
+        stopRecording();
+      }
+      
+      // Close WebSocket
+      if (websocketRef.current) {
+        websocketRef.current.close();
+      }
+      
+      // Stop media stream
+      if (mediaRecorderRef.current && mediaRecorderRef.current.stream) {
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+      
+      console.log('📞 Call ended');
+      
+      // Save conversation to backend if we have a conversation ID
+      if (conversationId && callDuration > 0) {
+        try {
+          console.log('💾 Saving voice conversation to backend...');
+          await apiService.endConversation(conversationId, callDuration);
+          console.log('✅ Voice conversation saved successfully');
+        } catch (error) {
+          console.error('❌ Failed to save voice conversation:', error);
+          // Don't block navigation on error
+        }
+      }
+      
+      // Navigate back after a short delay
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1000);
+    } catch (error) {
+      console.error('❌ Error ending call:', error);
+      // Navigate back anyway
       navigation.goBack();
-    }, 1000);
+    }
   };
 
   const formatTime = (seconds: number) => {
