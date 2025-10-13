@@ -21,7 +21,14 @@
 10. **Project Structure** - Professional restructuring complete! ✨ **NEW**
 
 ### 🎉 **Just Completed (October 13, 2025)**
-1. **✅ End Conversation API Fix** ✨ **NEW**
+1. **✅ OpenAI SDK & Dependencies Update** ✨ **LATEST**
+   - Fixed AsyncClient proxies error on Render
+   - Updated OpenAI SDK: 1.3.7 → 1.35.13
+   - Pinned httpx to 0.25.2 for compatibility
+   - Backward compatible - no code changes needed
+   - Full documentation in OPENAI_PROXIES_FIX.md
+
+2. **✅ End Conversation API Fix**
    - Fixed 422 error in chat mode end conversation
    - Backend now accepts proper JSON body format
    - Enhanced voice mode with session tracking
