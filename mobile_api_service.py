@@ -1,20 +1,26 @@
 """
 Mobile API Service for AstroVoice
 FastAPI endpoints for React Native mobile application
+
+This service imports endpoints from backend/api/mobile_endpoints.py
+to maintain a single source of truth.
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import uuid
-from database_manager import db
+
+# Import the mobile endpoints router from the new backend structure
+try:
+    from backend.api.mobile_endpoints import router as mobile_router
+    print("✅ Using backend/api/mobile_endpoints")
+except ImportError:
+    print("⚠️ Could not import from backend/, using legacy endpoints")
+    mobile_router = None
 
 app = FastAPI(
     title="AstroVoice Mobile API",
     description="REST API for AstroVoice mobile application",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # Add CORS middleware
@@ -25,6 +31,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the mobile endpoints router
+if mobile_router:
+    app.include_router(mobile_router)
+    print("✅ Mobile endpoints router included")
+else:
+    print("⚠️ Using fallback endpoints below")
 
 # =============================================================================
 # PYDANTIC MODELS (Request/Response)
