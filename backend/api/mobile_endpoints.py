@@ -688,6 +688,145 @@ async def end_chat(end_data: ConversationEndData):
 
 
 # ============================================================================
+# Admin Endpoints
+# ============================================================================
+
+@router.post("/admin/init-database")
+async def init_database():
+    """
+    Initialize database schema (admin endpoint).
+    WARNING: Only use for first-time setup!
+    """
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"🔧 Attempting to initialize database schema...")
+        
+        # Execute schema file
+        schema_file = 'database_schema.sql'
+        
+        # Try different paths
+        import os
+        possible_paths = [
+            schema_file,
+            f'/var/task/{schema_file}',  # Lambda deployment path
+            os.path.join(os.path.dirname(__file__), '..', '..', schema_file),
+        ]
+        
+        schema_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                schema_path = path
+                break
+        
+        if not schema_path:
+            raise Exception(f"Schema file not found. Tried: {possible_paths}")
+        
+        print(f"📄 Using schema file: {schema_path}")
+        
+        success = db.execute_schema(schema_path)
+        
+        if success:
+            # Check what was created
+            try:
+                with db.get_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("""
+                            SELECT table_name 
+                            FROM information_schema.tables 
+                            WHERE table_schema = 'public'
+                            ORDER BY table_name;
+                        """)
+                        tables = [row[0] for row in cursor.fetchall()]
+                        
+                        # Count astrologers
+                        cursor.execute("SELECT COUNT(*) FROM astrologers")
+                        astrologer_count = cursor.fetchone()[0]
+                
+                print(f"✅ Database initialized successfully!")
+                print(f"   Tables created: {len(tables)}")
+                print(f"   Sample astrologers: {astrologer_count}")
+                
+                return {
+                    "success": True,
+                    "message": "Database schema initialized successfully",
+                    "tables_created": tables,
+                    "table_count": len(tables),
+                    "sample_astrologers": astrologer_count,
+                    "timestamp": datetime.now().isoformat()
+                }
+            except Exception as check_error:
+                # Schema created but verification failed
+                return {
+                    "success": True,
+                    "message": "Database schema initialized (verification partial)",
+                    "note": str(check_error),
+                    "timestamp": datetime.now().isoformat()
+                }
+        else:
+            raise Exception("Schema execution returned False")
+            
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/admin/check-database")
+async def check_database():
+    """Check database status and existing tables"""
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Check tables
+                cursor.execute("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name;
+                """)
+                tables = [row[0] for row in cursor.fetchall()]
+                
+                # Check counts
+                counts = {}
+                for table in tables:
+                    try:
+                        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                        counts[table] = cursor.fetchone()[0]
+                    except:
+                        counts[table] = "error"
+                
+                return {
+                    "success": True,
+                    "database_host": db.db_config['host'],
+                    "database_name": db.db_config['database'],
+                    "tables": tables,
+                    "table_count": len(tables),
+                    "row_counts": counts,
+                    "initialized": len(tables) > 0,
+                    "timestamp": datetime.now().isoformat()
+                }
+    except Exception as e:
+        print(f"❌ Error checking database: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # Review Endpoints
 # ============================================================================
 
