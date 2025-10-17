@@ -13,6 +13,17 @@ type Props = {
 const ChatInputBar: React.FC<Props> = ({ value, onChangeText, onSend, disabled, placeholder, sending }) => {
   const canSend = !!value.trim() && !disabled && !sending;
 
+  const handleSendPress = () => {
+    console.log('🔍 ChatInputBar - Send button pressed:', {
+      value: value,
+      valueTrimmed: value.trim(),
+      disabled,
+      sending,
+      canSend
+    });
+    onSend();
+  };
+
   return (
     <View style={[styles.container, disabled && styles.containerDisabled]}
       pointerEvents={'auto'}
@@ -28,7 +39,7 @@ const ChatInputBar: React.FC<Props> = ({ value, onChangeText, onSend, disabled, 
       />
       <TouchableOpacity
         style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
-        onPress={onSend}
+        onPress={handleSendPress}
         disabled={!canSend}
         activeOpacity={0.8}
       >

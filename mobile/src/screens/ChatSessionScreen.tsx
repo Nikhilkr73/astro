@@ -84,9 +84,17 @@ const ChatSessionScreen = () => {
         
         // Start chat session
         console.log('🚀 Starting chat with', astrologer.name);
+        // Map mobile astrologer ID to backend astrologer ID
+        const astrologerIdMap: { [key: string]: string } = {
+          '1': 'tina_kulkarni_vedic_marriage',
+          '2': 'arjun_sharma_career', 
+          '3': 'meera_nanda_love'
+        };
+        const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+        
         const sessionResponse = await apiService.startChatSession(
           userId,
-          astrologer.id.toString(),
+          backendAstrologerId,
           'general'
         );
         
@@ -189,7 +197,34 @@ const ChatSessionScreen = () => {
 
   const handleSendMessage = async (text?: string) => {
     const messageText = text || inputMessage.trim();
-    if (!messageText || sessionEnded || isSessionPaused || !conversationId) return;
+    
+    // Debug logging to identify blocking condition
+    console.log('🔍 Debug - handleSendMessage called with:', {
+      messageText: messageText,
+      messageTextLength: messageText?.length,
+      sessionEnded,
+      isSessionPaused,
+      conversationId,
+      hasMessageText: !!messageText,
+      canSend: !!(messageText && !sessionEnded && !isSessionPaused && conversationId)
+    });
+    
+    if (!messageText) {
+      console.log('❌ Blocked: No message text');
+      return;
+    }
+    if (sessionEnded) {
+      console.log('❌ Blocked: Session ended');
+      return;
+    }
+    if (isSessionPaused) {
+      console.log('❌ Blocked: Session paused');
+      return;
+    }
+    if (!conversationId) {
+      console.log('❌ Blocked: No conversation ID');
+      return;
+    }
 
     try {
       setIsSendingMessage(true);

@@ -206,7 +206,7 @@ class DatabaseManager:
                            topic: str = 'general') -> Optional[str]:
         """Create a new conversation"""
         try:
-            conversation_id = f"conv_{user_id}_{int(datetime.now().timestamp())}"
+            conversation_id = f"conv_{user_id}_{astrologer_id}_{int(datetime.now().timestamp())}"
             
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:

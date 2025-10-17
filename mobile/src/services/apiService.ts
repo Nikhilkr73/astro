@@ -219,6 +219,7 @@ export const apiService = {
     try {
       const userId = await storage.getUserId() || 'mobile_user';
       const aiRequest = {
+        conversation_id: conversationId,
         user_id: userId,
         astrologer_id: astrologerId,
         message: message,

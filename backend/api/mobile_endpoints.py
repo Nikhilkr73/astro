@@ -439,15 +439,7 @@ async def start_chat(session_data: dict):
         print(f"   Topic: {topic}")
         
         # Save conversation to database
-        conversation_data = {
-            'conversation_id': conversation_id,
-            'user_id': user_id,
-            'astrologer_id': astrologer_id,
-            'topic': topic,
-            'status': 'active'
-        }
-        
-        db.create_conversation(conversation_data)
+        db.create_conversation(user_id, astrologer_id, topic)
         
         # Prepare user context for astrologer
         user_context = {
@@ -554,25 +546,11 @@ User Information:
             try:
                 # Save user message
                 user_msg_id = f"msg_{chat_request.conversation_id}_user_{int(datetime.now().timestamp())}"
-                db.save_message({
-                    'message_id': user_msg_id,
-                    'conversation_id': chat_request.conversation_id,
-                    'sender_type': 'user',
-                    'content': chat_request.message,
-                    'message_type': 'text'
-                })
+                db.add_message(chat_request.conversation_id, 'user', chat_request.message, 'text')
                 
                 # Save AI response
                 ai_msg_id = f"msg_{chat_request.conversation_id}_ai_{int(datetime.now().timestamp())}"
-                db.save_message({
-                    'message_id': ai_msg_id,
-                    'conversation_id': chat_request.conversation_id,
-                    'sender_type': 'astrologer',
-                    'content': response['message'],
-                    'message_type': 'text',
-                    'ai_model': response.get('astrologer_name', 'gpt-4o-mini'),
-                    'tokens_used': response.get('tokens_used', 0)
-                })
+                db.add_message(chat_request.conversation_id, 'astrologer', ai_response['message'], 'text')
                 
                 # Update conversation
                 db.update_conversation_activity(chat_request.conversation_id)
@@ -629,13 +607,7 @@ async def send_chat_message(message_data: dict):
         
         message_id = f"msg_{conversation_id}_{int(datetime.now().timestamp())}"
         
-        db.save_message({
-            'message_id': message_id,
-            'conversation_id': conversation_id,
-            'sender_type': sender_type,
-            'content': content,
-            'message_type': message_type
-        })
+        db.add_message(conversation_id, sender_type, content, message_type)
         
         return {
             "success": True,

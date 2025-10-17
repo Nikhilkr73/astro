@@ -281,3 +281,4 @@ requirements.txt               → Updated with openai==1.35.13
 **Status:** ⏳ AWS deployment needed  
 **Local:** ✅ Working perfectly
 
+
