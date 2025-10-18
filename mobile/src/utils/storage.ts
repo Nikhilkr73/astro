@@ -12,7 +12,9 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: '@astrovoice:auth_token',
   WALLET_BALANCE: '@astrovoice:wallet_balance',
   IS_ONBOARDED: '@astrovoice:is_onboarded',
+  PROFILE_COMPLETE: '@astrovoice:profile_complete',
   LAST_CONVERSATION: '@astrovoice:last_conversation',
+  LAST_VISITED_SCREEN: '@astrovoice:last_visited_screen',
 };
 
 // =============================================================================
@@ -146,14 +148,79 @@ export const storage = {
   },
 
   /**
-   * Clear all storage (logout)
+   * Set user ID (alias for saveUserId for consistency)
    */
-  clearAll: async (): Promise<void> => {
+  setUserId: async (userId: string): Promise<void> => {
+    return storage.saveUserId(userId);
+  },
+
+  /**
+   * Set profile completion status
+   */
+  setProfileComplete: async (isComplete: boolean): Promise<void> => {
     try {
-      await AsyncStorage.clear();
-      console.log('✅ All storage cleared');
+      await AsyncStorage.setItem(STORAGE_KEYS.PROFILE_COMPLETE, isComplete.toString());
+      console.log('✅ Profile completion status saved:', isComplete);
     } catch (error) {
-      console.error('❌ Error clearing storage:', error);
+      console.error('❌ Error saving profile completion status:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get profile completion status
+   */
+  getProfileComplete: async (): Promise<boolean> => {
+    try {
+      const status = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE_COMPLETE);
+      return status === 'true';
+    } catch (error) {
+      console.error('❌ Error getting profile completion status:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Save last visited screen
+   */
+  setLastVisitedScreen: async (screen: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LAST_VISITED_SCREEN, screen);
+    } catch (error) {
+      console.error('❌ Error saving last visited screen:', error);
+    }
+  },
+
+  /**
+   * Get last visited screen
+   */
+  getLastVisitedScreen: async (): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem(STORAGE_KEYS.LAST_VISITED_SCREEN);
+    } catch (error) {
+      console.error('❌ Error getting last visited screen:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Clear user data (for logout)
+   */
+  clearUserData: async (): Promise<void> => {
+    try {
+      const keysToRemove = [
+        STORAGE_KEYS.USER_ID,
+        STORAGE_KEYS.USER_DATA,
+        STORAGE_KEYS.AUTH_TOKEN,
+        STORAGE_KEYS.IS_ONBOARDED,
+        STORAGE_KEYS.PROFILE_COMPLETE,
+        STORAGE_KEYS.LAST_CONVERSATION,
+        STORAGE_KEYS.LAST_VISITED_SCREEN,
+      ];
+      await AsyncStorage.multiRemove(keysToRemove);
+      console.log('✅ User data cleared');
+    } catch (error) {
+      console.error('❌ Error clearing user data:', error);
       throw error;
     }
   },

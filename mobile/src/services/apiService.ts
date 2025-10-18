@@ -88,6 +88,25 @@ export interface ConversationEndData {
   duration_seconds: number;
 }
 
+export interface OTPRequestData {
+  phone_number: string;
+}
+
+export interface OTPVerificationData {
+  phone_number: string;
+  otp_code: string;
+}
+
+export interface OTPResponse {
+  success: boolean;
+  message: string;
+  expires_in?: number;
+  retry_after?: number;
+  user_id?: string;
+  profile_complete?: boolean;
+  missing_fields?: string[];
+}
+
 // =============================================================================
 // API SERVICE
 // =============================================================================
@@ -102,6 +121,43 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Health check failed:', error);
+      throw error;
+    }
+  },
+
+  // ===========================================================================
+  // AUTHENTICATION APIs
+  // ===========================================================================
+
+  /**
+   * Send OTP to phone number for verification
+   */
+  sendOTP: async (phoneNumber: string): Promise<OTPResponse> => {
+    try {
+      const otpRequest: OTPRequestData = {
+        phone_number: phoneNumber,
+      };
+      const response = await apiClient.post('/api/auth/send-otp', otpRequest);
+      return response.data;
+    } catch (error) {
+      console.error('Send OTP failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verify OTP code for phone number
+   */
+  verifyOTP: async (phoneNumber: string, otpCode: string): Promise<OTPResponse> => {
+    try {
+      const otpVerification: OTPVerificationData = {
+        phone_number: phoneNumber,
+        otp_code: otpCode,
+      };
+      const response = await apiClient.post('/api/auth/verify-otp', otpVerification);
+      return response.data;
+    } catch (error) {
+      console.error('Verify OTP failed:', error);
       throw error;
     }
   },
@@ -133,6 +189,19 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Get user profile failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update user profile
+   */
+  updateUserProfile: async (userId: string, updateData: Partial<UserRegistrationData>) => {
+    try {
+      const response = await apiClient.put(API_ENDPOINTS.USERS_UPDATE(userId), updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Update user profile failed:', error);
       throw error;
     }
   },

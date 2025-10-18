@@ -1,6 +1,8 @@
 import React, {useState, useEffect} from 'react';
 import {createStackNavigator} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
+import storage from '../utils/storage';
+import apiService from '../services/apiService';
 
 import SplashScreen from '../screens/SplashScreen';
 import {PhoneAuthScreen} from '../screens/PhoneAuthScreen';
@@ -25,23 +27,71 @@ export function AppNavigator() {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initialize app state on startup
   useEffect(() => {
-    // Auto-navigate from splash screen after 3 seconds
-    if (currentScreen === 'splash') {
-      const timer = setTimeout(() => {
-        setCurrentScreen('login');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentScreen]);
+    initializeApp();
+  }, []);
 
-  const handleLogin = () => {
+  const initializeApp = async () => {
+    try {
+      const userId = await storage.getUserId();
+      const profileComplete = await storage.getProfileComplete();
+      const lastVisitedScreen = await storage.getLastVisitedScreen();
+      
+      console.log('🚀 App initialization:', {
+        userId,
+        profileComplete,
+        lastVisitedScreen
+      });
+      
+      if (userId) {
+        // User is logged in, check profile status
+        setIsLoggedIn(true);
+        
+        if (profileComplete) {
+          // Profile is complete, go to main app
+          setIsOnboarded(true);
+          
+          // Navigate to last visited screen or main
+          if (lastVisitedScreen && lastVisitedScreen !== 'login' && lastVisitedScreen !== 'onboarding') {
+            setCurrentScreen(lastVisitedScreen);
+          } else {
+            setCurrentScreen('main');
+          }
+        } else {
+          // Profile incomplete, go to onboarding
+          setIsOnboarded(false);
+          setCurrentScreen('onboarding');
+        }
+      } else {
+        // No user logged in, go to login
+        setCurrentScreen('login');
+      }
+    } catch (error) {
+      console.error('❌ App initialization error:', error);
+      setCurrentScreen('login');
+    } finally {
+      setIsInitialized(true);
+    }
+  };
+
+  const handleLogin = (userData: {userId: string; profileComplete: boolean; missingFields?: string[]}) => {
+    console.log('🔐 Login handler called with:', userData);
+    
     setIsLoggedIn(true);
-    if (!isOnboarded) {
-      setCurrentScreen('onboarding');
-    } else {
+    
+    if (userData.profileComplete) {
+      // Profile is complete, go directly to main app
+      setIsOnboarded(true);
       setCurrentScreen('main');
+      storage.setLastVisitedScreen('main');
+    } else {
+      // Profile incomplete, go to onboarding
+      setIsOnboarded(false);
+      setCurrentScreen('onboarding');
+      storage.setLastVisitedScreen('onboarding');
     }
   };
 
@@ -55,14 +105,28 @@ export function AppNavigator() {
   const handleOnboardingComplete = () => {
     setIsOnboarded(true);
     setCurrentScreen('main');
+    storage.setLastVisitedScreen('main');
+    storage.setProfileComplete(true);
   };
 
   const handleNavigate = (screen: string) => {
     setCurrentScreen(screen);
+    storage.setLastVisitedScreen(screen);
   };
 
-  // Render based on current screen state
-  if (currentScreen === 'splash') {
+  const handleLogout = async () => {
+    try {
+      await storage.clearUserData();
+      setIsLoggedIn(false);
+      setIsOnboarded(false);
+      setCurrentScreen('login');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    }
+  };
+
+  // Show splash screen while initializing
+  if (!isInitialized || currentScreen === 'splash') {
     return (
       <Stack.Navigator screenOptions={{headerShown: false}}>
         <Stack.Screen name="Splash" component={SplashScreen} />
@@ -96,7 +160,10 @@ export function AppNavigator() {
       <Stack.Navigator screenOptions={{headerShown: false}}>
         <Stack.Screen name="Onboarding">
           {() => (
-            <OnboardingFormScreen onComplete={handleOnboardingComplete} />
+            <OnboardingFormScreen 
+              onComplete={handleOnboardingComplete}
+              onNavigate={handleNavigate}
+            />
           )}
         </Stack.Screen>
       </Stack.Navigator>

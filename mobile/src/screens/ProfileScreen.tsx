@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,65 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
 import LinearGradient from 'expo-linear-gradient';
+import apiService from '../services/apiService';
+import storage from '../utils/storage';
 
-const ProfileScreen = () => {
-  const userProfile = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+91 9876543210",
-    joinedDate: "January 2024",
-    totalSessions: 12,
-    favoriteAstrologers: 3
+const ProfileScreen = ({navigation}: any) => {
+  const [userProfile, setUserProfile] = useState({
+    name: "Loading...",
+    email: "",
+    phone: "",
+    joinedDate: "",
+    totalSessions: 0,
+    favoriteAstrologers: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      setIsLoading(true);
+      const storedUserId = await storage.getUserId();
+      
+      if (storedUserId) {
+        setUserId(storedUserId);
+        const userData = await apiService.getUserProfile(storedUserId);
+        
+        // Format user data for display
+        const formattedProfile = {
+          name: userData.full_name || userData.display_name || "User",
+          email: userData.email || "",
+          phone: userData.phone_number || "",
+          joinedDate: userData.created_at 
+            ? new Date(userData.created_at).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long' 
+              })
+            : "Unknown",
+          totalSessions: userData.total_sessions || 0,
+          favoriteAstrologers: userData.favorite_astrologers || 0
+        };
+        
+        setUserProfile(formattedProfile);
+        console.log('📱 User profile loaded:', formattedProfile);
+      } else {
+        console.log('❌ No user ID found');
+        Alert.alert('Error', 'User not found. Please login again.');
+      }
+    } catch (error) {
+      console.error('❌ Error loading user profile:', error);
+      Alert.alert('Error', 'Failed to load profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const menuItems = [
@@ -26,7 +73,21 @@ const ProfileScreen = () => {
       id: '1',
       title: 'Edit Profile',
       icon: '👤',
-      action: () => Alert.alert('Edit Profile', 'Profile editing feature coming soon!')
+      action: () => {
+        if (userId) {
+          // Navigate to OnboardingFormScreen in edit mode
+          navigation?.navigate('Onboarding', {
+            userId: userId,
+            isEditMode: true,
+            onComplete: () => {
+              // Reload profile after editing
+              loadUserProfile();
+            }
+          });
+        } else {
+          Alert.alert('Error', 'User ID not found');
+        }
+      }
     },
     {
       id: '2',
@@ -78,9 +139,19 @@ const ProfileScreen = () => {
       "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: () => {
-          // In a real app, this would clear user session and navigate to login
-          Alert.alert('Logged Out', 'You have been logged out successfully');
+        { text: "Logout", style: "destructive", onPress: async () => {
+          try {
+            await storage.clearUserData();
+            Alert.alert('Logged Out', 'You have been logged out successfully');
+            // Navigate back to login screen
+            navigation?.reset({
+              index: 0,
+              routes: [{ name: 'Auth' }],
+            });
+          } catch (error) {
+            console.error('❌ Logout error:', error);
+            Alert.alert('Error', 'Failed to logout. Please try again.');
+          }
         }}
       ]
     );
@@ -92,7 +163,13 @@ const ProfileScreen = () => {
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
@@ -168,6 +245,7 @@ const ProfileScreen = () => {
           <Text style={styles.appCopyright}>© 2024 Kundli. All rights reserved.</Text>
         </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -187,6 +265,18 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize['2xl'],
     fontFamily: typography.fontFamily.bold,
     color: colors.textPrimary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing['2xl'],
+  },
+  loadingText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
   },
   content: {
     flex: 1,

@@ -21,6 +21,13 @@ OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview
 # Switch models: ./switch_chat_model.sh [model-name]
 OPENAI_CHAT_MODEL=gpt-4o-mini
 
+# Message Central OTP Configuration
+MESSAGE_CENTRAL_PASSWORD=kundli@123
+MESSAGE_CENTRAL_CUSTOMER_ID=C-F9FB8D3FEFDB406
+MESSAGE_CENTRAL_COUNTRY=IN
+MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com
+MESSAGE_CENTRAL_SENDER_ID=ASTROV
+
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000

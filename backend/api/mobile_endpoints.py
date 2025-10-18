@@ -6,7 +6,13 @@ Provides REST API endpoints for mobile app integration
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
+import random
+import string
+import os
+import requests
+import json
+import base64
 
 # Import services
 try:
@@ -62,6 +68,28 @@ class UserRegistration(BaseModel):
     place_of_birth: Optional[str] = None
     gender: Optional[str] = None
     language_preference: Optional[str] = 'hi'  # Default to Hindi instead of None
+
+
+class OTPRequest(BaseModel):
+    """OTP request model"""
+    phone_number: str
+
+
+class OTPVerification(BaseModel):
+    """OTP verification model"""
+    phone_number: str
+    otp_code: str
+
+
+class OTPResponse(BaseModel):
+    """OTP response model"""
+    success: bool
+    message: str
+    expires_in: Optional[int] = None  # seconds
+    retry_after: Optional[int] = None  # seconds for rate limiting
+    user_id: Optional[str] = None  # User ID after verification
+    profile_complete: Optional[bool] = None  # Profile completion status
+    missing_fields: Optional[List[str]] = None  # Fields that need to be filled
 
 
 # ============================================================================
@@ -309,19 +337,628 @@ async def register_user(user: UserRegistration):
 
 @router.get("/users/{user_id}")
 async def get_user(user_id: str):
-    """Get user details"""
+    """Get user details with profile completion status"""
     try:
-        # In a real implementation, this would fetch from database
-        # For now, return mock data
-        return {
-            "user_id": user_id,
-            "display_name": "User",
-            "created_at": datetime.now().isoformat(),
-            "language_preference": "Hindi"
-        }
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT user_id, email, phone_number, full_name, display_name,
+                           date_of_birth, gender, profile_picture_url, language_preference,
+                           birth_date, birth_time, birth_location, birth_timezone,
+                           birth_latitude, birth_longitude, preferred_astrology_system,
+                           notification_preferences, subscription_type, account_status,
+                           email_verified, phone_verified, created_at, updated_at, last_login_at,
+                           metadata
+                    FROM users 
+                    WHERE user_id = %s
+                """, (user_id,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                # Unpack all fields
+                (user_id_db, email, phone_number, full_name, display_name,
+                 date_of_birth, gender, profile_picture_url, language_preference,
+                 birth_date, birth_time, birth_location, birth_timezone,
+                 birth_latitude, birth_longitude, preferred_astrology_system,
+                 notification_preferences, subscription_type, account_status,
+                 email_verified, phone_verified, created_at, updated_at, last_login_at,
+                 metadata) = result
+                
+                # Check profile completion
+                profile_complete, missing_fields = await check_profile_completion(user_id)
+                
+                return {
+                    "user_id": user_id_db,
+                    "email": email,
+                    "phone_number": phone_number,
+                    "full_name": full_name,
+                    "display_name": display_name,
+                    "date_of_birth": date_of_birth,
+                    "gender": gender,
+                    "profile_picture_url": profile_picture_url,
+                    "language_preference": language_preference,
+                    "birth_date": birth_date,
+                    "birth_time": birth_time,
+                    "birth_location": birth_location,
+                    "birth_timezone": birth_timezone,
+                    "birth_latitude": birth_latitude,
+                    "birth_longitude": birth_longitude,
+                    "preferred_astrology_system": preferred_astrology_system,
+                    "notification_preferences": notification_preferences,
+                    "subscription_type": subscription_type,
+                    "account_status": account_status,
+                    "email_verified": email_verified,
+                    "phone_verified": phone_verified,
+                    "created_at": created_at.isoformat() if created_at else None,
+                    "updated_at": updated_at.isoformat() if updated_at else None,
+                    "last_login_at": last_login_at.isoformat() if last_login_at else None,
+                    "metadata": metadata,
+                    "profile_complete": profile_complete,
+                    "missing_fields": missing_fields
+                }
+                
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error getting user: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class UserUpdateRequest(BaseModel):
+    """User profile update request model"""
+    full_name: Optional[str] = None
+    display_name: Optional[str] = None
+    birth_date: Optional[str] = None  # DD/MM/YYYY format
+    birth_time: Optional[str] = None  # HH:MM AM/PM format
+    birth_location: Optional[str] = None
+    gender: Optional[str] = None
+    language_preference: Optional[str] = None
+
+
+@router.put("/users/{user_id}")
+async def update_user_profile(user_id: str, update_data: UserUpdateRequest):
+    """Update user profile"""
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Check if user exists
+                cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (user_id,))
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                # Build update query dynamically based on provided fields
+                update_fields = []
+                update_values = []
+                
+                if update_data.full_name is not None:
+                    update_fields.append("full_name = %s")
+                    update_values.append(update_data.full_name)
+                
+                if update_data.display_name is not None:
+                    update_fields.append("display_name = %s")
+                    update_values.append(update_data.display_name)
+                
+                if update_data.birth_date is not None:
+                    update_fields.append("birth_date = %s")
+                    update_values.append(update_data.birth_date)
+                
+                if update_data.birth_time is not None:
+                    update_fields.append("birth_time = %s")
+                    update_values.append(update_data.birth_time)
+                
+                if update_data.birth_location is not None:
+                    update_fields.append("birth_location = %s")
+                    update_values.append(update_data.birth_location)
+                
+                if update_data.gender is not None:
+                    update_fields.append("gender = %s")
+                    update_values.append(update_data.gender)
+                
+                if update_data.language_preference is not None:
+                    update_fields.append("language_preference = %s")
+                    update_values.append(update_data.language_preference)
+                
+                if not update_fields:
+                    raise HTTPException(status_code=400, detail="No fields to update")
+                
+                # Add updated_at timestamp
+                update_fields.append("updated_at = NOW()")
+                
+                # Execute update
+                update_query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = %s"
+                update_values.append(user_id)
+                
+                cursor.execute(update_query, update_values)
+                
+                print(f"✅ Updated user profile for {user_id}")
+                
+                # Return updated user data
+                return await get_user(user_id)
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating user profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# OTP Authentication Endpoints
+# ============================================================================
+
+@router.post("/auth/send-otp", response_model=OTPResponse)
+async def send_otp(otp_request: OTPRequest):
+    """
+    Send OTP to phone number for verification.
+    Integrates with Message Central for SMS delivery.
+    """
+    try:
+        phone_number = otp_request.phone_number.strip()
+        
+        # Validate phone number format (Indian mobile numbers)
+        if not phone_number.isdigit() or len(phone_number) != 10:
+            raise HTTPException(status_code=400, detail="Invalid phone number format")
+        
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        # Check rate limiting (max 3 OTPs per phone per hour)
+        try:
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM otp_verifications 
+                        WHERE phone_number = %s 
+                        AND created_at > NOW() - INTERVAL '1 hour'
+                        AND status = 'sent'
+                    """, (phone_number,))
+                    recent_otps = cursor.fetchone()[0]
+                    
+                    if recent_otps >= 3:
+                        raise HTTPException(
+                            status_code=429, 
+                            detail="Too many OTP requests. Please try again later.",
+                            headers={"Retry-After": "3600"}
+                        )
+        except Exception as rate_error:
+            print(f"⚠️ Rate limiting check failed: {rate_error}")
+            # Continue anyway for now
+        
+        # Generate 6-digit OTP
+        otp_code = ''.join(random.choices(string.digits, k=6))
+        expires_at = datetime.now() + timedelta(minutes=5)  # 5 minutes expiry
+        
+        print(f"📱 Sending OTP to {phone_number}: {otp_code}")
+        
+        # Send OTP via Message Central
+        message_result = await send_otp_via_message_central(phone_number, otp_code)
+        
+        # Store OTP in database (always store for fallback)
+        verification_id = None
+        message_central_customer_id = 'C-F9FB8D3FEFDB406'  # Your customer ID
+        
+        if isinstance(message_result, dict) and message_result.get('success'):
+            verification_id = message_result.get('verification_id')
+            print(f"✅ Message Central OTP sent with verification ID: {verification_id}")
+        else:
+            print(f"⚠️ Message Central failed, storing OTP for testing: {otp_code}")
+        
+        try:
+            import json  # Local import to ensure it's available
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Prepare metadata with verification_id if available
+                    metadata = {}
+                    if verification_id:
+                        metadata['verification_id'] = verification_id
+                        metadata['sent_via'] = 'message_central'
+                    else:
+                        metadata['sent_via'] = 'fallback'
+                    
+                    cursor.execute("""
+                        INSERT INTO otp_verifications 
+                        (phone_number, otp_code, expires_at, status, created_at, metadata, 
+                         message_central_customer_id, message_central_verification_id)
+                        VALUES (%s, %s, %s, 'sent', NOW(), %s, %s, %s)
+                    """, (phone_number, otp_code, expires_at, json.dumps(metadata), 
+                          message_central_customer_id, verification_id))
+        except Exception as db_error:
+            print(f"⚠️ Failed to store OTP: {db_error}")
+            # Continue anyway
+        
+        return OTPResponse(
+            success=True,
+            message="OTP sent successfully",
+            expires_in=30  # 30 seconds for resend timer
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error sending OTP: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
+
+
+@router.post("/auth/verify-otp", response_model=OTPResponse)
+async def verify_otp(otp_verification: OTPVerification):
+    """
+    Verify OTP code for phone number.
+    Returns success if OTP is valid and not expired.
+    """
+    try:
+        phone_number = otp_verification.phone_number.strip()
+        otp_code = otp_verification.otp_code.strip()
+        
+        # Validate inputs
+        if not phone_number.isdigit() or len(phone_number) != 10:
+            raise HTTPException(status_code=400, detail="Invalid phone number format")
+        
+        if not otp_code.isdigit() or len(otp_code) != 6:
+            raise HTTPException(status_code=400, detail="Invalid OTP format")
+        
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        # Verify OTP
+        try:
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT otp_code, expires_at, status, metadata, message_central_verification_id
+                        FROM otp_verifications 
+                        WHERE phone_number = %s 
+                        ORDER BY created_at DESC 
+                        LIMIT 1
+                    """, (phone_number,))
+                    
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        raise HTTPException(status_code=400, detail="No OTP found for this phone number")
+                    
+                    stored_otp, expires_at, status, metadata, verification_id = result
+                    
+                    # Check if OTP is already used
+                    if status == 'verified':
+                        raise HTTPException(status_code=400, detail="OTP already used")
+                    
+                    # Check if OTP is expired
+                    current_time = datetime.now()
+                    print(f"🕐 Current time: {current_time}")
+                    print(f"🕐 OTP expires at: {expires_at}")
+                    print(f"🕐 Time difference: {(current_time - expires_at).total_seconds()} seconds")
+                    
+                    if current_time > expires_at:
+                        print(f"❌ OTP expired! Current: {current_time}, Expires: {expires_at}")
+                        raise HTTPException(status_code=400, detail="OTP expired")
+                    
+                    # Try Message Central verification first (if verification_id exists)
+                    # verification_id is now directly from the database field
+                    
+                    if verification_id:
+                        # Verify with Message Central
+                        mc_verified = await verify_otp_via_message_central(phone_number, otp_code, verification_id)
+                        if mc_verified:
+                            print(f"✅ OTP verified via Message Central for {phone_number}")
+                        else:
+                            # Fallback to local verification
+                            if stored_otp != otp_code:
+                                raise HTTPException(status_code=400, detail="Invalid OTP")
+                    else:
+                        # Local verification only
+                        if stored_otp != otp_code:
+                            raise HTTPException(status_code=400, detail="Invalid OTP")
+                    
+                    # Create or find user for this phone number
+                    cursor.execute("""
+                        SELECT user_id FROM users WHERE phone_number = %s
+                    """, (phone_number,))
+                    
+                    user_result = cursor.fetchone()
+                    if user_result:
+                        user_id = user_result[0]
+                        print(f"📱 Found existing user: {user_id}")
+                    else:
+                        # Create new user
+                        import uuid
+                        user_id = str(uuid.uuid4())
+                        cursor.execute("""
+                            INSERT INTO users (user_id, phone_number, phone_verified, account_status, created_at)
+                            VALUES (%s, %s, true, 'active', NOW())
+                        """, (user_id, phone_number))
+                        print(f"👤 Created new user: {user_id}")
+                    
+                    # Mark OTP as verified and link to user
+                    cursor.execute("""
+                        UPDATE otp_verifications 
+                        SET status = 'verified', verified_at = NOW(), user_id = %s
+                        WHERE phone_number = %s AND otp_code = %s
+                    """, (user_id, phone_number, otp_code))
+                    
+                    print(f"✅ OTP verified successfully for {phone_number} and linked to user {user_id}")
+                    
+                    # Check profile completion status
+                    profile_complete, missing_fields = await check_profile_completion(user_id)
+                    
+                    return OTPResponse(
+                        success=True,
+                        message="Phone number verified successfully",
+                        user_id=user_id,
+                        profile_complete=profile_complete,
+                        missing_fields=missing_fields
+                    )
+                    
+        except HTTPException:
+            raise
+        except Exception as db_error:
+            print(f"❌ Database error during OTP verification: {db_error}")
+            raise HTTPException(status_code=500, detail="Verification failed")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error verifying OTP: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="OTP verification failed")
+
+
+async def check_profile_completion(user_id: str) -> tuple[bool, List[str]]:
+    """
+    Check if user profile is complete and return missing fields.
+    Returns (is_complete, missing_fields_list)
+    """
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT full_name, birth_date, birth_time, birth_location, gender
+                    FROM users 
+                    WHERE user_id = %s
+                """, (user_id,))
+                
+                result = cursor.fetchone()
+                if not result:
+                    return False, ['user_not_found']
+                
+                full_name, birth_date, birth_time, birth_location, gender = result
+                
+                missing_fields = []
+                
+                if not full_name or full_name.strip() == '':
+                    missing_fields.append('full_name')
+                
+                if not birth_date:
+                    missing_fields.append('birth_date')
+                
+                if not birth_time:
+                    missing_fields.append('birth_time')
+                
+                if not birth_location or birth_location.strip() == '':
+                    missing_fields.append('birth_location')
+                
+                if not gender:
+                    missing_fields.append('gender')
+                
+                is_complete = len(missing_fields) == 0
+                print(f"📋 Profile completion check for {user_id}: complete={is_complete}, missing={missing_fields}")
+                
+                return is_complete, missing_fields
+                
+    except Exception as e:
+        print(f"❌ Error checking profile completion: {e}")
+        return False, ['error_checking_profile']
+
+
+async def send_otp_via_message_central(phone_number: str, otp_code: str) -> bool:
+    """
+    Send OTP via Message Central API.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        # Message Central API configuration
+        message_central_password = os.getenv('MESSAGE_CENTRAL_PASSWORD')
+        message_central_customer_id = os.getenv('MESSAGE_CENTRAL_CUSTOMER_ID', 'C-F9FB8D3FEFDB406')
+        message_central_country = os.getenv('MESSAGE_CENTRAL_COUNTRY', 'IN')  # India
+        message_central_email = os.getenv('MESSAGE_CENTRAL_EMAIL', '')
+        
+        if not message_central_password:
+            print("⚠️ Message Central password not configured")
+            return False
+        
+        # Step 1: Generate authentication token
+        auth_url = "https://cpaas.messagecentral.com/auth/v1/authentication/token"
+        
+        # Encode password in Base64
+        import base64
+        encoded_password = base64.b64encode(message_central_password.encode()).decode()
+        
+        auth_params = {
+            "customerId": message_central_customer_id,
+            "key": encoded_password,
+            "scope": "NEW",
+            "country": message_central_country,
+            "email": message_central_email
+        }
+        
+        print(f"🔐 Getting auth token from Message Central...")
+        
+        auth_response = requests.get(auth_url, params=auth_params, headers={'accept': '*/*'}, timeout=10)
+        
+        if auth_response.status_code != 200:
+            print(f"❌ Auth token request failed: {auth_response.status_code} - {auth_response.text}")
+            return False
+        
+        auth_data = auth_response.json()
+        auth_token = auth_data.get('token')  # Message Central uses 'token' not 'authToken'
+        
+        if not auth_token:
+            print(f"❌ No auth token received: {auth_data}")
+            return False
+        
+        print(f"✅ Auth token received")
+        
+        # Step 2: Send OTP
+        otp_url = "https://cpaas.messagecentral.com/verification/v3/send"
+        
+        # Use query parameters as per documentation
+        otp_params = {
+            "countryCode": "91",  # India country code
+            "flowType": "SMS",
+            "mobileNumber": phone_number,
+            "otpLength": 6
+        }
+        
+        headers = {
+            "authToken": auth_token,
+            "accept": "*/*"
+        }
+        
+        print(f"📤 Sending OTP via Message Central to {phone_number}")
+        print(f"   URL: {otp_url}")
+        print(f"   Params: {otp_params}")
+        print(f"   Headers: authToken={auth_token[:20]}...")
+        
+        otp_response = requests.post(otp_url, params=otp_params, headers=headers, timeout=10)
+        
+        if otp_response.status_code == 200:
+            print(f"✅ OTP sent successfully via Message Central")
+            otp_data = otp_response.json()
+            print(f"📋 Full response: {otp_data}")
+            
+            # Extract verification_id from the correct path
+            verification_id = None
+            print(f"🔍 Parsing response data: {otp_data}")
+            
+            if 'data' in otp_data and otp_data['data']:
+                verification_id = otp_data['data'].get('verificationId')
+                print(f"📋 Found verificationId in data: {verification_id}")
+            else:
+                print(f"⚠️ No 'data' field found in response")
+            
+            print(f"📋 Final Verification ID: {verification_id}")
+            return {
+                'success': True,
+                'verification_id': verification_id
+            }
+        elif otp_response.status_code == 400:
+            # Handle REQUEST_ALREADY_EXISTS error
+            error_data = otp_response.json()
+            if error_data.get('responseCode') == 506:  # REQUEST_ALREADY_EXISTS
+                print(f"⚠️ OTP already sent to this number, using existing verification ID")
+                verification_id = error_data.get('data', {}).get('verificationId')
+                if verification_id:
+                    print(f"📋 Using existing verification ID: {verification_id}")
+                    return {
+                        'success': True,
+                        'verification_id': verification_id
+                    }
+            
+            print(f"❌ Message Central OTP API error: {otp_response.status_code} - {otp_response.text}")
+            return False
+        else:
+            print(f"❌ Message Central OTP API error: {otp_response.status_code} - {otp_response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error sending SMS via Message Central: {e}")
+        return False
+
+
+async def verify_otp_via_message_central(phone_number: str, otp_code: str, verification_id: str) -> bool:
+    """
+    Verify OTP via Message Central API.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        # Message Central API configuration
+        message_central_password = os.getenv('MESSAGE_CENTRAL_PASSWORD')
+        message_central_customer_id = os.getenv('MESSAGE_CENTRAL_CUSTOMER_ID', 'C-F9FB8D3FEFDB406')
+        message_central_country = os.getenv('MESSAGE_CENTRAL_COUNTRY', 'IN')  # India
+        message_central_email = os.getenv('MESSAGE_CENTRAL_EMAIL', '')
+        
+        if not message_central_password:
+            print("⚠️ Message Central password not configured")
+            return False
+        
+        # Step 1: Generate authentication token
+        auth_url = "https://cpaas.messagecentral.com/auth/v1/authentication/token"
+        
+        # Encode password in Base64
+        import base64
+        encoded_password = base64.b64encode(message_central_password.encode()).decode()
+        
+        auth_params = {
+            "customerId": message_central_customer_id,
+            "key": encoded_password,
+            "scope": "NEW",
+            "country": message_central_country,
+            "email": message_central_email
+        }
+        
+        print(f"🔐 Getting auth token for verification...")
+        
+        auth_response = requests.get(auth_url, params=auth_params, headers={'accept': '*/*'}, timeout=10)
+        
+        if auth_response.status_code != 200:
+            print(f"❌ Auth token request failed: {auth_response.status_code} - {auth_response.text}")
+            return False
+        
+        auth_data = auth_response.json()
+        auth_token = auth_data.get('token')  # Message Central uses 'token' not 'authToken'
+        
+        if not auth_token:
+            print(f"❌ No auth token received: {auth_data}")
+            return False
+        
+        # Step 2: Verify OTP
+        verify_url = "https://cpaas.messagecentral.com/verification/v3/validateOtp"
+        
+        verify_params = {
+            "verificationId": verification_id,
+            "code": otp_code
+        }
+        
+        headers = {
+            "authToken": auth_token,
+            "accept": "*/*"
+        }
+        
+        print(f"🔍 Verifying OTP via Message Central for {phone_number}")
+        print(f"   URL: {verify_url}")
+        print(f"   Params: {verify_params}")
+        print(f"   Headers: authToken={auth_token[:20]}...")
+        
+        verify_response = requests.get(verify_url, params=verify_params, headers=headers, timeout=10)
+        
+        if verify_response.status_code == 200:
+            print(f"✅ OTP verified successfully via Message Central")
+            return True
+        else:
+            print(f"❌ Message Central verification failed: {verify_response.status_code} - {verify_response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error verifying OTP via Message Central: {e}")
+        return False
 
 
 # ============================================================================

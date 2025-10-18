@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
   // Users
   USERS_REGISTER: '/api/users/register',
   USERS_GET: (userId: string) => `/api/users/${userId}`,
+  USERS_UPDATE: (userId: string) => `/api/users/${userId}`,
   
   // Astrologers
   ASTROLOGERS_LIST: '/api/astrologers',

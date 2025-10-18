@@ -481,6 +481,48 @@ CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 CREATE INDEX idx_transactions_status ON transactions(payment_status);
 
 -- =============================================================================
+-- OTP_VERIFICATIONS TABLE (Phone number verification)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS otp_verifications (
+    verification_id SERIAL PRIMARY KEY,
+    phone_number VARCHAR(20) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    status VARCHAR(20) DEFAULT 'sent', -- sent, verified, expired, failed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP,
+    
+    -- User Relationship (for data persistence across sessions)
+    user_id VARCHAR(255) REFERENCES users(user_id) ON DELETE CASCADE,
+    
+    -- Message Central Integration
+    message_central_customer_id VARCHAR(50), -- C-F9FB8D3FEFDB406
+    message_central_verification_id VARCHAR(50), -- From API response
+    
+    -- Rate limiting and security
+    attempts INTEGER DEFAULT 0,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    
+    -- Metadata (flexible for future extensions)
+    metadata JSONB DEFAULT '{}'::jsonb,
+    
+    -- Constraints
+    CONSTRAINT valid_phone CHECK (phone_number ~ '^[0-9]{10}$'),
+    CONSTRAINT valid_otp CHECK (otp_code ~ '^[0-9]{6}$'),
+    CONSTRAINT valid_status CHECK (status IN ('sent', 'verified', 'expired', 'failed')),
+    CONSTRAINT valid_customer_id CHECK (message_central_customer_id ~ '^C-[A-F0-9]+$')
+);
+
+CREATE INDEX idx_otp_phone ON otp_verifications(phone_number);
+CREATE INDEX idx_otp_status ON otp_verifications(status);
+CREATE INDEX idx_otp_created_at ON otp_verifications(created_at DESC);
+CREATE INDEX idx_otp_expires_at ON otp_verifications(expires_at);
+CREATE INDEX idx_otp_user_id ON otp_verifications(user_id);
+CREATE INDEX idx_otp_customer_id ON otp_verifications(message_central_customer_id);
+CREATE INDEX idx_otp_mc_verification_id ON otp_verifications(message_central_verification_id);
+
+-- =============================================================================
 -- SESSION_REVIEWS TABLE (Chat session reviews and ratings)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS session_reviews (
@@ -529,6 +571,10 @@ COMMENT ON TABLE user_profiles IS 'Extended astrology-specific user data';
 COMMENT ON TABLE user_sessions IS 'User session tracking for security and analytics';
 COMMENT ON TABLE wallets IS 'User wallet for managing consultation credits';
 COMMENT ON TABLE transactions IS 'Transaction history for all wallet operations';
+COMMENT ON TABLE otp_verifications IS 'OTP verification for phone number authentication with user linking';
+COMMENT ON COLUMN otp_verifications.user_id IS 'Links OTP verification to user account for data persistence';
+COMMENT ON COLUMN otp_verifications.message_central_customer_id IS 'Message Central customer ID (e.g., C-F9FB8D3FEFDB406)';
+COMMENT ON COLUMN otp_verifications.message_central_verification_id IS 'Message Central verification ID from API response';
 COMMENT ON TABLE session_reviews IS 'User reviews and ratings for chat sessions';
 
 COMMENT ON COLUMN users.metadata IS 'Flexible JSONB field for future user attributes';

@@ -17,6 +17,9 @@ import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} fr
 
 interface OnboardingFormScreenProps {
   onComplete: () => void;
+  onNavigate?: (screen: string) => void;
+  userId?: string;
+  isEditMode?: boolean;
 }
 
 const MONTHS = [
@@ -31,7 +34,7 @@ const LANGUAGES = [
 
 const {width} = Dimensions.get('window');
 
-export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
+export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode = false}: OnboardingFormScreenProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
@@ -47,8 +50,70 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [showCompletion, setShowCompletion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
 
   const totalSteps = 6;
+
+  // Load user data when in edit mode
+  useEffect(() => {
+    if (isEditMode && userId) {
+      loadUserData();
+    }
+  }, [isEditMode, userId]);
+
+  const loadUserData = async () => {
+    try {
+      setIsLoadingUserData(true);
+      console.log('📱 Loading user data for edit mode:', userId);
+      
+      const userData = await apiService.getUserProfile(userId!);
+      console.log('📋 User data loaded:', userData);
+      
+      // Pre-fill form with existing data
+      if (userData.full_name) {
+        setName(userData.full_name);
+      }
+      
+      if (userData.birth_date) {
+        // Parse birth_date (DD/MM/YYYY format)
+        const [day, month, year] = userData.birth_date.split('/');
+        setBirthDate(parseInt(day));
+        setBirthMonth(parseInt(month) - 1); // Convert to 0-based index
+        setBirthYear(parseInt(year));
+      }
+      
+      if (userData.birth_time) {
+        // Parse birth_time (HH:MM AM/PM format)
+        const [time, period] = userData.birth_time.split(' ');
+        const [hour, minute] = time.split(':');
+        setBirthHour(parseInt(hour));
+        setBirthMinute(parseInt(minute));
+        setBirthPeriod(period as 'AM' | 'PM');
+        setKnowsTime(true);
+      }
+      
+      if (userData.gender) {
+        setGender(userData.gender as 'Male' | 'Female');
+      }
+      
+      if (userData.birth_location) {
+        setBirthPlace(userData.birth_location);
+      }
+      
+      if (userData.language_preference) {
+        // Convert language preference to array
+        const languages = userData.language_preference.split(',').map(lang => lang.trim());
+        setSelectedLanguages(languages);
+      }
+      
+      console.log('✅ User data pre-filled successfully');
+    } catch (error) {
+      console.error('❌ Error loading user data:', error);
+      Alert.alert('Error', 'Failed to load user data. Please try again.');
+    } finally {
+      setIsLoadingUserData(false);
+    }
+  };
 
   const handleNameChange = (text: string) => {
     setName(text);
@@ -125,49 +190,59 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
         ? `${birthHour.toString().padStart(2, '0')}:${birthMinute.toString().padStart(2, '0')} ${birthPeriod}`
         : '12:00 PM'; // Default time if unknown
       
-      // Get phone number from storage (from PhoneAuthScreen)
-      const phoneNumber = await storage.getUserId() || '+919999999999'; // Fallback for testing
-      
-      console.log('📝 Submitting user data:', {
-        phone_number: phoneNumber,
+      const userData = {
         full_name: name,
-        date_of_birth: dateOfBirth,
-        time_of_birth: timeOfBirth,
-        place_of_birth: birthPlace,
+        birth_date: dateOfBirth,
+        birth_time: timeOfBirth,
+        birth_location: birthPlace,
         gender: gender || undefined,
-      });
+        language_preference: selectedLanguages.join(', '),
+      };
       
-      // Call registration API
-      const response = await apiService.registerUser({
-        phone_number: phoneNumber,
-        full_name: name,
-        date_of_birth: dateOfBirth,
-        time_of_birth: timeOfBirth,
-        place_of_birth: birthPlace,
-        gender: gender || undefined,
-      });
+      console.log('📝 Submitting user data:', userData);
       
-      if (response.success) {
-        console.log('✅ User registered:', response.user_id);
-        console.log('💰 Welcome bonus:', response.wallet.balance);
+      let response;
+      if (isEditMode && userId) {
+        // Update existing user
+        console.log('🔄 Updating user profile for:', userId);
+        response = await apiService.updateUserProfile(userId, userData);
+      } else {
+        // Create new user
+        const phoneNumber = await storage.getUserId() || '+919999999999'; // Fallback for testing
+        console.log('👤 Creating new user with phone:', phoneNumber);
+        response = await apiService.registerUser({
+          phone_number: phoneNumber,
+          ...userData,
+        });
+      }
+      
+      if (response.success || response.user_id) {
+        console.log('✅ User data submitted successfully');
         
-        // Save user data to AsyncStorage
-        await storage.saveUserId(response.user_id);
-        await storage.saveUserData(response.user);
-        await storage.setOnboarded(true);
-        await storage.saveWalletBalance(response.wallet.balance);
+        // Update profile completion status
+        await storage.setProfileComplete(true);
         
         // Show completion screen
         setShowCompletion(true);
+        
+        // Auto-navigate after 2 seconds
+        setTimeout(() => {
+          if (isEditMode) {
+            // In edit mode, go back to profile screen
+            onNavigate?.('profile');
+          } else {
+            // In create mode, complete onboarding
+            onComplete();
+          }
+        }, 2000);
       } else {
-        throw new Error('Registration failed');
+        throw new Error(response.message || 'Failed to save user data');
       }
     } catch (error: any) {
-      console.error('❌ Registration error:', error);
+      console.error('❌ Error submitting user data:', error);
       Alert.alert(
-        'Registration Failed',
-        error.response?.data?.detail || error.message || 'Failed to create profile. Please try again.',
-        [{ text: 'OK' }]
+        'Error',
+        error.message || 'Failed to save your information. Please try again.'
       );
     } finally {
       setIsSubmitting(false);
@@ -187,9 +262,14 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
           </View>
 
           <View style={styles.completionTextContainer}>
-            <Text style={styles.completionTitle}>Profile Completed!</Text>
+            <Text style={styles.completionTitle}>
+              {isEditMode ? 'Profile Updated!' : 'Profile Completed!'}
+            </Text>
             <Text style={styles.completionSubtitle}>
-              Great! Your profile is all set. You can now connect with expert astrologers.
+              {isEditMode 
+                ? 'Your profile has been updated successfully.'
+                : 'Great! Your profile is all set. You can now connect with expert astrologers.'
+              }
             </Text>
           </View>
 
@@ -197,8 +277,22 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
             style={styles.getStartedButton}
             onPress={handleComplete}
             activeOpacity={touchableOpacity}>
-            <Text style={styles.getStartedButtonText}>Get Started ✨</Text>
+            <Text style={styles.getStartedButtonText}>
+              {isEditMode ? 'Back to Profile' : 'Get Started ✨'}
+            </Text>
           </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show loading state when loading user data in edit mode
+  if (isLoadingUserData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading your profile...</Text>
         </View>
       </SafeAreaView>
     );
@@ -1022,6 +1116,18 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     paddingHorizontal: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing['2xl'],
+  },
+  loadingText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
   },
   getStartedButton: {
     backgroundColor: '#6366f1',

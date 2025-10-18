@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
+import {apiService} from '../services/apiService';
+import storage from '../utils/storage';
 
 interface PhoneAuthScreenProps {
-  onLogin: () => void;
+  onLogin: (userData: {userId: string; profileComplete: boolean; missingFields?: string[]}) => void;
   onSkip?: () => void;
   onNavigate?: (screen: string) => void;
 }
@@ -36,41 +38,138 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
     }
   }, [resendTimer]);
 
-  const handleMobileSubmit = () => {
+  const handleMobileSubmit = async () => {
     if (mobile && mobile.length === 10) {
       setIsSendingOtp(true);
-      // Simulate OTP sending delay
-      setTimeout(() => {
+      try {
+        console.log(`📱 Sending OTP to ${mobile}`);
+        const response = await apiService.sendOTP(mobile);
+        
+        if (response.success) {
+          console.log('✅ OTP sent successfully');
+          setStep('otp');
+          setResendTimer(30); // 30 seconds resend timer
+        } else {
+          Alert.alert('Error', response.message || 'Failed to send OTP');
+        }
+      } catch (error: any) {
+        console.error('❌ OTP send error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 429) {
+          const retryAfter = error.response?.data?.retry_after || 3600;
+          Alert.alert(
+            'Too Many Requests', 
+            `Please wait ${Math.ceil(retryAfter / 60)} minutes before requesting another OTP.`
+          );
+        } else if (error.response?.status === 400) {
+          Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit mobile number.');
+        } else {
+          Alert.alert('Error', 'Failed to send OTP. Please try again.');
+        }
+      } finally {
         setIsSendingOtp(false);
-        setStep('otp');
-        setResendTimer(30); // Start 30 second timer
-      }, 1500);
+      }
     }
   };
 
-  const handleOtpSubmit = () => {
+  const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       setIsVerifying(true);
-      // Simulate OTP verification delay
-      setTimeout(() => {
-        // Check if OTP is wrong (111111 is test wrong OTP)
-        if (otp === '111111') {
-          setIsVerifying(false);
-          setOtpError('Invalid OTP. Please try again.');
+      try {
+        console.log(`🔐 Verifying OTP for ${mobile}`);
+        const response = await apiService.verifyOTP(mobile, otp);
+        
+        if (response.success) {
+          console.log('✅ OTP verified successfully');
+          setOtpError('');
+          
+          // Store user data from response
+          if (response.user_id) {
+            await storage.setUserId(response.user_id);
+            await storage.setProfileComplete(response.profile_complete || false);
+            
+            // Store user data for future use
+            await storage.saveUserData({
+              userId: response.user_id,
+              profileComplete: response.profile_complete || false,
+              missingFields: response.missing_fields || [],
+              phoneNumber: mobile
+            });
+            
+            console.log('📱 User data stored:', {
+              userId: response.user_id,
+              profileComplete: response.profile_complete,
+              missingFields: response.missing_fields
+            });
+            
+            // Pass user data to onLogin callback
+            onLogin({
+              userId: response.user_id,
+              profileComplete: response.profile_complete || false,
+              missingFields: response.missing_fields
+            });
+          } else {
+            // Fallback for old API response format
+            onLogin({
+              userId: 'unknown',
+              profileComplete: false,
+              missingFields: []
+            });
+          }
+        } else {
+          setOtpError(response.message || 'Invalid OTP. Please try again.');
+          setOtp(''); // Clear OTP input
+        }
+      } catch (error: any) {
+        console.error('❌ OTP verification error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 400) {
+          const errorMessage = error.response?.data?.detail || 'Invalid OTP';
+          setOtpError(errorMessage);
           setOtp(''); // Clear OTP input
         } else {
-          setOtpError('');
-          onLogin();
+          setOtpError('Verification failed. Please try again.');
+          setOtp(''); // Clear OTP input
         }
-      }, 1500);
+      } finally {
+        setIsVerifying(false);
+      }
     }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (resendTimer === 0) {
-      setResendTimer(30); // Restart timer
-      setOtp(''); // Clear current OTP
-      setOtpError(''); // Clear any errors
+      setIsSendingOtp(true);
+      try {
+        console.log(`🔄 Resending OTP to ${mobile}`);
+        const response = await apiService.sendOTP(mobile);
+        
+        if (response.success) {
+          console.log('✅ OTP resent successfully');
+          setResendTimer(30); // 30 seconds resend timer
+          setOtp(''); // Clear current OTP
+          setOtpError(''); // Clear any errors
+        } else {
+          Alert.alert('Error', response.message || 'Failed to resend OTP');
+        }
+      } catch (error: any) {
+        console.error('❌ OTP resend error:', error);
+        
+        // Handle specific error cases
+        if (error.response?.status === 429) {
+          const retryAfter = error.response?.data?.retry_after || 3600;
+          Alert.alert(
+            'Too Many Requests', 
+            `Please wait ${Math.ceil(retryAfter / 60)} minutes before requesting another OTP.`
+          );
+        } else {
+          Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+        }
+      } finally {
+        setIsSendingOtp(false);
+      }
     }
   };
 

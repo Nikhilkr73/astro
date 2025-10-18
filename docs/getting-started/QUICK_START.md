@@ -90,7 +90,8 @@ find . -name "*.pyc" -delete
 cd mobile && rm -rf node_modules && cd ..
 cd infrastructure && rm -rf cdk.out && cd ..
 
-# 2. Install Python dependencies
+# 2. Install Python dependencies (in virtual environment)
+source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Install mobile dependencies
@@ -105,7 +106,8 @@ python3 tests/unit/test_database_no_db.py
 
 ### **Production Build**
 ```bash
-# Backend build (Python)
+# Backend build (Python) - MUST use virtual environment
+source venv/bin/activate
 pip install -r requirements.txt
 python3 -c "from backend.database.manager import db; print('✅ Backend ready')"
 
@@ -186,11 +188,60 @@ python3 tests/run_tests.py api
 
 ### **Install Test Dependencies**
 ```bash
+# Activate virtual environment first
+source venv/bin/activate
+
 # Install psycopg2 for database tests
 pip install psycopg2-binary==2.9.10
 
 # Verify installation
 python3 -c "import psycopg2; print('✅ psycopg2 ready')"
+```
+
+---
+
+## 🚨 Troubleshooting
+
+### **psycopg2 Error: "psycopg2 not available - database features disabled"**
+```bash
+# Problem: Backend server not running in virtual environment
+# Solution: Always activate virtual environment before starting server
+
+# Kill existing server
+lsof -ti:8000 | xargs kill -9
+
+# Start server with virtual environment
+cd /Users/nikhil/workplace/voice_v1
+source venv/bin/activate
+python3 -m backend.main
+```
+
+### **User Registration Fails**
+```bash
+# Check if psycopg2 is available
+source venv/bin/activate
+python3 -c "import psycopg2; print('✅ psycopg2 ready')"
+
+# If not available, install it
+pip install psycopg2-binary==2.9.10
+
+# Restart server
+lsof -ti:8000 | xargs kill -9
+source venv/bin/activate
+python3 -m backend.main
+```
+
+### **Server Won't Start**
+```bash
+# Check if port is in use
+lsof -ti:8000
+
+# Kill process if needed
+lsof -ti:8000 | xargs kill -9
+
+# Check virtual environment
+source venv/bin/activate
+python3 --version
 ```
 
 ---
