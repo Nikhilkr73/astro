@@ -3,6 +3,7 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
 import storage from '../utils/storage';
 import apiService from '../services/apiService';
+import { DeviceEventEmitter } from 'react-native';
 
 import SplashScreen from '../screens/SplashScreen';
 import {PhoneAuthScreen} from '../screens/PhoneAuthScreen';
@@ -34,8 +35,23 @@ export function AppNavigator() {
     initializeApp();
   }, []);
 
+  // Listen for logout events
+  useEffect(() => {
+    const logoutListener = DeviceEventEmitter.addListener('user_logout', () => {
+      console.log('📡 Logout event received in AppNavigator');
+      handleLogout();
+    });
+
+    return () => {
+      logoutListener.remove();
+    };
+  }, []);
+
   const initializeApp = async () => {
     try {
+      // Always show splash screen for 3 seconds first
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       const userId = await storage.getUserId();
       const profileComplete = await storage.getProfileComplete();
       const lastVisitedScreen = await storage.getLastVisitedScreen();

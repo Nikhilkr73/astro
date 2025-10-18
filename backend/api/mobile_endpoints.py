@@ -17,8 +17,13 @@ import base64
 # Import services
 try:
     from backend.services.astrologer_service import astrologer_manager
+    from backend.database.manager import DatabaseManager
 except ImportError:
     from astrologer_manager import astrologer_manager
+    from database.manager import DatabaseManager
+
+# Initialize database manager
+db = DatabaseManager()
 
 # Create router
 router = APIRouter(prefix="/api", tags=["mobile"])

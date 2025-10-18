@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     date_of_birth DATE,
     gender VARCHAR(20),
     profile_picture_url TEXT,
-    language_preference VARCHAR(10) DEFAULT 'hi', -- hi, en, etc.
+    language_preference VARCHAR(255) DEFAULT 'hi', -- Multiple languages supported
     
     -- Birth Details (for astrology)
     birth_date DATE,

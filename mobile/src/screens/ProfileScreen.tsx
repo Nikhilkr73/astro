@@ -8,11 +8,14 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Modal,
+  BackHandler,
 } from 'react-native';
 import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
 import LinearGradient from 'expo-linear-gradient';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const ProfileScreen = ({navigation}: any) => {
   const [userProfile, setUserProfile] = useState({
@@ -25,6 +28,11 @@ const ProfileScreen = ({navigation}: any) => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Debug navigation prop
+  console.log('🔍 ProfileScreen navigation prop:', navigation);
 
   useEffect(() => {
     loadUserProfile();
@@ -33,11 +41,18 @@ const ProfileScreen = ({navigation}: any) => {
   const loadUserProfile = async () => {
     try {
       setIsLoading(true);
+      setHasError(false);
+      console.log('🔍 Starting profile load...');
+      
       const storedUserId = await storage.getUserId();
+      console.log('📱 Retrieved user ID from storage:', storedUserId);
       
       if (storedUserId) {
         setUserId(storedUserId);
+        console.log('🌐 Calling API to get user profile...');
+        
         const userData = await apiService.getUserProfile(storedUserId);
+        console.log('📋 Raw API response:', userData);
         
         // Format user data for display
         const formattedProfile = {
@@ -54,14 +69,53 @@ const ProfileScreen = ({navigation}: any) => {
           favoriteAstrologers: userData.favorite_astrologers || 0
         };
         
+        console.log('✅ Formatted profile data:', formattedProfile);
         setUserProfile(formattedProfile);
-        console.log('📱 User profile loaded:', formattedProfile);
       } else {
-        console.log('❌ No user ID found');
+        console.log('❌ No user ID found in storage');
+        setHasError(true);
         Alert.alert('Error', 'User not found. Please login again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error loading user profile:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        response: error?.response?.data
+      });
+      
+      // Check if it's a 404 error (user not found in database)
+      if (error?.response?.status === 404) {
+        console.log('🔄 User not found in database, clearing local storage...');
+        await storage.clearUserData();
+        Alert.alert(
+          'Session Expired', 
+          'Your session has expired. Please login again.',
+          [
+            { text: "OK", onPress: () => {
+              // Navigate back to login screen
+              navigation?.getParent()?.reset({
+                index: 0,
+                routes: [{ name: 'Auth' }],
+              });
+            }}
+          ]
+        );
+        return;
+      }
+      
+      setHasError(true);
+      
+      // Set error state instead of infinite loading
+      setUserProfile({
+        name: "Error Loading Profile",
+        email: "Unable to load",
+        phone: "Unable to load",
+        joinedDate: "Unknown",
+        totalSessions: 0,
+        favoriteAstrologers: 0
+      });
+      
       Alert.alert('Error', 'Failed to load profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -130,31 +184,87 @@ const ProfileScreen = ({navigation}: any) => {
       title: 'Rate the App',
       icon: '⭐',
       action: () => Alert.alert('Rate App', 'Please rate our app on the store')
+    },
+    {
+      id: '9',
+      title: 'Clear Cache (Testing)',
+      icon: '🗑️',
+      action: () => {
+        Alert.alert(
+          "Clear Cache",
+          "This will clear all stored user data and log you out. Use this for testing different users.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Clear Cache", style: "destructive", onPress: async () => {
+              try {
+                await storage.clearUserData();
+                Alert.alert('Cache Cleared', 'All user data cleared. The app will restart.', [
+                  { text: "OK", onPress: () => {
+                    // Navigate back to login screen
+                    navigation?.getParent()?.reset({
+                      index: 0,
+                      routes: [{ name: 'Auth' }],
+                    });
+                  }}
+                ]);
+              } catch (error) {
+                console.error('❌ Clear cache error:', error);
+                Alert.alert('Error', 'Failed to clear cache');
+              }
+            }}
+          ]
+        );
+      }
     }
   ];
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: async () => {
-          try {
-            await storage.clearUserData();
-            Alert.alert('Logged Out', 'You have been logged out successfully');
-            // Navigate back to login screen
-            navigation?.reset({
+  const handleLogout = async () => {
+    console.log('🚪 Logout button pressed');
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      console.log('🚪 Logging out user...');
+      await storage.clearUserData();
+      console.log('✅ User data cleared');
+      
+      // Close modal first
+      setShowLogoutModal(false);
+      
+      // Emit logout event to trigger AppNavigator re-initialization
+      setTimeout(() => {
+        console.log('✅ Logout completed successfully');
+        console.log('📡 Emitting logout event...');
+        
+        // Emit custom event to notify AppNavigator
+        DeviceEventEmitter.emit('user_logout');
+        
+        // Also try navigation as fallback
+        try {
+          const parentNav = navigation?.getParent();
+          if (parentNav) {
+            parentNav.reset({
               index: 0,
-              routes: [{ name: 'Auth' }],
+              routes: [{ name: 'Main' }],
             });
-          } catch (error) {
-            console.error('❌ Logout error:', error);
-            Alert.alert('Error', 'Failed to logout. Please try again.');
+            console.log('✅ Navigation reset called');
           }
-        }}
-      ]
-    );
+        } catch (error) {
+          console.error('❌ Navigation error:', error);
+        }
+      }, 300); // Increased delay to ensure modal closes
+      
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+      setShowLogoutModal(false);
+    }
+  };
+
+  const cancelLogout = () => {
+    console.log('❌ Logout cancelled');
+    setShowLogoutModal(false);
   };
 
   return (
@@ -167,6 +277,21 @@ const ProfileScreen = ({navigation}: any) => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      ) : hasError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Failed to Load Profile</Text>
+          <Text style={styles.errorMessage}>
+            Unable to load your profile data. Please check your connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadUserProfile}
+            activeOpacity={touchableOpacity}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -239,6 +364,11 @@ const ProfileScreen = ({navigation}: any) => {
           </TouchableOpacity>
         </View>
 
+        {/* Scroll Hint */}
+        <View style={styles.scrollHint}>
+          <Text style={styles.scrollHintText}>↓ Scroll down for more options</Text>
+        </View>
+
         {/* App Info */}
         <View style={styles.appInfo}>
           <Text style={styles.appVersion}>Kundli App v1.0.0</Text>
@@ -246,6 +376,39 @@ const ProfileScreen = ({navigation}: any) => {
         </View>
       </ScrollView>
       )}
+
+      {/* Custom Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelLogout}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Logout</Text>
+            <Text style={styles.modalMessage}>Are you sure you want to logout?</Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={cancelLogout}
+                activeOpacity={touchableOpacity}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.modalLogoutButton}
+                onPress={confirmLogout}
+                activeOpacity={touchableOpacity}
+              >
+                <Text style={styles.modalLogoutText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -277,6 +440,42 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
     marginTop: spacing.lg,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing['2xl'],
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: spacing.lg,
+  },
+  errorTitle: {
+    fontSize: typography.fontSize['xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing['2xl'],
+    lineHeight: 24,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing['2xl'],
+    borderRadius: borderRadius.md,
+  },
+  retryButtonText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
   content: {
     flex: 1,
@@ -428,6 +627,17 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.semiBold,
     color: colors.error,
   },
+  scrollHint: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  scrollHintText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+  },
   appInfo: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
@@ -443,6 +653,66 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.xs,
     fontFamily: typography.fontFamily.regular,
     color: colors.textLight,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: colors.backgroundCard,
+    borderRadius: borderRadius.lg,
+    padding: spacing['2xl'],
+    margin: spacing.xl,
+    minWidth: 280,
+    ...shadows.lg,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize['xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  modalMessage: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing['2xl'],
+    lineHeight: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textPrimary,
+  },
+  modalLogoutButton: {
+    flex: 1,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  modalLogoutText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
 });
 
