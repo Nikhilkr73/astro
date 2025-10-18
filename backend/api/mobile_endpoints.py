@@ -289,7 +289,7 @@ async def register_user(user: UserRegistration):
         # Create wallet for user with welcome bonus
         welcome_bonus = 500.0  # ₹500 welcome bonus
         
-        wallet_id = db.create_wallet(saved_user_id, welcome_bonus)
+        wallet_id = db.create_wallet(saved_user_id, initial_balance=welcome_bonus)
         
         if wallet_id:
             print(f"💰 Wallet created with ₹{welcome_bonus} welcome bonus")
