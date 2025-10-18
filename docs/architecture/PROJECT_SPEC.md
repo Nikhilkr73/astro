@@ -1,12 +1,13 @@
-# AstroVoice - Project Specification & Context
+# AstroVoice - Complete Project Specification & Context
 
 **Last Updated:** October 18, 2025  
-**Status:** Production Ready with Testing Framework
+**Status:** Production Ready with Complete OTP Authentication System
 
 ## 🌟 Project Overview
 
 AstroVoice is a comprehensive voice-based astrology consultation platform that combines:
 - **Real-time voice AI** using OpenAI Realtime API
+- **Complete OTP authentication** with Message Central SMS integration
 - **Mobile app** built with React Native + Expo
 - **Backend API** built with FastAPI + PostgreSQL
 - **AWS Infrastructure** managed with CDK
@@ -19,11 +20,11 @@ AstroVoice is a comprehensive voice-based astrology consultation platform that c
 backend/
 ├── main.py                 # FastAPI server entry point
 ├── api/
-│   ├── mobile_endpoints.py # Mobile app API endpoints
+│   ├── mobile_endpoints.py # Mobile app API endpoints (17 endpoints)
 │   └── web_endpoints.py    # Web interface endpoints
 ├── database/
 │   ├── manager.py         # Database operations (PostgreSQL)
-│   └── schema.sql         # Database schema
+│   └── schema.sql         # Database schema (11 tables)
 ├── handlers/
 │   ├── openai_realtime_handler.py  # OpenAI Realtime integration
 │   └── chat_handler.py    # Text chat processing
@@ -40,15 +41,31 @@ backend/
 mobile/
 ├── App.tsx               # Main app component
 ├── src/
-│   ├── screens/         # App screens
-│   │   ├── HomeScreen.tsx
-│   │   ├── ChatHistoryScreen.tsx
-│   │   ├── ProfileScreen.tsx
+│   ├── screens/         # 19 app screens
+│   │   ├── SplashScreen.tsx
+│   │   ├── PhoneAuthScreen.tsx
 │   │   ├── OnboardingFormScreen.tsx
-│   │   └── PhoneAuthScreen.tsx
-│   ├── components/      # Reusable components
+│   │   ├── HomeScreen.tsx
+│   │   ├── ProfileScreen.tsx
+│   │   ├── ChatHistoryScreen.tsx
+│   │   ├── WalletScreen.tsx
+│   │   ├── VoiceCallScreen.tsx
+│   │   ├── ChatSessionScreen.tsx
+│   │   ├── AstrologerProfileScreen.tsx
+│   │   ├── ChatReviewScreen.tsx
+│   │   ├── TransactionStatusScreen.tsx
+│   │   ├── WalletHistoryScreen.tsx
+│   │   ├── WebViewScreen.tsx
+│   │   └── SimpleChatScreen.tsx
 │   ├── navigation/      # Navigation setup
-│   └── constants/       # App constants and themes
+│   │   ├── AppNavigator.tsx
+│   │   └── MainTabNavigator.tsx
+│   ├── services/        # API services
+│   │   └── apiService.ts
+│   ├── utils/          # Utilities
+│   │   └── storage.ts
+│   ├── components/     # Reusable components
+│   └── constants/      # App constants and themes
 └── package.json         # Dependencies
 ```
 
@@ -59,84 +76,264 @@ infrastructure/
 │   └── astro-voice-stack.ts  # CDK stack definition
 ├── bin/
 │   └── astro-voice.ts        # CDK app entry
+├── deploy-mumbai.sh          # Mumbai deployment script
 └── package.json              # CDK dependencies
 ```
 
 ## 🔧 Key Technologies
 
 ### **Backend Stack**
-- **FastAPI** - Modern Python web framework
+- **FastAPI** - Modern Python web framework with async/await
 - **PostgreSQL** - Primary database (AWS RDS)
 - **psycopg2** - PostgreSQL adapter
 - **OpenAI Realtime API** - Voice AI integration
+- **Message Central API** - SMS OTP service
 - **Uvicorn** - ASGI server
 - **Pydantic** - Data validation
+- **WebSocket** - Real-time bidirectional communication
 
 ### **Mobile Stack**
 - **React Native** - Cross-platform mobile development
 - **Expo** - Development platform and build tools
 - **TypeScript** - Type-safe JavaScript
-- **React Navigation** - Navigation library
+- **React Navigation** - Navigation library (Stack + Tab)
 - **Expo Audio** - Audio recording/playback
+- **AsyncStorage** - Local data persistence
+- **DeviceEventEmitter** - Custom event system
 
 ### **Infrastructure Stack**
-- **AWS CDK** - Infrastructure as Code
+- **AWS CDK** - Infrastructure as Code with TypeScript
 - **AWS RDS** - Managed PostgreSQL database
 - **AWS Lambda** - Serverless functions
 - **AWS Secrets Manager** - Secure credential storage
+- **AWS API Gateway** - API management
+- **AWS S3** - Static asset storage
 
-## 📊 Database Schema
+## 📊 Database Schema (11 Tables)
 
-### **Users Table**
+### **Core Tables**
 ```sql
+-- Users table with complete profile management
 CREATE TABLE users (
-    user_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) PRIMARY KEY,
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     full_name VARCHAR(100),
     display_name VARCHAR(50),
     email VARCHAR(100),
     birth_date DATE,
     birth_time TIME,
-    birth_location VARCHAR(200),
+    birth_location VARCHAR(255),
     birth_timezone VARCHAR(50),
     birth_latitude DECIMAL(10, 8),
     birth_longitude DECIMAL(11, 8),
     gender VARCHAR(20),
-    language_preference VARCHAR(10) DEFAULT 'hi',
+    language_preference VARCHAR(255) DEFAULT 'hi',
+    preferred_astrology_system VARCHAR(20) DEFAULT 'vedic',
     subscription_type VARCHAR(20) DEFAULT 'free',
+    account_status VARCHAR(20) DEFAULT 'active',
+    email_verified BOOLEAN DEFAULT false,
+    phone_verified BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    metadata JSONB
+    last_login_at TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
 );
-```
 
-### **Wallets Table**
-```sql
+-- OTP verifications with Message Central integration
+CREATE TABLE otp_verifications (
+    verification_id SERIAL PRIMARY KEY,
+    phone_number VARCHAR(20) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    status VARCHAR(20) DEFAULT 'sent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP,
+    user_id VARCHAR(255) REFERENCES users(user_id) ON DELETE CASCADE,
+    message_central_customer_id VARCHAR(50),
+    message_central_verification_id VARCHAR(50),
+    attempts INTEGER DEFAULT 0,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Astrologers with persona management
+CREATE TABLE astrologers (
+    astrologer_id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    specialization VARCHAR(100),
+    gender VARCHAR(20),
+    language_preference VARCHAR(20),
+    system_prompt TEXT,
+    voice_settings JSONB,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Conversations and messages
+CREATE TABLE conversations (
+    conversation_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    astrologer_id VARCHAR(50) REFERENCES astrologers(astrologer_id),
+    session_type VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'active',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE messages (
+    message_id VARCHAR(50) PRIMARY KEY,
+    conversation_id VARCHAR(50) REFERENCES conversations(conversation_id),
+    sender_type VARCHAR(20),
+    content TEXT,
+    audio_url VARCHAR(500),
+    message_type VARCHAR(20),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Wallet and transaction management
 CREATE TABLE wallets (
     wallet_id VARCHAR(50) PRIMARY KEY,
-    user_id VARCHAR(50) REFERENCES users(user_id),
+    user_id VARCHAR(255) REFERENCES users(user_id),
     balance DECIMAL(10, 2) DEFAULT 0.00,
     currency VARCHAR(3) DEFAULT 'INR',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE transactions (
+    transaction_id VARCHAR(50) PRIMARY KEY,
+    wallet_id VARCHAR(50) REFERENCES wallets(wallet_id),
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'pending',
+    payment_method VARCHAR(50),
+    payment_id VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Additional tables for comprehensive functionality
+CREATE TABLE user_profiles (
+    profile_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    profile_data JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE readings (
+    reading_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    reading_type VARCHAR(50),
+    reading_data JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_sessions (
+    session_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    session_data JSONB DEFAULT '{}'::jsonb,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE session_reviews (
+    review_id VARCHAR(50) PRIMARY KEY,
+    session_id VARCHAR(50),
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    feedback TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-## 🚀 API Endpoints
+## 🚀 API Endpoints (17 Total)
 
-### **Mobile API (`/api/`)**
-- `POST /api/users/register` - User registration
-- `GET /api/users/{user_id}` - Get user profile
-- `POST /api/users/{user_id}/wallet` - Create wallet
-- `GET /api/users/{user_id}/wallet` - Get wallet balance
-- `POST /api/process-audio` - Process voice input
-- `POST /api/chat/send` - Send text message
+### **Authentication Endpoints**
+- `POST /api/auth/send-otp` - Send OTP via Message Central SMS
+- `POST /api/auth/verify-otp` - Verify OTP and create/link user
 
-### **Web Interface**
-- `GET /` - Homepage
-- `GET /voice_realtime` - Voice interface
-- `GET /text-chat` - Text chat interface
-- `GET /health` - Health check
+### **User Management Endpoints**
+- `POST /api/users/register` - Register new user with profile data
+- `GET /api/users/{user_id}` - Get user profile with completion status
+- `PUT /api/users/{user_id}` - Update user profile dynamically
+
+### **Astrologer Endpoints**
+- `GET /api/astrologers` - List all available astrologers
+- `GET /api/astrologers/{astrologer_id}` - Get specific astrologer details
+
+### **Wallet Endpoints**
+- `GET /api/wallet/{user_id}` - Get wallet balance
+- `POST /api/wallet/recharge` - Recharge wallet
+- `GET /api/wallet/transactions/{user_id}` - Get transaction history
+
+### **Chat Endpoints**
+- `POST /api/chat/start` - Start new chat session
+- `POST /api/chat/send` - Send message in chat
+- `POST /api/chat/message` - Process chat message
+- `POST /api/chat/end` - End chat session
+
+### **Review Endpoints**
+- `POST /api/reviews/submit` - Submit session review
+
+### **Admin Endpoints**
+- `POST /api/admin/init-database` - Initialize database schema
+- `GET /api/admin/check-database` - Check database status
+
+## 🔐 OTP Authentication System
+
+### **Message Central Integration**
+- **Two-step authentication**: Token generation → OTP send/verify
+- **Customer ID**: `C-F9FB8D3FEFDB406`
+- **API Endpoints**: `cpaas.messagecentral.com/verification/v3/`
+- **Rate limiting**: Max 3 OTPs per hour per phone number
+- **OTP expiry**: 60 seconds
+- **Resend timer**: 30 seconds
+
+### **User Flow**
+1. **Phone Input** → Send OTP via Message Central
+2. **OTP Verification** → Create/link user account
+3. **Profile Check** → Navigate based on completion status
+4. **Complete Profile** → Access main app
+5. **Returning User** → Direct access to main app
+
+### **Profile Completion Logic**
+- **Complete**: All required fields filled → Home screen
+- **Incomplete**: Missing fields → Onboarding screen
+- **Required Fields**: `full_name`, `birth_date`, `birth_time`, `birth_location`, `gender`
+
+## 📱 Mobile App Navigation Flow
+
+### **App Initialization**
+1. **Splash Screen** (3 seconds) → Always shown
+2. **Check Storage** → User ID, profile completion status
+3. **Conditional Navigation**:
+   - **No User** → Login screen
+   - **Incomplete Profile** → Onboarding screen
+   - **Complete Profile** → Main app
+
+### **Screen Structure**
+```
+AppNavigator (Root Stack)
+├── SplashScreen (3s delay)
+├── PhoneAuthScreen (OTP login)
+├── OnboardingFormScreen (Profile completion)
+└── MainTabNavigator (Main app)
+    ├── HomeScreen
+    ├── ChatHistoryScreen
+    ├── WalletScreen
+    └── ProfileScreen
+        └── OnboardingFormScreen (Edit mode)
+```
+
+### **Custom Event System**
+- **Logout Event**: `DeviceEventEmitter.emit('user_logout')`
+- **AppNavigator Listener**: Automatically resets app state
+- **State Management**: Proper cleanup and navigation reset
 
 ## 🧪 Testing Framework
 
@@ -171,14 +368,31 @@ python3 tests/run_tests.py integration
 python3 tests/unit/test_database_no_db.py
 ```
 
-## 🔐 Environment Setup
+## 🔐 Environment Configuration
 
 ### **Required Environment Variables**
 ```bash
-# .env file
+# OpenAI Configuration
 OPENAI_API_KEY=sk-proj-...
-AWS_REGION=ap-south-1
+OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview
+OPENAI_CHAT_MODEL=gpt-4o-mini
+
+# Message Central OTP Configuration
+MESSAGE_CENTRAL_PASSWORD=kundli@123
+MESSAGE_CENTRAL_CUSTOMER_ID=C-F9FB8D3FEFDB406
+MESSAGE_CENTRAL_COUNTRY=IN
+MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com
+MESSAGE_CENTRAL_SENDER_ID=ASTROV
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+
+# Database Configuration
 DATABASE_URL=postgresql://...
+
+# AWS Configuration
+AWS_REGION=ap-south-1
 ```
 
 ### **Virtual Environment**
@@ -203,44 +417,68 @@ source venv/bin/activate
 python3 -m backend.main
 ```
 
-### **User Registration Fails**
-**Problem:** Database connection issues
-**Solution:** Check psycopg2 installation and virtual environment
+### **OTP Not Received**
+**Problem:** Message Central API issues
+**Solution:** Check credentials and API status
 ```bash
-source venv/bin/activate
-python3 -c "import psycopg2; print('✅ Ready')"
+python3 test_message_central_auth.py
+python3 test_complete_otp_flow.py
 ```
 
-### **Language Preference Not Saved**
-**Problem:** All users show 'hi' language preference
-**Solution:** Fixed in backend - language preference now properly stored
+### **Navigation Issues**
+**Problem:** Logout not working, screen not changing
+**Solution:** Use custom event system
+```typescript
+DeviceEventEmitter.emit('user_logout');
+```
+
+### **Profile Data Loading**
+**Problem:** Profile shows "Loading..." indefinitely
+**Solution:** Check API endpoints and user ID in storage
+```bash
+curl http://localhost:8000/api/users/{user_id}
+```
 
 ## 📱 Current Features
 
-### **Voice Interface**
-- ✅ Real-time voice conversation
-- ✅ Hindi/English language support
-- ✅ OpenAI Realtime API integration
-- ✅ Natural voice responses
+### **Authentication System**
+- ✅ **OTP-based phone authentication** with Message Central SMS
+- ✅ **Two-step verification** (token + OTP)
+- ✅ **Rate limiting** and security measures
+- ✅ **User linking** for data persistence
+- ✅ **Profile completion detection**
+- ✅ **Conditional navigation** based on user status
 
-### **User Management**
-- ✅ User registration with birth data
-- ✅ Language preference storage
-- ✅ Wallet system
-- ✅ Profile management
+### **Voice Interface**
+- ✅ **Real-time voice conversation** using OpenAI Realtime API
+- ✅ **Hindi/English language support**
+- ✅ **Low latency** (<3 second response time)
+- ✅ **Audio processing** (M4A/WebM/WAV → PCM16)
+- ✅ **WebSocket streaming** for bidirectional communication
+
+### **AI Astrologer Personas**
+- ✅ **Multiple personalities** with unique system prompts
+- ✅ **Specialized expertise** (Love, Marriage, Career)
+- ✅ **Gender-based voices** (Male/Female options)
+- ✅ **Language preferences** (Hindi-first/English-first)
+- ✅ **Dynamic selection** based on user queries
 
 ### **Mobile App**
-- ✅ React Native + Expo
-- ✅ Voice recording/playback
-- ✅ User onboarding
-- ✅ Chat history
-- ✅ Profile management
+- ✅ **React Native + Expo** cross-platform support
+- ✅ **Beautiful UI** with Kundli-branded design
+- ✅ **Complete navigation** with splash, auth, onboarding, main app
+- ✅ **Profile management** with edit functionality
+- ✅ **Wallet system** with transaction history
+- ✅ **Chat history** and session management
+- ✅ **Custom event system** for state management
 
 ### **Backend API**
-- ✅ FastAPI with async support
-- ✅ PostgreSQL database
-- ✅ UUID-based user IDs
-- ✅ Comprehensive error handling
+- ✅ **FastAPI** with async support and comprehensive endpoints
+- ✅ **PostgreSQL database** with 11 tables and proper relationships
+- ✅ **UUID-based user IDs** for scalability
+- ✅ **Comprehensive error handling** and logging
+- ✅ **Message Central integration** for SMS OTP
+- ✅ **Profile completion logic** with missing fields detection
 
 ## 🎯 Development Workflow
 
@@ -258,8 +496,11 @@ npm start
 
 ### **Testing**
 ```bash
-# Run tests
+# Run all tests
 python3 tests/run_tests.py
+
+# Test OTP flow
+python3 test_complete_otp_flow.py
 
 # Check database
 python3 view_user_data.py
@@ -282,39 +523,51 @@ npx expo build:android
 - **Response Time:** < 200ms for API calls
 - **Database:** PostgreSQL with connection pooling
 - **Concurrency:** Async FastAPI with uvicorn
+- **OTP Delivery:** < 5 seconds via Message Central
 
 ### **Mobile Performance**
 - **Voice Latency:** ~500-1000ms (OpenAI Realtime)
 - **Audio Quality:** 24kHz PCM16
 - **Cross-platform:** iOS and Android support
+- **Navigation:** < 100ms screen transitions
 
 ## 🔄 Data Flow
 
+### **OTP Authentication Flow**
+1. **User enters phone** → Mobile app calls `/api/auth/send-otp`
+2. **Backend generates OTP** → Calls Message Central API
+3. **SMS sent to user** → User receives OTP
+4. **User enters OTP** → Mobile app calls `/api/auth/verify-otp`
+5. **Backend verifies OTP** → Creates/links user account
+6. **Profile check** → Returns completion status
+7. **Navigation** → Based on profile completion
+
 ### **User Registration Flow**
-1. Mobile app sends registration data
-2. Backend validates with Pydantic models
-3. Database manager creates user with UUID
-4. Wallet created automatically
-5. Response sent to mobile app
+1. **OTP verification** → User account created/linked
+2. **Profile completion check** → Missing fields identified
+3. **Onboarding** → User fills missing profile data
+4. **Profile update** → `/api/users/{user_id}` endpoint
+5. **Main app access** → Complete profile → Home screen
 
 ### **Voice Conversation Flow**
-1. User speaks into mobile app
-2. Audio sent to backend via API
-3. Backend forwards to OpenAI Realtime
-4. AI processes voice and responds
-5. Voice response sent back to mobile
+1. **User speaks** → Mobile app records audio
+2. **WebSocket connection** → Real-time bidirectional
+3. **Audio processing** → M4A → PCM16 conversion
+4. **OpenAI Realtime** → Voice AI processing
+5. **Response generation** → PCM16 → WAV conversion
+6. **Audio playback** → User hears response
 
 ## 🛠️ Development Tools
 
 ### **Database Management**
-- `view_user_data.py` - Database viewer and SQL executor
+- `view_user_data.py` - Interactive database viewer
 - `database_manager.py` - Database operations
 - `AWS_DATA_VIEWER_GUIDE.md` - Database documentation
 
 ### **Testing Tools**
 - `tests/run_tests.py` - Main test runner
-- `tests/enhanced_test_runner.py` - Detailed test runner
-- `tests/debug_test.py` - Debug tools
+- `test_complete_otp_flow.py` - OTP integration testing
+- `test_message_central_auth.py` - Message Central testing
 
 ### **Build Tools**
 - `build.sh` - Automated build script
@@ -323,23 +576,26 @@ npx expo build:android
 
 ## 📈 Future Roadmap
 
-### **Phase 1: Stability**
+### **Phase 1: Stability** ✅
+- ✅ Complete OTP authentication system
 - ✅ Comprehensive testing framework
 - ✅ Error handling and logging
 - ✅ Database optimization
 - ✅ Mobile app polish
 
-### **Phase 2: Features**
+### **Phase 2: Features** 🔄
 - 🔄 Advanced astrological calculations
 - 🔄 Multiple language support
 - 🔄 Voice emotion detection
 - 🔄 Conversation history
+- 🔄 Push notifications
 
-### **Phase 3: Scale**
+### **Phase 3: Scale** 🔄
 - 🔄 Multi-user support
 - 🔄 Advanced analytics
 - 🔄 Performance optimization
 - 🔄 Enterprise features
+- 🔄 Payment integration
 
 ---
 
@@ -354,6 +610,9 @@ cd mobile && npm start
 # Test everything
 python3 tests/run_tests.py
 
+# Test OTP flow
+python3 test_complete_otp_flow.py
+
 # Check database
 python3 view_user_data.py --limit 10
 
@@ -363,12 +622,21 @@ python3 view_user_data.py --limit 10
 
 ### **Key Files**
 - `backend/main.py` - Server entry point
-- `backend/api/mobile_endpoints.py` - Mobile API
-- `backend/database/manager.py` - Database operations
-- `mobile/App.tsx` - Mobile app entry
+- `backend/api/mobile_endpoints.py` - Mobile API (17 endpoints)
+- `backend/database/schema.sql` - Database schema (11 tables)
+- `mobile/src/navigation/AppNavigator.tsx` - Navigation logic
+- `mobile/src/screens/PhoneAuthScreen.tsx` - OTP authentication
+- `mobile/src/screens/ProfileScreen.tsx` - Profile management
 - `tests/run_tests.py` - Test runner
 - `view_user_data.py` - Database viewer
 
+### **Critical Environment Variables**
+- `MESSAGE_CENTRAL_CUSTOMER_ID=C-F9FB8D3FEFDB406`
+- `MESSAGE_CENTRAL_PASSWORD=kundli@123`
+- `MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com`
+- `OPENAI_API_KEY=sk-proj-...`
+- `OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview`
+
 ---
 
-*This specification reflects the current production-ready state as of October 18, 2025, with comprehensive testing framework and virtual environment setup.*
+*This specification reflects the current production-ready state as of October 18, 2025, with complete OTP authentication system, comprehensive testing framework, and full mobile app functionality.*
