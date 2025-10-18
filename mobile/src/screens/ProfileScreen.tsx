@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
+import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
+import LinearGradient from 'expo-linear-gradient';
 
 const ProfileScreen = () => {
   const userProfile = {
@@ -137,7 +139,7 @@ const ProfileScreen = () => {
                 index === menuItems.length - 1 && styles.lastMenuItem
               ]}
               onPress={item.action}
-              activeOpacity={0.8}
+              activeOpacity={touchableOpacity}
             >
               <View style={styles.menuLeft}>
                 <Text style={styles.menuIcon}>{item.icon}</Text>
@@ -153,7 +155,7 @@ const ProfileScreen = () => {
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogout}
-            activeOpacity={0.8}
+            activeOpacity={touchableOpacity}
           >
             <Text style={styles.logoutIcon}>🚪</Text>
             <Text style={styles.logoutText}>Logout</Text>
@@ -173,136 +175,120 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    ...shadows.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   content: {
     flex: 1,
   },
   profileCard: {
-    backgroundColor: '#ffffff',
-    margin: 16,
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: colors.backgroundCard,
+    margin: spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing['2xl'],
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadows.md,
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   avatar: {
     width: 80,
     height: 80,
-    borderRadius: 20,
-    backgroundColor: '#6366f1',
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...shadows.orangeLg,
   },
   avatarText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: typography.fontSize['3xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.white,
   },
   profileInfo: {
     alignItems: 'center',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   userEmail: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   userPhone: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   joinedText: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
   },
   statsSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: colors.backgroundCard,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadows.sm,
   },
   statItem: {
     alignItems: 'center',
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.borderLight,
   },
   menuSection: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: colors.backgroundCard,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.borderLight,
   },
   lastMenuItem: {
     borderBottomWidth: 0,
@@ -314,57 +300,59 @@ const styles = StyleSheet.create({
   },
   menuIcon: {
     fontSize: 20,
-    marginRight: 12,
+    marginRight: spacing.md,
     width: 24,
     textAlign: 'center',
   },
   menuTitle: {
-    fontSize: 16,
-    color: '#1f2937',
-    fontWeight: '500',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,
   },
   menuArrow: {
     fontSize: 20,
-    color: '#9ca3af',
-    fontWeight: 'bold',
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textTertiary,
   },
   logoutSection: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
   logoutButton: {
     backgroundColor: '#fee2e2',
     borderWidth: 1,
     borderColor: '#fecaca',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutIcon: {
     fontSize: 20,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#dc2626',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.error,
   },
   appInfo: {
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing['3xl'],
   },
   appVersion: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
   },
   appCopyright: {
-    fontSize: 12,
-    color: '#d1d5db',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textLight,
   },
 });
 

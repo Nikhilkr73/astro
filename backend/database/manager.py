@@ -5,6 +5,7 @@ Handles all database operations with PostgreSQL/AWS RDS
 
 import os
 import json
+import uuid
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from contextlib import contextmanager
@@ -54,9 +55,34 @@ class DatabaseManager:
         
         print(f"✅ Database configured: {self.db_config['host']}:{self.db_config['port']}")
     
+    @staticmethod
+    def generate_user_id() -> str:
+        """Generate a unique UUID-based user ID"""
+        return f"user_{uuid.uuid4().hex[:12]}"
+    
+    @staticmethod
+    def generate_conversation_id(user_id: str, astrologer_id: str) -> str:
+        """Generate a unique conversation ID"""
+        timestamp = int(datetime.now().timestamp())
+        return f"conv_{user_id}_{astrologer_id}_{timestamp}"
+    
+    @staticmethod
+    def generate_message_id(conversation_id: str) -> str:
+        """Generate a unique message ID"""
+        timestamp = int(datetime.now().timestamp() * 1000)
+        return f"msg_{conversation_id}_{timestamp}"
+    
+    @staticmethod
+    def generate_wallet_id(user_id: str) -> str:
+        """Generate a wallet ID for user"""
+        return f"wallet_{user_id}"
+    
     @contextmanager
     def get_connection(self):
         """Context manager for database connections"""
+        if not PSYCOPG2_AVAILABLE:
+            raise ImportError("psycopg2 not available - database features disabled")
+        
         conn = None
         try:
             conn = psycopg2.connect(**self.db_config)
@@ -113,15 +139,26 @@ class DatabaseManager:
                     cursor.execute("""
                         INSERT INTO users (
                             user_id, email, phone_number, full_name, display_name,
-                            language_preference, subscription_type, metadata
+                            language_preference, subscription_type, metadata,
+                            birth_date, birth_time, birth_location, birth_timezone,
+                            birth_latitude, birth_longitude, gender
                         ) VALUES (
                             %(user_id)s, %(email)s, %(phone_number)s, %(full_name)s, %(display_name)s,
-                            %(language_preference)s, %(subscription_type)s, %(metadata)s
+                            %(language_preference)s, %(subscription_type)s, %(metadata)s,
+                            %(birth_date)s, %(birth_time)s, %(birth_location)s, %(birth_timezone)s,
+                            %(birth_latitude)s, %(birth_longitude)s, %(gender)s
                         )
                         ON CONFLICT (user_id) DO UPDATE SET
                             email = EXCLUDED.email,
                             phone_number = EXCLUDED.phone_number,
                             full_name = EXCLUDED.full_name,
+                            birth_date = EXCLUDED.birth_date,
+                            birth_time = EXCLUDED.birth_time,
+                            birth_location = EXCLUDED.birth_location,
+                            birth_timezone = EXCLUDED.birth_timezone,
+                            birth_latitude = EXCLUDED.birth_latitude,
+                            birth_longitude = EXCLUDED.birth_longitude,
+                            gender = EXCLUDED.gender,
                             updated_at = CURRENT_TIMESTAMP
                         RETURNING user_id
                     """, prepared_data)

@@ -1,407 +1,469 @@
 #!/usr/bin/env python3
 """
-AWS User Data Viewer
-Tool to view and monitor user data stored across AWS services
+User Data Viewer for AstroVoice
+Comprehensive tool to view and manage user data from the database
 """
 
-import json
+import sys
 import os
-import boto3
 from datetime import datetime
-from typing import Dict, Any, List
-from dotenv import load_dotenv
-from tabulate import tabulate
-import argparse
+from typing import List, Dict, Any
 
-load_dotenv()
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-class AWSUserDataViewer:
-    """View user data across AWS services"""
-    
-    def __init__(self):
-        # AWS Configuration
-        self.aws_region = os.getenv('AWS_REGION', 'ap-south-1')
-        
-        # Initialize AWS clients
-        try:
-            self.dynamodb = boto3.client('dynamodb', region_name=self.aws_region)
-            self.s3 = boto3.client('s3', region_name=self.aws_region)
-            self.rds_data = boto3.client('rds-data', region_name=self.aws_region)
-            self.cognito = boto3.client('cognito-idp', region_name=self.aws_region)
-            self.aws_available = True
-            print("✅ AWS clients initialized successfully")
-        except Exception as e:
-            print(f"⚠️  AWS clients not available: {e}")
-            self.aws_available = False
-        
-        # Local file paths
-        self.user_states_file = "user_states.json"
-        self.user_profiles_file = "astrology_data/user_profiles.json"
-    
-    def view_local_data(self):
-        """View data stored locally"""
-        print("\n" + "="*80)
-        print("📂 LOCAL DATA STORAGE")
-        print("="*80)
-        
-        # User states
-        print("\n🔄 USER CONVERSATION STATES (user_states.json)")
-        print("-" * 80)
-        try:
-            if os.path.exists(self.user_states_file):
-                with open(self.user_states_file, 'r') as f:
-                    user_states = json.load(f)
+try:
+    from backend.database.manager import db
+except ImportError:
+    from database_manager import DatabaseManager
+    db = DatabaseManager()
+
+
+def get_all_users(limit: int = 50) -> List[Dict]:
+    """Get all users from database"""
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT user_id, full_name, phone_number, email, 
+                           birth_date, birth_time, birth_location, gender,
+                           language_preference, subscription_type, 
+                           created_at, updated_at, metadata
+                    FROM users 
+                    ORDER BY created_at DESC 
+                    LIMIT %s
+                """, (limit,))
                 
-                if user_states:
-                    # Format as table
-                    table_data = []
-                    for user_id, state in user_states.items():
-                        table_data.append([
-                            user_id,
-                            state.get('name', 'N/A'),
-                            state.get('birth_date', 'N/A'),
-                            state.get('birth_time', 'N/A'),
-                            state.get('birth_location', 'N/A'),
-                            '✅' if state.get('profile_complete') else '❌'
-                        ])
-                    
-                    headers = ['User ID', 'Name', 'Birth Date', 'Birth Time', 'Location', 'Complete']
-                    print(tabulate(table_data, headers=headers, tablefmt='grid'))
-                    print(f"\n📊 Total users: {len(user_states)}")
-                else:
-                    print("No user states found")
-            else:
-                print(f"❌ File not found: {self.user_states_file}")
-        except Exception as e:
-            print(f"❌ Error reading user states: {e}")
-        
-        # User profiles
-        print("\n\n⭐ ASTROLOGY PROFILES (astrology_data/user_profiles.json)")
-        print("-" * 80)
-        try:
-            if os.path.exists(self.user_profiles_file):
-                with open(self.user_profiles_file, 'r') as f:
-                    user_profiles = json.load(f)
-                
-                if user_profiles:
-                    # Format as table
-                    table_data = []
-                    for user_id, profile in user_profiles.items():
-                        table_data.append([
-                            user_id,
-                            profile.get('name', 'N/A'),
-                            profile.get('birth_date', 'N/A'),
-                            profile.get('birth_time', 'N/A'),
-                            profile.get('birth_location', 'N/A'),
-                            profile.get('subscription_type', 'free'),
-                            profile.get('total_readings', 0),
-                            profile.get('created_at', 'N/A')[:10] if profile.get('created_at') else 'N/A'
-                        ])
-                    
-                    headers = ['User ID', 'Name', 'Birth Date', 'Time', 'Location', 'Plan', 'Readings', 'Created']
-                    print(tabulate(table_data, headers=headers, tablefmt='grid'))
-                    print(f"\n📊 Total profiles: {len(user_profiles)}")
-                else:
-                    print("No user profiles found")
-            else:
-                print(f"❌ File not found: {self.user_profiles_file}")
-        except Exception as e:
-            print(f"❌ Error reading user profiles: {e}")
+                columns = [desc[0] for desc in cursor.description]
+                users = []
+                for row in cursor.fetchall():
+                    user_dict = dict(zip(columns, row))
+                    users.append(user_dict)
+                return users
+    except Exception as e:
+        print(f"❌ Error getting users: {e}")
+        return []
+
+
+def get_user_by_id(user_id: str) -> Dict:
+    """Get specific user by ID"""
+    return db.get_user(user_id)
+
+
+def get_user_wallet(user_id: str) -> Dict:
+    """Get user wallet information"""
+    return db.get_wallet(user_id)
+
+
+def get_user_transactions(user_id: str, limit: int = 20) -> List[Dict]:
+    """Get user transaction history"""
+    return db.get_user_transactions(user_id, limit)
+
+
+def analyze_customer_id_format():
+    """Analyze the customer ID format and scalability"""
+    print("🔍 CUSTOMER ID FORMAT ANALYSIS")
+    print("=" * 60)
     
-    def view_user_detail(self, user_id: str):
-        """View detailed data for a specific user"""
-        print("\n" + "="*80)
-        print(f"👤 DETAILED VIEW: {user_id}")
-        print("="*80)
-        
-        # Local conversation state
-        print("\n🔄 Conversation State:")
-        print("-" * 80)
-        try:
-            if os.path.exists(self.user_states_file):
-                with open(self.user_states_file, 'r') as f:
-                    user_states = json.load(f)
-                if user_id in user_states:
-                    print(json.dumps(user_states[user_id], indent=2))
-                else:
-                    print(f"❌ No conversation state found for {user_id}")
-            else:
-                print("❌ user_states.json not found")
-        except Exception as e:
-            print(f"❌ Error: {e}")
-        
-        # Astrology profile
-        print("\n\n⭐ Astrology Profile:")
-        print("-" * 80)
-        try:
-            if os.path.exists(self.user_profiles_file):
-                with open(self.user_profiles_file, 'r') as f:
-                    user_profiles = json.load(f)
-                if user_id in user_profiles:
-                    print(json.dumps(user_profiles[user_id], indent=2))
-                else:
-                    print(f"❌ No profile found for {user_id}")
-            else:
-                print("❌ user_profiles.json not found")
-        except Exception as e:
-            print(f"❌ Error: {e}")
+    users = get_all_users(20)
     
-    def view_aws_dynamodb(self):
-        """View DynamoDB data"""
-        if not self.aws_available:
-            print("❌ AWS not configured")
-            return
+    print("📊 Current Customer ID Patterns:")
+    patterns = {}
+    
+    for user in users:
+        user_id = user['user_id']
         
-        print("\n" + "="*80)
-        print("☁️  AWS DYNAMODB - WebSocket Connections")
-        print("="*80)
-        
-        try:
-            table_name = 'astro-voice-websocket-connections'
-            response = self.dynamodb.scan(TableName=table_name)
+        if user_id.startswith('user_'):
+            # Extract the part after 'user_'
+            suffix = user_id[5:]  # Remove 'user_' prefix
             
-            items = response.get('Items', [])
-            if items:
-                print(f"\n📊 Active WebSocket connections: {len(items)}")
-                for item in items:
-                    connection_id = item.get('connectionId', {}).get('S', 'N/A')
-                    print(f"  • Connection ID: {connection_id}")
+            if suffix.isdigit():
+                pattern = "Phone Number"
+            elif len(suffix) == 12 and all(c in '0123456789abcdef' for c in suffix):
+                pattern = "UUID Hex"
+            elif len(suffix) > 12 and all(c in '0123456789abcdef' for c in suffix):
+                pattern = "UUID Hex (Long)"
             else:
-                print("No active WebSocket connections")
-        except Exception as e:
-            print(f"❌ Error accessing DynamoDB: {e}")
-            print("💡 Make sure the table exists and you have proper AWS credentials")
-    
-    def view_aws_s3_audio(self):
-        """View S3 audio storage"""
-        if not self.aws_available:
-            print("❌ AWS not configured")
-            return
-        
-        print("\n" + "="*80)
-        print("☁️  AWS S3 - Audio Files")
-        print("="*80)
-        
-        try:
-            # Try to find the audio bucket
-            buckets = self.s3.list_buckets()
-            audio_bucket = None
-            
-            for bucket in buckets.get('Buckets', []):
-                if 'astro-voice-audio' in bucket['Name']:
-                    audio_bucket = bucket['Name']
-                    break
-            
-            if audio_bucket:
-                print(f"\n📦 Bucket: {audio_bucket}")
-                
-                # List objects in bucket
-                response = self.s3.list_objects_v2(Bucket=audio_bucket)
-                objects = response.get('Contents', [])
-                
-                if objects:
-                    print(f"📊 Total audio files: {len(objects)}")
-                    
-                    # Group by user
-                    user_files = {}
-                    for obj in objects:
-                        key = obj['Key']
-                        # Extract user ID from path (assuming format: user_id/...)
-                        parts = key.split('/')
-                        if len(parts) > 1:
-                            user_id = parts[0]
-                            if user_id not in user_files:
-                                user_files[user_id] = []
-                            user_files[user_id].append({
-                                'file': key,
-                                'size': obj['Size'],
-                                'modified': obj['LastModified']
-                            })
-                    
-                    # Display by user
-                    for user_id, files in user_files.items():
-                        total_size = sum(f['size'] for f in files)
-                        print(f"\n  👤 User: {user_id}")
-                        print(f"     Files: {len(files)}")
-                        print(f"     Total size: {total_size / 1024:.2f} KB")
-                        for f in files[:5]:  # Show first 5 files
-                            print(f"       • {f['file']} ({f['size']} bytes)")
-                        if len(files) > 5:
-                            print(f"       ... and {len(files) - 5} more files")
-                else:
-                    print("No audio files found in bucket")
-            else:
-                print("❌ Audio bucket not found")
-        except Exception as e:
-            print(f"❌ Error accessing S3: {e}")
-            print("💡 Make sure you have proper AWS credentials and permissions")
-    
-    def view_aws_cognito_users(self):
-        """View Cognito user pool"""
-        if not self.aws_available:
-            print("❌ AWS not configured")
-            return
-        
-        print("\n" + "="*80)
-        print("☁️  AWS COGNITO - User Authentication")
-        print("="*80)
-        
-        try:
-            # List user pools
-            user_pools = self.cognito.list_user_pools(MaxResults=10)
-            
-            astro_pool = None
-            for pool in user_pools.get('UserPools', []):
-                if 'AstroVoice' in pool['Name']:
-                    astro_pool = pool
-                    break
-            
-            if astro_pool:
-                pool_id = astro_pool['Id']
-                print(f"\n🔐 User Pool: {astro_pool['Name']}")
-                print(f"   ID: {pool_id}")
-                
-                # List users in pool
-                users = self.cognito.list_users(UserPoolId=pool_id)
-                
-                if users.get('Users'):
-                    print(f"\n📊 Total users: {len(users['Users'])}")
-                    
-                    table_data = []
-                    for user in users['Users']:
-                        username = user['Username']
-                        status = user['UserStatus']
-                        created = user['UserCreateDate'].strftime('%Y-%m-%d %H:%M')
-                        
-                        # Extract email from attributes
-                        email = 'N/A'
-                        for attr in user.get('Attributes', []):
-                            if attr['Name'] == 'email':
-                                email = attr['Value']
-                        
-                        table_data.append([username, email, status, created])
-                    
-                    headers = ['Username', 'Email', 'Status', 'Created']
-                    print(tabulate(table_data, headers=headers, tablefmt='grid'))
-                else:
-                    print("No users found in pool")
-            else:
-                print("❌ AstroVoice user pool not found")
-        except Exception as e:
-            print(f"❌ Error accessing Cognito: {e}")
-            print("💡 Make sure you have proper AWS credentials and permissions")
-    
-    def view_all(self):
-        """View all data sources"""
-        self.view_local_data()
-        
-        if self.aws_available:
-            print("\n\n")
-            self.view_aws_dynamodb()
-            self.view_aws_s3_audio()
-            self.view_aws_cognito_users()
+                pattern = "Other"
         else:
-            print("\n\n⚠️  AWS data not available. Configure AWS credentials to view cloud data.")
-            print("   Run: aws configure")
+            pattern = "Custom"
+        
+        if pattern not in patterns:
+            patterns[pattern] = []
+        patterns[pattern].append(user_id)
     
-    def get_statistics(self):
-        """Get overall statistics"""
-        print("\n" + "="*80)
-        print("📊 OVERALL STATISTICS")
-        print("="*80)
-        
-        stats = {
-            'local_states': 0,
-            'local_profiles': 0,
-            'aws_connections': 0,
-            'aws_users': 0,
-            'total_audio_files': 0
-        }
-        
-        # Count local data
-        try:
-            if os.path.exists(self.user_states_file):
-                with open(self.user_states_file, 'r') as f:
-                    stats['local_states'] = len(json.load(f))
-            
-            if os.path.exists(self.user_profiles_file):
-                with open(self.user_profiles_file, 'r') as f:
-                    stats['local_profiles'] = len(json.load(f))
-        except Exception as e:
-            print(f"Error reading local files: {e}")
-        
-        # Count AWS data
-        if self.aws_available:
-            try:
-                # DynamoDB connections
-                response = self.dynamodb.scan(TableName='astro-voice-websocket-connections')
-                stats['aws_connections'] = len(response.get('Items', []))
-            except:
-                pass
-            
-            try:
-                # Cognito users
-                user_pools = self.cognito.list_user_pools(MaxResults=10)
-                for pool in user_pools.get('UserPools', []):
-                    if 'AstroVoice' in pool['Name']:
-                        users = self.cognito.list_users(UserPoolId=pool['Id'])
-                        stats['aws_users'] = len(users.get('Users', []))
-                        break
-            except:
-                pass
-            
-            try:
-                # S3 audio files
-                buckets = self.s3.list_buckets()
-                for bucket in buckets.get('Buckets', []):
-                    if 'astro-voice-audio' in bucket['Name']:
-                        response = self.s3.list_objects_v2(Bucket=bucket['Name'])
-                        stats['total_audio_files'] = len(response.get('Contents', []))
-                        break
-            except:
-                pass
-        
-        # Display stats
-        print(f"""
-📂 Local Storage:
-   • User States: {stats['local_states']}
-   • User Profiles: {stats['local_profiles']}
+    for pattern, ids in patterns.items():
+        print(f"\n🔸 {pattern} Pattern ({len(ids)} users):")
+        for user_id in ids[:5]:  # Show first 5 examples
+            print(f"   • {user_id}")
+        if len(ids) > 5:
+            print(f"   ... and {len(ids) - 5} more")
+    
+    print(f"\n📈 SCALABILITY ANALYSIS:")
+    print(f"   • Total users analyzed: {len(users)}")
+    print(f"   • Pattern types: {len(patterns)}")
+    
+    # Check UUID implementation
+    uuid_ids = patterns.get("UUID Hex", []) + patterns.get("UUID Hex (Long)", [])
+    phone_based_ids = patterns.get("Phone Number", [])
+    
+    if uuid_ids:
+        print(f"\n✅ UUID IMPLEMENTATION:")
+        print(f"   • UUID-based IDs: {len(uuid_ids)}")
+        print(f"   • Scalability: Excellent (globally unique)")
+        print(f"   • Conflict risk: Virtually zero")
+    
+    if phone_based_ids:
+        print(f"\n⚠️  LEGACY ISSUES:")
+        print(f"   • Phone-based IDs: {len(phone_based_ids)}")
+        print(f"   • Risk: Multiple users with same phone = ID conflicts")
+        print(f"   • Recommendation: Migrate to UUID-based IDs")
+    
+    print(f"\n🎯 RECOMMENDATIONS:")
+    print(f"   • ✅ New users: Use UUID-based IDs (implemented)")
+    print(f"   • 🔄 Legacy users: Consider migration to UUID")
+    print(f"   • 📊 Monitoring: Track ID pattern distribution")
 
-☁️  AWS Storage:
-   • Active WebSocket Connections: {stats['aws_connections']}
-   • Authenticated Users (Cognito): {stats['aws_users']}
-   • Audio Files (S3): {stats['total_audio_files']}
-""")
+
+def display_user_details(user_id: str):
+    """Display comprehensive user details"""
+    print(f"\n👤 USER DETAILS: {user_id}")
+    print("=" * 60)
+    
+    # Get user data
+    user_data = get_user_by_id(user_id)
+    if not user_data:
+        print("❌ User not found")
+        return
+    
+    # Basic info
+    print(f"📋 BASIC INFORMATION:")
+    print(f"   • User ID: {user_data.get('user_id', 'N/A')}")
+    print(f"   • Full Name: {user_data.get('full_name', 'N/A')}")
+    print(f"   • Display Name: {user_data.get('display_name', 'N/A')}")
+    print(f"   • Phone: {user_data.get('phone_number', 'N/A')}")
+    print(f"   • Email: {user_data.get('email', 'N/A')}")
+    print(f"   • Gender: {user_data.get('gender', 'N/A')}")
+    print(f"   • Language: {user_data.get('language_preference', 'N/A')}")
+    
+    # Birth info
+    print(f"\n🎂 BIRTH INFORMATION:")
+    print(f"   • Birth Date: {user_data.get('birth_date', 'N/A')}")
+    print(f"   • Birth Time: {user_data.get('birth_time', 'N/A')}")
+    print(f"   • Birth Location: {user_data.get('birth_location', 'N/A')}")
+    print(f"   • Birth Timezone: {user_data.get('birth_timezone', 'N/A')}")
+    
+    # Account info
+    print(f"\n🔐 ACCOUNT INFORMATION:")
+    print(f"   • Subscription: {user_data.get('subscription_type', 'N/A')}")
+    print(f"   • Status: {user_data.get('account_status', 'N/A')}")
+    print(f"   • Email Verified: {user_data.get('email_verified', False)}")
+    print(f"   • Phone Verified: {user_data.get('phone_verified', False)}")
+    print(f"   • Created: {user_data.get('created_at', 'N/A')}")
+    print(f"   • Updated: {user_data.get('updated_at', 'N/A')}")
+    print(f"   • Last Login: {user_data.get('last_login_at', 'N/A')}")
+    
+    # Metadata
+    metadata = user_data.get('metadata', {})
+    if metadata:
+        print(f"\n📊 METADATA:")
+        for key, value in metadata.items():
+            print(f"   • {key}: {value}")
+    
+    # Wallet info
+    wallet_data = get_user_wallet(user_id)
+    if wallet_data:
+        print(f"\n💰 WALLET INFORMATION:")
+        print(f"   • Wallet ID: {wallet_data.get('wallet_id', 'N/A')}")
+        print(f"   • Balance: ₹{wallet_data.get('balance', 0)}")
+        print(f"   • Currency: {wallet_data.get('currency', 'N/A')}")
+        print(f"   • Created: {wallet_data.get('created_at', 'N/A')}")
+        print(f"   • Updated: {wallet_data.get('updated_at', 'N/A')}")
+    
+    # Transaction history
+    transactions = get_user_transactions(user_id, 5)
+    if transactions:
+        print(f"\n💳 RECENT TRANSACTIONS:")
+        for txn in transactions:
+            print(f"   • {txn.get('transaction_type', 'N/A')}: ₹{txn.get('amount', 0)} - {txn.get('created_at', 'N/A')}")
+
+
+def execute_sql_query(query: str):
+    """Execute SQL query and display results"""
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                
+                if cursor.description:
+                    # Fetch column names
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+                    
+                    if rows:
+                        # Display results in table format
+                        print(f"\n🔍 SQL QUERY RESULTS")
+                        print("=" * 80)
+                        print(f"Query: {query}")
+                        print()
+                        
+                        # Simple table display
+                        col_widths = [max(len(str(row[i])) for row in rows + [columns]) for i in range(len(columns))]
+                        
+                        # Header
+                        header = "│ " + " │ ".join(f"{col:<{col_widths[i]}}" for i, col in enumerate(columns)) + " │"
+                        separator = "├─" + "─┼─".join("─" * col_widths[i] for i in range(len(columns))) + "─┤"
+                        top_border = "┌─" + "─┬─".join("─" * col_widths[i] for i in range(len(columns))) + "─┐"
+                        bottom_border = "└─" + "─┴─".join("─" * col_widths[i] for i in range(len(columns))) + "─┘"
+                        
+                        print(top_border)
+                        print(header)
+                        print(separator)
+                        
+                        # Data rows
+                        for row in rows:
+                            row_str = "│ " + " │ ".join(f"{str(row[i]):<{col_widths[i]}}" for i in range(len(row))) + " │"
+                            print(row_str)
+                        
+                        print(bottom_border)
+                        print(f"\n📊 {len(rows)} rows returned")
+                    else:
+                        print(f"\n🔍 SQL QUERY RESULTS")
+                        print("=" * 80)
+                        print(f"Query: {query}")
+                        print("\n✅ Query executed successfully (no results)")
+                else:
+                    print(f"\n🔍 SQL QUERY RESULTS")
+                    print("=" * 80)
+                    print(f"Query: {query}")
+                    print("\n✅ Query executed successfully")
+                    
+    except Exception as e:
+        print(f"\n❌ SQL Error: {e}")
+        print(f"Query: {query}")
+
+
+def list_tables():
+    """List all database tables"""
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT table_name, 
+                           (SELECT COUNT(*) FROM information_schema.columns 
+                            WHERE table_name = t.table_name) as column_count
+                    FROM information_schema.tables t
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name
+                """)
+                tables = cursor.fetchall()
+                
+                print(f"\n🗄️  DATABASE TABLES")
+                print("=" * 60)
+                for table_name, column_count in tables:
+                    print(f"  • {table_name} ({column_count} columns)")
+                    
+    except Exception as e:
+        print(f"❌ Error listing tables: {e}")
+
+
+def show_table_schema(table_name: str):
+    """Show schema for a specific table"""
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_name = %s AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                """, (table_name,))
+                
+                columns = cursor.fetchall()
+                
+                if columns:
+                    print(f"\n📋 TABLE SCHEMA: {table_name}")
+                    print("=" * 80)
+                    print(f"{'Column':<20} {'Type':<20} {'Nullable':<10} {'Default'}")
+                    print("-" * 80)
+                    for col_name, data_type, nullable, default in columns:
+                        default_str = str(default) if default else "None"
+                        print(f"{col_name:<20} {data_type:<20} {nullable:<10} {default_str}")
+                else:
+                    print(f"❌ Table '{table_name}' not found")
+                    
+    except Exception as e:
+        print(f"❌ Error showing schema: {e}")
+
+
+def export_to_csv(query: str, filename: str = None):
+    """Export SQL query results to CSV file"""
+    import csv
+    from datetime import datetime
+    
+    if not filename:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"export_{timestamp}.csv"
+    
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                
+                if cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+                    
+                    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow(columns)  # Header
+                        writer.writerows(rows)
+                    
+                    print(f"✅ Data exported to: {filename}")
+                    print(f"📊 {len(rows)} rows exported")
+                    print(f"📁 File location: {os.path.abspath(filename)}")
+                else:
+                    print("❌ No data to export")
+                    
+    except Exception as e:
+        print(f"❌ Export error: {e}")
+
+
+def export_to_json(query: str, filename: str = None):
+    """Export SQL query results to JSON file"""
+    import json
+    from datetime import datetime
+    
+    if not filename:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"export_{timestamp}.json"
+    
+    try:
+        with db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                
+                if cursor.description:
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+                    
+                    # Convert to list of dictionaries
+                    data = []
+                    for row in rows:
+                        row_dict = {}
+                        for i, value in enumerate(row):
+                            # Convert datetime objects to strings
+                            if hasattr(value, 'isoformat'):
+                                row_dict[columns[i]] = value.isoformat()
+                            else:
+                                row_dict[columns[i]] = value
+                        data.append(row_dict)
+                    
+                    with open(filename, 'w', encoding='utf-8') as jsonfile:
+                        json.dump(data, jsonfile, indent=2, ensure_ascii=False)
+                    
+                    print(f"✅ Data exported to: {filename}")
+                    print(f"📊 {len(data)} rows exported")
+                    print(f"📁 File location: {os.path.abspath(filename)}")
+                else:
+                    print("❌ No data to export")
+                    
+    except Exception as e:
+        print(f"❌ Export error: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='View AstroVoice user data across all storage systems')
-    parser.add_argument('--source', choices=['local', 'aws', 'all'], default='all',
-                       help='Data source to view (default: all)')
-    parser.add_argument('--user', type=str, help='View detailed data for a specific user ID')
-    parser.add_argument('--stats', action='store_true', help='Show statistics only')
+    """Main function"""
+    print("🔮 AstroVoice User Data Viewer")
+    print("=" * 60)
     
-    args = parser.parse_args()
-    
-    viewer = AWSUserDataViewer()
-    
-    if args.stats:
-        viewer.get_statistics()
-    elif args.user:
-        viewer.view_user_detail(args.user)
-    elif args.source == 'local':
-        viewer.view_local_data()
-    elif args.source == 'aws':
-        if viewer.aws_available:
-            viewer.view_aws_dynamodb()
-            viewer.view_aws_s3_audio()
-            viewer.view_aws_cognito_users()
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+        
+        if command == "list":
+            limit = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+            users = get_all_users(limit)
+            
+            print(f"\n📊 ALL USERS (showing {len(users)} of latest)")
+            print("-" * 60)
+            
+            for user in users:
+                print(f"• {user['user_id']} - {user['full_name']} ({user['phone_number']}) - {user['created_at']}")
+        
+        elif command == "show":
+            if len(sys.argv) > 2:
+                user_id = sys.argv[2]
+                display_user_details(user_id)
+            else:
+                print("❌ Please provide user ID: python3 view_user_data.py show <user_id>")
+        
+        elif command == "analyze":
+            analyze_customer_id_format()
+        
+        elif command == "--sql":
+            if len(sys.argv) > 2:
+                query = sys.argv[2]
+                execute_sql_query(query)
+            else:
+                print("❌ Please provide SQL query: python3 view_user_data.py --sql \"SELECT * FROM users\"")
+        
+        elif command == "--export-csv":
+            if len(sys.argv) > 2:
+                query = sys.argv[2]
+                filename = sys.argv[3] if len(sys.argv) > 3 else None
+                export_to_csv(query, filename)
+            else:
+                print("❌ Please provide SQL query: python3 view_user_data.py --export-csv \"SELECT * FROM users\"")
+        
+        elif command == "--export-json":
+            if len(sys.argv) > 2:
+                query = sys.argv[2]
+                filename = sys.argv[3] if len(sys.argv) > 3 else None
+                export_to_json(query, filename)
+            else:
+                print("❌ Please provide SQL query: python3 view_user_data.py --export-json \"SELECT * FROM users\"")
+        
+        elif command == "--tables":
+            list_tables()
+        
+        elif command == "--schema":
+            if len(sys.argv) > 2:
+                table_name = sys.argv[2]
+                show_table_schema(table_name)
+            else:
+                print("❌ Please provide table name: python3 view_user_data.py --schema users")
+        
         else:
-            print("❌ AWS not configured. Run: aws configure")
+            print("❌ Unknown command. Available commands:")
+            print("   • list [limit] - List all users")
+            print("   • show <user_id> - Show detailed user info")
+            print("   • analyze - Analyze customer ID format")
+            print("   • --sql \"QUERY\" - Execute SQL query")
+            print("   • --export-csv \"QUERY\" [filename] - Export to CSV")
+            print("   • --export-json \"QUERY\" [filename] - Export to JSON")
+            print("   • --tables - List all database tables")
+            print("   • --schema <table> - Show table schema")
+    
     else:
-        viewer.view_all()
+        print("📋 Available Commands:")
+        print("   • python3 view_user_data.py list [limit]")
+        print("   • python3 view_user_data.py show <user_id>")
+        print("   • python3 view_user_data.py analyze")
+        print("   • python3 view_user_data.py --sql \"SELECT * FROM users\"")
+        print("   • python3 view_user_data.py --export-csv \"SELECT * FROM users\"")
+        print("   • python3 view_user_data.py --export-json \"SELECT * FROM users\"")
+        print("   • python3 view_user_data.py --tables")
+        print("   • python3 view_user_data.py --schema users")
+        print("\n💡 Examples:")
+        print("   • python3 view_user_data.py list 10")
+        print("   • python3 view_user_data.py show user_test_success")
+        print("   • python3 view_user_data.py analyze")
+        print("   • python3 view_user_data.py --sql \"SELECT gender, COUNT(*) FROM users GROUP BY gender\"")
+        print("   • python3 view_user_data.py --export-csv \"SELECT * FROM users\" users.csv")
+        print("   • python3 view_user_data.py --export-json \"SELECT * FROM users\" users.json")
+        print("   • python3 view_user_data.py --tables")
+        print("   • python3 view_user_data.py --schema wallets")
 
 
 if __name__ == "__main__":
     main()
-

@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
+import LinearGradient from 'expo-linear-gradient';
 
 type Props = {
   value: string;
@@ -33,7 +35,7 @@ const ChatInputBar: React.FC<Props> = ({ value, onChangeText, onSend, disabled, 
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder || 'Type your message...'}
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={colors.textTertiary}
         multiline
         editable={!disabled}
       />
@@ -41,9 +43,11 @@ const ChatInputBar: React.FC<Props> = ({ value, onChangeText, onSend, disabled, 
         style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
         onPress={handleSendPress}
         disabled={!canSend}
-        activeOpacity={0.8}
+        activeOpacity={touchableOpacity}
       >
-        <Text style={styles.sendIcon}>{sending ? '⏳' : '📤'}</Text>
+        <View style={styles.sendButtonGradient}>
+          <Text style={styles.sendIcon}>{sending ? '⏳' : '📤'}</Text>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -58,53 +62,51 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.backgroundCard,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    gap: 12,
+    borderTopColor: colors.borderLight,
+    gap: spacing.md,
     height: 80,
     zIndex: 99999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    ...shadows.sm,
   },
   containerDisabled: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   textInput: {
     flex: 1,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    fontSize: 14,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.backgroundCard,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textPrimary,
     maxHeight: 100,
   },
   textInputDisabled: {
-    backgroundColor: '#f3f4f6',
-    color: '#9ca3af',
+    backgroundColor: colors.borderLight,
+    color: colors.textTertiary,
   },
   sendButton: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#6366f1',
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  sendButtonGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: colors.primary,
   },
   sendButtonDisabled: {
-    backgroundColor: '#d1d5db',
+    opacity: 0.5,
   },
   sendIcon: {
     fontSize: 20,

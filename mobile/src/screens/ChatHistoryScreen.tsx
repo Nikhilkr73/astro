@@ -12,6 +12,7 @@ import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
 import {allAstrologersData} from '../constants/astrologers';
+import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
 
 type ChatHistoryScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -43,7 +44,7 @@ const ChatHistoryScreen = () => {
               key={chat.id}
               style={styles.chatItem}
               onPress={() => handleChatClick(chat)}
-              activeOpacity={0.9}
+              activeOpacity={touchableOpacity}
             >
               <View style={styles.chatContent}>
                 <Image source={{ uri: chat.image }} style={styles.avatar} />
@@ -89,48 +90,40 @@ const ChatHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    ...shadows.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   content: {
     flex: 1,
   },
   chatItem: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: colors.backgroundCard,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   chatContent: {
     flexDirection: 'row',
-    padding: 16,
+    padding: spacing.lg,
     alignItems: 'center',
   },
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
-    marginRight: 12,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.borderLight,
+    marginRight: spacing.md,
   },
   chatInfo: {
     flex: 1,
@@ -139,17 +132,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   astrologerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
     flex: 1,
   },
   chatTime: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
   },
   chatMessage: {
     flexDirection: 'row',
@@ -157,41 +151,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   lastMessage: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     flex: 1,
   },
   unreadMessage: {
-    color: '#1f2937',
-    fontWeight: '500',
+    color: colors.textPrimary,
+    fontFamily: typography.fontFamily.medium,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#6366f1',
-    marginLeft: 8,
+    backgroundColor: colors.primary,
+    marginLeft: spacing.sm,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing['3xl'],
     paddingTop: 100,
   },
   emptyIcon: {
     fontSize: 64,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },

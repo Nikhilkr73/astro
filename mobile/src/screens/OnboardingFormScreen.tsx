@@ -13,6 +13,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
+import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
 
 interface OnboardingFormScreenProps {
   onComplete: () => void;
@@ -194,7 +195,8 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
 
           <TouchableOpacity
             style={styles.getStartedButton}
-            onPress={handleComplete}>
+            onPress={handleComplete}
+            activeOpacity={touchableOpacity}>
             <Text style={styles.getStartedButtonText}>Get Started ✨</Text>
           </TouchableOpacity>
         </View>
@@ -209,7 +211,7 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             {currentStep > 1 && (
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={touchableOpacity}>
                 <Text style={styles.backButtonText}>← Back</Text>
               </TouchableOpacity>
             )}
@@ -294,29 +296,34 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
                   </TouchableOpacity>
                 </View>
               ) : knowsTime ? (
-                <View style={styles.timePickerContainer}>
+                <View style={styles.timePickerWrapper}>
                   <Text style={styles.pickerLabel}>Select your time of birth</Text>
-                  <TimePicker
-                    hour={birthHour}
-                    minute={birthMinute}
-                    period={birthPeriod}
-                    onHourChange={setBirthHour}
-                    onMinuteChange={setBirthMinute}
-                    onPeriodChange={setBirthPeriod}
-                  />
                   
-                  <View style={styles.selectedTimeContainer}>
-                    <Text style={styles.selectedTimeLabel}>Selected Time</Text>
-                    <Text style={styles.selectedTimeText}>
-                      {birthHour.toString().padStart(2, '0')}:{birthMinute.toString().padStart(2, '0')} {birthPeriod}
-                    </Text>
+                  <View style={styles.timePickerContainer}>
+                    <TimePicker
+                      hour={birthHour}
+                      minute={birthMinute}
+                      period={birthPeriod}
+                      onHourChange={setBirthHour}
+                      onMinuteChange={setBirthMinute}
+                      onPeriodChange={setBirthPeriod}
+                    />
                   </View>
                   
-                  <TouchableOpacity
-                    style={styles.dontRememberButton}
-                    onPress={() => setKnowsTime(null)}>
-                    <Text style={styles.dontRememberButtonText}>I don't remember</Text>
-                  </TouchableOpacity>
+                  <View style={styles.timePickerBottomSection}>
+                    <View style={styles.selectedTimeContainer}>
+                      <Text style={styles.selectedTimeLabel}>Selected Time</Text>
+                      <Text style={styles.selectedTimeText}>
+                        {birthHour.toString().padStart(2, '0')}:{birthMinute.toString().padStart(2, '0')} {birthPeriod}
+                      </Text>
+                    </View>
+                    
+                    <TouchableOpacity
+                      style={styles.dontRememberButton}
+                      onPress={() => setKnowsTime(null)}>
+                      <Text style={styles.dontRememberButtonText}>I don't remember</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ) : (
                 <View style={styles.noTimeContainer}>
@@ -436,7 +443,8 @@ export function OnboardingFormScreen({onComplete}: OnboardingFormScreenProps) {
             (!canProceed() || isSubmitting) && styles.disabledButton,
           ]}
           onPress={handleNext}
-          disabled={!canProceed() || isSubmitting}>
+          disabled={!canProceed() || isSubmitting}
+          activeOpacity={touchableOpacity}>
           {isSubmitting ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
@@ -637,7 +645,7 @@ function TimePicker({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -676,8 +684,8 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6366f1',
-    borderRadius: 4,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xs,
   },
   stepContent: {
     paddingHorizontal: 24,
@@ -688,12 +696,13 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,
   },
   stepSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   inputContainer: {
     gap: 8,
@@ -721,11 +730,20 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
   },
+  timePickerWrapper: {
+    alignItems: 'center',
+    width: '100%',
+  },
   timePickerContainer: {
-    flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    width: '100%',
+    marginBottom: spacing.xl,
+  },
+  timePickerBottomSection: {
+    alignItems: 'center',
+    width: '100%',
+    gap: spacing.lg,
   },
   pickerColumn: {
     flex: 1,
@@ -734,8 +752,9 @@ const styles = StyleSheet.create({
   pickerLabel: {
     textAlign: 'center',
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   picker: {
     height: 192,
@@ -750,15 +769,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pickerItemSelected: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.accentLight,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   pickerItemText: {
     fontSize: 16,
-    color: '#6b7280',
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   pickerItemTextSelected: {
-    color: '#6366f1',
-    fontWeight: '600',
+    color: colors.primary,
+    fontFamily: typography.fontFamily.medium,
   },
   selectedDateContainer: {
     alignItems: 'center',
@@ -799,30 +821,34 @@ const styles = StyleSheet.create({
   },
   selectedTimeContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing['2xl'],
+    backgroundColor: colors.accentLight,
+    borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
+    ...shadows.sm,
   },
   selectedTimeLabel: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
   selectedTimeText: {
     fontSize: 18,
-    color: '#000000',
-    fontWeight: '600',
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,
   },
   dontRememberButton: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   dontRememberButtonText: {
     fontSize: 14,
-    color: '#6b7280',
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     textDecorationLine: 'underline',
   },
   noTimeContainer: {
@@ -844,23 +870,26 @@ const styles = StyleSheet.create({
   periodButton: {
     width: 64,
     height: 64,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundCard,
+    ...shadows.sm,
   },
   periodButtonSelected: {
-    borderColor: '#6366f1',
-    backgroundColor: '#6366f1',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   periodButtonText: {
     fontSize: 16,
-    color: '#000000',
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textPrimary,
   },
   periodButtonTextSelected: {
-    color: 'white',
+    color: colors.white,
+    fontFamily: typography.fontFamily.medium,
   },
   genderContainer: {
     flexDirection: 'row',
@@ -944,9 +973,9 @@ const styles = StyleSheet.create({
     backdropFilter: 'blur(10px)',
   },
   continueButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
@@ -1013,27 +1042,33 @@ const styles = StyleSheet.create({
   // New time picker styles
   timePickerMainContainer: {
     alignItems: 'center',
+    paddingHorizontal: spacing.lg,
   },
   timePickerRow: {
     flexDirection: 'row',
-    gap: 16,
-    alignItems: 'flex-start',
+    gap: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   timePickerColumn: {
     flex: 1,
-    maxWidth: 80,
+    maxWidth: 90,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   timePicker: {
-    height: 150,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    backgroundColor: 'white',
+    height: 180,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.backgroundCard,
     width: '100%',
+    ...shadows.sm,
   },
   periodButtonsContainer: {
-    gap: 8,
-    marginTop: 8,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    alignItems: 'center',
   },
 });

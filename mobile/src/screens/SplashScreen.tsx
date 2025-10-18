@@ -8,6 +8,7 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
+import {colors, typography, spacing, borderRadius, shadows} from '../constants/theme';
 
 type SplashScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
 
@@ -44,7 +45,7 @@ const SplashScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 60,
@@ -58,31 +59,25 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 24,
+    borderRadius: borderRadius['2xl'],
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginBottom: spacing['2xl'],
+    ...shadows.lg,
   },
   logoIcon: {
     fontSize: 48,
-    color: '#fff',
+    color: colors.white,
   },
   appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    fontSize: typography.fontSize['4xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.white,
+    marginBottom: spacing.sm,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
   },
@@ -90,7 +85,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
   },

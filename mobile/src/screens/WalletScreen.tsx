@@ -15,6 +15,8 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
+import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
+import LinearGradient from 'expo-linear-gradient';
 
 type WalletScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -137,7 +139,7 @@ const WalletScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366f1" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading wallet...</Text>
         </View>
       </SafeAreaView>
@@ -157,7 +159,7 @@ const WalletScreen = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#6366f1"
+            tintColor={colors.primary}
           />
         }
       >
@@ -168,6 +170,7 @@ const WalletScreen = () => {
             <TouchableOpacity 
               onPress={handleViewHistory}
               style={styles.historyButton}
+              activeOpacity={touchableOpacity}
             >
               <Text style={styles.historyIcon}>📋</Text>
               <Text style={styles.historyText}>History</Text>
@@ -188,7 +191,7 @@ const WalletScreen = () => {
                 key={index}
                 style={styles.rechargeButton}
                 onPress={() => handleRecharge(amount)}
-                activeOpacity={0.8}
+                activeOpacity={touchableOpacity}
               >
                 <Text style={styles.rechargeAmount}>₹{amount}</Text>
                 {amount === 500 && (
@@ -205,7 +208,7 @@ const WalletScreen = () => {
         <View style={styles.section}>
           <View style={styles.transactionHeader}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
-            <TouchableOpacity onPress={handleViewHistory}>
+            <TouchableOpacity onPress={handleViewHistory} activeOpacity={touchableOpacity}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -277,7 +280,7 @@ const WalletScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -285,195 +288,188 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6b7280',
+    marginTop: spacing.lg,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   emptyState: {
-    padding: 32,
+    padding: spacing['3xl'],
     alignItems: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   emptyStateSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   header: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    ...shadows.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   content: {
     flex: 1,
   },
   balanceCard: {
-    backgroundColor: '#6366f1',
-    margin: 16,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    margin: spacing.lg,
+    borderRadius: borderRadius.xl,
+    padding: spacing['2xl'],
+    backgroundColor: colors.primary,
+    ...shadows.lg,
   },
   balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   balanceLabel: {
-    fontSize: 16,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   historyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    gap: 4,
+    gap: spacing.xs,
   },
   historyIcon: {
-    fontSize: 12,
+    fontSize: typography.fontSize.xs,
   },
   historyText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
   balanceAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
+    fontSize: typography.fontSize['5xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.white,
+    marginBottom: spacing.sm,
   },
   balanceNote: {
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
     color: 'rgba(255, 255, 255, 0.7)',
   },
   section: {
-    backgroundColor: '#ffffff',
-    margin: 16,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: colors.backgroundCard,
+    margin: spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
   },
   rechargeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: spacing.md,
   },
   rechargeButton: {
     flex: 1,
     minWidth: '30%',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
     position: 'relative',
   },
   rechargeAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   popularBadge: {
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#10b981',
-    borderRadius: 8,
+    backgroundColor: colors.success,
+    borderRadius: borderRadius.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   popularText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontFamily: typography.fontFamily.bold,
+    color: colors.white,
   },
   transactionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.primary,
   },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.borderLight,
   },
   transactionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   transactionIconText: {
-    fontSize: 16,
+    fontSize: typography.fontSize.base,
   },
   transactionDetails: {
     flex: 1,
   },
   transactionDescription: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1f2937',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   transactionDate: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
   },
   transactionAmount: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.bold,
   },
   creditAmount: {
-    color: '#10b981',
+    color: colors.success,
   },
   debitAmount: {
-    color: '#ef4444',
+    color: colors.error,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -485,24 +481,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statIcon: {
-    fontSize: 24,
-    marginBottom: 8,
+    fontSize: typography.fontSize['2xl'],
+    marginBottom: spacing.sm,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.borderLight,
   },
 });
 

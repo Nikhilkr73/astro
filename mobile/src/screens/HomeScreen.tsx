@@ -17,6 +17,8 @@ import {RootStackParamList, Astrologer} from '../types';
 import {categories} from '../constants/astrologers';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
+import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
+import LinearGradient from 'expo-linear-gradient';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -126,7 +128,7 @@ const HomeScreen = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#6366f1"
+            tintColor={colors.primary}
           />
         }
       >
@@ -145,9 +147,9 @@ const HomeScreen = () => {
             <TouchableOpacity 
               style={styles.walletButton}
               onPress={handleWalletClick}
-              activeOpacity={0.8}
+              activeOpacity={touchableOpacity}
             >
-              <Text style={styles.walletIcon}>💳</Text>
+              <Text style={styles.walletIcon}>Wallet</Text>
               <Text style={styles.walletAmount}>₹{walletBalance}</Text>
               <View style={styles.addButton}>
                 <Text style={styles.addIcon}>+</Text>
@@ -161,7 +163,7 @@ const HomeScreen = () => {
               <Text style={styles.offerTitle}>🎉 Special Offer!</Text>
               <Text style={styles.offerText}>Get 50% OFF on your first consultation</Text>
             </View>
-            <TouchableOpacity style={styles.claimButton}>
+            <TouchableOpacity style={styles.claimButton} activeOpacity={touchableOpacity}>
               <Text style={styles.claimButtonText}>Claim Now</Text>
             </TouchableOpacity>
           </View>
@@ -179,7 +181,7 @@ const HomeScreen = () => {
                   key={category.name}
                   style={[styles.categoryButton, isSelected && styles.categoryButtonSelected]}
                   onPress={() => setSelectedCategory(category.name)}
-                  activeOpacity={0.8}
+                  activeOpacity={touchableOpacity}
                 >
                   <Text style={styles.categoryIcon}>{category.icon}</Text>
                   <Text style={[
@@ -201,7 +203,7 @@ const HomeScreen = () => {
             <TouchableOpacity 
               style={styles.retryButton}
               onPress={handleRefresh}
-              activeOpacity={0.8}
+              activeOpacity={touchableOpacity}
             >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
@@ -225,7 +227,7 @@ const HomeScreen = () => {
               key={astrologer.id} 
               style={styles.astrologerCard}
               onPress={() => handleAstrologerClick(astrologer)}
-              activeOpacity={0.9}
+              activeOpacity={touchableOpacity}
             >
               <View style={styles.cardContent}>
                 {/* Profile Image */}
@@ -281,15 +283,18 @@ const HomeScreen = () => {
                 <TouchableOpacity 
                   style={styles.chatButton}
                   onPress={() => handleChatClick(astrologer)}
-                  activeOpacity={0.8}
+                  activeOpacity={touchableOpacity}
                 >
-                  <Text style={styles.chatButtonText}>💬 Chat • ₹8/min</Text>
+                  <View style={styles.chatButtonGradient}>
+                    <Text style={styles.chatButtonText}>Chat • ₹8/min</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.callButton} 
                   onPress={() => handleCallClick(astrologer)}
+                  activeOpacity={touchableOpacity}
                 >
-                  <Text style={styles.callButtonText}>📞 Call • ₹12/min</Text>
+                  <Text style={styles.callButtonText}>Call • ₹12/min</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -304,7 +309,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -312,20 +317,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: typography.fontSize.base,
+    color: colors.textSecondary,
+    fontFamily: typography.fontFamily.regular,
   },
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 16,
+    backgroundColor: colors.backgroundCard,
+    paddingBottom: spacing.lg,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   branding: {
     flexDirection: 'row',
@@ -334,155 +340,148 @@ const styles = StyleSheet.create({
   logo: {
     width: 40,
     height: 40,
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    marginRight: spacing.sm,
+    ...shadows.orange,
   },
   logoIcon: {
     fontSize: 20,
-    color: '#ffffff',
+    color: colors.white,
   },
   appName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   walletButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: colors.accentLight,
+    borderRadius: borderRadius['2xl'],
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   walletIcon: {
     fontSize: 16,
     marginRight: 6,
   },
   walletAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginRight: 8,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.primary,
+    marginRight: spacing.sm,
   },
   addButton: {
     width: 20,
     height: 20,
-    backgroundColor: '#6366f1',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addIcon: {
     fontSize: 12,
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: colors.white,
+    fontFamily: typography.fontFamily.bold,
   },
   offerBanner: {
-    marginHorizontal: 16,
-    backgroundColor: '#fef3c7',
-    borderRadius: 16,
-    padding: 16,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.accentLight,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#f59e0b',
-    marginBottom: 16,
+    borderColor: colors.accent,
+    marginBottom: spacing.lg,
   },
   offerContent: {
     flex: 1,
   },
   offerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400e',
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   offerText: {
-    fontSize: 12,
-    color: '#92400e',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   claimButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.transparent,
     borderWidth: 1,
-    borderColor: '#f59e0b',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: colors.accent,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
   claimButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#92400e',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textPrimary,
   },
   categoriesContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
-    marginRight: 8,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.backgroundCard,
+    marginRight: spacing.sm,
     minWidth: 80,
   },
   categoryButtonSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   categoryIcon: {
     fontSize: 16,
     marginRight: 6,
   },
   categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textSecondary,
   },
   categoryTextSelected: {
-    color: '#ffffff',
+    color: colors.white,
   },
   astrologersList: {
-    padding: 16,
+    padding: spacing.lg,
   },
   astrologerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: colors.backgroundCard,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    ...shadows.md,
     overflow: 'hidden',
   },
   cardContent: {
     flexDirection: 'row',
-    padding: 16,
+    padding: spacing.lg,
   },
   profileImageContainer: {
     position: 'relative',
-    marginRight: 16,
+    marginRight: spacing.lg,
   },
   profileImage: {
     width: 80,
     height: 80,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.borderLight,
   },
   onlineStatus: {
     position: 'absolute',
@@ -492,157 +491,156 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: borderRadius.sm,
+    ...shadows.sm,
   },
   onlineDot: {
     width: 6,
     height: 6,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white,
     borderRadius: 3,
-    marginRight: 4,
+    marginRight: spacing.xs,
   },
   onlineText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
   infoSection: {
     flex: 1,
     justifyContent: 'space-between',
   },
   astrologerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: colors.borderLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: 6,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   categoryBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6366f1',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.primary,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   rating: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   starIcon: {
-    fontSize: 14,
-    marginRight: 4,
+    fontSize: typography.fontSize.sm,
+    marginRight: spacing.xs,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textPrimary,
   },
   reviewsText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginLeft: 8,
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginLeft: spacing.sm,
   },
   detailsContainer: {
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   detailText: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     lineHeight: 16,
   },
   actionButtons: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
   },
   chatButton: {
     flex: 1,
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  chatButtonGradient: {
+    paddingVertical: spacing.md,
     alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
   },
   chatButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
   callButton: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.transparent,
     borderWidth: 1,
-    borderColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     position: 'relative',
   },
   callButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.primary,
   },
   errorContainer: {
     backgroundColor: '#fee2e2',
-    padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
+    padding: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   errorText: {
     flex: 1,
-    fontSize: 14,
-    color: '#991b1b',
-    marginRight: 12,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.error,
+    marginRight: spacing.md,
   },
   retryButton: {
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
   },
   retryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.white,
   },
   emptyState: {
-    padding: 32,
+    padding: spacing['3xl'],
     alignItems: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   emptyStateSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
     textAlign: 'center',
   },
 });

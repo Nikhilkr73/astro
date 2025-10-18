@@ -1,7 +1,8 @@
 import React from 'react';
-import {Text} from 'react-native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {MainTabParamList} from '../types';
+import {colors, spacing, borderRadius, shadows} from '../constants/theme';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatHistoryScreen from '../screens/ChatHistoryScreen';
@@ -16,28 +17,29 @@ const MainTabNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.backgroundCard,
           borderTopWidth: 1,
-          borderTopColor: '#e5e7eb',
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopColor: colors.borderLight,
+          paddingBottom: spacing.sm,
+          paddingTop: spacing.sm,
           height: 80,
+          ...shadows.sm,
         },
-        tabBarActiveTintColor: '#6366f1',
-        tabBarInactiveTintColor: '#9ca3af',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 4,
-        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+            tabBarLabelStyle: {
+              fontSize: 12,
+              fontFamily: 'Poppins_500Medium',
+              marginTop: spacing.xs,
+            },
       }}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
         options={{
-          tabBarIcon: ({color}) => (
-            <HomeIcon color={color} size={24} />
+          tabBarIcon: ({color, size}) => (
+            <MaterialCommunityIcons name="home-outline" color={color} size={size || 24} />
           ),
         }}
       />
@@ -45,8 +47,8 @@ const MainTabNavigator = () => {
         name="Chat" 
         component={ChatHistoryScreen}
         options={{
-          tabBarIcon: ({color}) => (
-            <ChatIcon color={color} size={24} />
+          tabBarIcon: ({color, size}) => (
+            <MaterialCommunityIcons name="chat-outline" color={color} size={size || 24} />
           ),
         }}
       />
@@ -54,8 +56,8 @@ const MainTabNavigator = () => {
         name="Wallet" 
         component={WalletScreen}
         options={{
-          tabBarIcon: ({color}) => (
-            <WalletIcon color={color} size={24} />
+          tabBarIcon: ({color, size}) => (
+            <MaterialCommunityIcons name="wallet-outline" color={color} size={size || 24} />
           ),
         }}
       />
@@ -63,30 +65,13 @@ const MainTabNavigator = () => {
         name="Profile" 
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({color}) => (
-            <ProfileIcon color={color} size={24} />
+          tabBarIcon: ({color, size}) => (
+            <MaterialCommunityIcons name="account-circle-outline" color={color} size={size || 24} />
           ),
         }}
       />
     </Tab.Navigator>
   );
 };
-
-// Simple icon components (you can replace with react-native-vector-icons later)
-const HomeIcon = ({color, size}: {color: string; size: number}) => (
-  <Text style={{fontSize: size, color}}>🏠</Text>
-);
-
-const ChatIcon = ({color, size}: {color: string; size: number}) => (
-  <Text style={{fontSize: size, color}}>💬</Text>
-);
-
-const WalletIcon = ({color, size}: {color: string; size: number}) => (
-  <Text style={{fontSize: size, color}}>💳</Text>
-);
-
-const ProfileIcon = ({color, size}: {color: string; size: number}) => (
-  <Text style={{fontSize: size, color}}>👤</Text>
-);
 
 export default MainTabNavigator;

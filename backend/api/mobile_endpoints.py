@@ -61,7 +61,7 @@ class UserRegistration(BaseModel):
     time_of_birth: Optional[str] = None
     place_of_birth: Optional[str] = None
     gender: Optional[str] = None
-    language_preference: Optional[str] = None
+    language_preference: Optional[str] = 'hi'  # Default to Hindi instead of None
 
 
 # ============================================================================
@@ -186,17 +186,16 @@ async def register_user(user: UserRegistration):
         try:
             from backend.database.manager import db
         except ImportError:
+            # Fallback to root database_manager
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
-        # Generate user_id if not provided
+        # Generate user_id if not provided - Always use UUID for scalability
         if not user.user_id:
-            # Use phone number as user_id if available, else generate UUID
-            if user.phone_number:
-                user.user_id = f"user_{user.phone_number.replace('+', '').replace(' ', '')}"
-            else:
-                import uuid
-                user.user_id = f"user_{uuid.uuid4().hex[:12]}"
+            user.user_id = db.generate_user_id()
         
         print(f"📝 Registering user: {user.user_id}")
         print(f"   Name: {user.full_name}")
@@ -205,6 +204,7 @@ async def register_user(user: UserRegistration):
         print(f"   Time: {user.time_of_birth}")
         print(f"   Place: {user.place_of_birth}")
         print(f"   Gender: {user.gender}")
+        print(f"   Language: {user.language_preference}")
         
         # Parse birth date from DD/MM/YYYY to DATE format
         birth_date = None
@@ -235,8 +235,11 @@ async def register_user(user: UserRegistration):
             'birth_date': birth_date,
             'birth_time': birth_time,
             'birth_location': user.place_of_birth,
+            'birth_timezone': None,  # Could be added later
+            'birth_latitude': None,  # Could be added later
+            'birth_longitude': None,  # Could be added later
             'gender': user.gender,
-            'language_preference': user.language_preference or 'hi',
+            'language_preference': user.language_preference,  # Use the actual value from request
             'subscription_type': 'free',
             'metadata': {
                 'onboarding_completed': True,
@@ -251,12 +254,11 @@ async def register_user(user: UserRegistration):
             raise Exception("Failed to save user to database")
         
         # Create wallet for user with welcome bonus
-        wallet_id = f"wallet_{saved_user_id}"
         welcome_bonus = 500.0  # ₹500 welcome bonus
         
-        wallet_created = db.create_wallet(saved_user_id, wallet_id, welcome_bonus)
+        wallet_id = db.create_wallet(saved_user_id, welcome_bonus)
         
-        if wallet_created:
+        if wallet_id:
             print(f"💰 Wallet created with ₹{welcome_bonus} welcome bonus")
             wallet_data = {
                 "wallet_id": wallet_id,
@@ -266,7 +268,7 @@ async def register_user(user: UserRegistration):
         else:
             # If wallet creation fails, still return success but with 0 balance
             wallet_data = {
-                "wallet_id": wallet_id,
+                "wallet_id": f"wallet_{saved_user_id}",
                 "balance": 0.0,
                 "currency": "INR"
             }
@@ -412,6 +414,10 @@ async def start_chat(session_data: dict):
         try:
             from backend.database.manager import db
         except ImportError:
+            # Fallback to root database_manager
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
@@ -674,6 +680,10 @@ async def init_database():
         try:
             from backend.database.manager import db
         except ImportError:
+            # Fallback to root database_manager
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
@@ -758,6 +768,10 @@ async def check_database():
         try:
             from backend.database.manager import db
         except ImportError:
+            # Fallback to root database_manager
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             from database_manager import DatabaseManager
             db = DatabaseManager()
         

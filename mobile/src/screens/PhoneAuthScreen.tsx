@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
 
 interface PhoneAuthScreenProps {
   onLogin: () => void;
@@ -124,7 +125,8 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
                 mobile.length !== 10 && styles.disabledButton,
               ]}
               onPress={handleMobileSubmit}
-              disabled={mobile.length !== 10 || isSendingOtp}>
+              disabled={mobile.length !== 10 || isSendingOtp}
+              activeOpacity={touchableOpacity}>
               {isSendingOtp ? (
                 <ActivityIndicator color="white" />
               ) : (
@@ -149,7 +151,7 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
 
             {/* Skip Button for Testing */}
             {onSkip && (
-              <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+              <TouchableOpacity style={styles.skipButton} onPress={onSkip} activeOpacity={touchableOpacity}>
                 <Text style={styles.skipButtonText}>Skip (Testing Mode)</Text>
               </TouchableOpacity>
             )}
@@ -168,7 +170,8 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
           onPress={() => {
             setStep('mobile');
             setOtp('');
-          }}>
+          }}
+          activeOpacity={touchableOpacity}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
 
@@ -204,7 +207,8 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
               otp.length !== 6 && styles.disabledButton,
             ]}
             onPress={handleOtpSubmit}
-            disabled={otp.length !== 6 || isVerifying}>
+            disabled={otp.length !== 6 || isVerifying}
+            activeOpacity={touchableOpacity}>
             {isVerifying ? (
               <ActivityIndicator color="white" />
             ) : (
@@ -234,189 +238,196 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: spacing['3xl'],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 64,
-    gap: 16,
+    gap: spacing.lg,
   },
   logoContainer: {
     width: 64,
     height: 64,
-    backgroundColor: '#6366f1',
-    borderRadius: 24,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    ...shadows.orangeLg,
   },
   logoIcon: {
     fontSize: 32,
-    color: 'white',
+    color: colors.white,
   },
   brandingText: {
     alignItems: 'flex-start',
   },
   appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontSize: typography.fontSize['4xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   tagline: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   inputSection: {
-    gap: 24,
+    gap: spacing['2xl'],
   },
   label: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   phoneInputContainer: {
     flexDirection: 'row',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    backgroundColor: 'white',
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.backgroundCard,
   },
   countryCode: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderRightWidth: 1,
-    borderRightColor: '#e5e7eb',
+    borderRightColor: colors.border,
     justifyContent: 'center',
   },
   countryCodeText: {
-    fontSize: 16,
-    color: '#000000',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textPrimary,
   },
   phoneInput: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#000000',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textPrimary,
   },
   continueButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
   },
   disabledButton: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: colors.textTertiary,
   },
   continueButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
   },
   termsText: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
   },
   linkText: {
-    color: '#6366f1',
+    color: colors.primary,
   },
   skipButton: {
-    marginTop: 32,
+    marginTop: spacing['3xl'],
     alignItems: 'center',
   },
   skipButtonText: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
     textDecorationLine: 'underline',
   },
   backButton: {
-    marginBottom: 24,
+    marginBottom: spacing['2xl'],
     alignSelf: 'flex-start',
   },
   backButtonText: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   otpSection: {
-    gap: 24,
+    gap: spacing['2xl'],
   },
   otpTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontSize: typography.fontSize['2xl'],
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
   otpSubtitle: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   phoneNumber: {
-    fontSize: 16,
-    color: '#000000',
-    fontWeight: '600',
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textPrimary,
   },
   otpInputContainer: {
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
   },
   otpInput: {
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 18,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.regular,
     textAlign: 'center',
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundCard,
     letterSpacing: 4,
   },
   otpInputError: {
-    borderColor: '#ef4444',
+    borderColor: colors.error,
   },
   errorContainer: {
     alignItems: 'center',
   },
   errorText: {
-    fontSize: 14,
-    color: '#ef4444',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.error,
   },
   verifyButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
   },
   verifyButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.semiBold,
   },
   resendContainer: {
     alignItems: 'center',
   },
   resendText: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   resendLink: {
-    color: '#6366f1',
+    color: colors.primary,
   },
   disabledLink: {
-    color: '#9ca3af',
+    color: colors.textTertiary,
   },
 });

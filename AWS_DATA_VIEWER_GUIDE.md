@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `view_user_data.py` tool helps you monitor and visualize all user data stored across your local and AWS infrastructure.
+The `view_user_data.py` tool helps you monitor and visualize all user data stored across your local and AWS infrastructure, including direct SQL query capabilities for PostgreSQL databases.
 
 ---
 
@@ -24,7 +24,13 @@ The `view_user_data.py` tool helps you monitor and visualize all user data store
 1. **DynamoDB** - WebSocket connections
 2. **S3** - Audio recordings
 3. **Cognito** - Authenticated users
-4. **RDS PostgreSQL** - (Coming soon)
+4. **RDS PostgreSQL** - User profiles, conversations, wallets, transactions
+
+### **SQL Database Queries**
+1. **Direct SQL Execution** - Run custom queries on PostgreSQL
+2. **Table Analysis** - View schema and data distribution
+3. **User Analytics** - Advanced user behavior queries
+4. **Performance Monitoring** - Database health and metrics
 
 ---
 
@@ -55,6 +61,24 @@ python3 view_user_data.py --user test_user_voice
 python3 view_user_data.py --stats
 ```
 
+### Run SQL Queries
+```bash
+# Execute custom SQL query
+python3 view_user_data.py --sql "SELECT * FROM users LIMIT 10"
+
+# Analyze user patterns
+python3 view_user_data.py --sql "SELECT gender, COUNT(*) FROM users GROUP BY gender"
+
+# Check wallet balances
+python3 view_user_data.py --sql "SELECT user_id, balance FROM wallets ORDER BY balance DESC"
+```
+
+### Interactive SQL Mode
+```bash
+# Enter interactive SQL mode
+python3 view_user_data.py --sql-interactive
+```
+
 ---
 
 ## 📋 **Command Options**
@@ -66,6 +90,12 @@ python3 view_user_data.py --stats
 | `--source all` | View everything (default) | `python3 view_user_data.py` |
 | `--user USER_ID` | View detailed data for specific user | `python3 view_user_data.py --user test_user` |
 | `--stats` | Show statistics summary | `python3 view_user_data.py --stats` |
+| `--sql "QUERY"` | Execute SQL query on PostgreSQL | `python3 view_user_data.py --sql "SELECT * FROM users"` |
+| `--sql-interactive` | Enter interactive SQL mode | `python3 view_user_data.py --sql-interactive` |
+| `--sql-file FILE` | Execute SQL from file | `python3 view_user_data.py --sql-file queries.sql` |
+| `--tables` | List all database tables | `python3 view_user_data.py --tables` |
+| `--schema TABLE` | Show table schema | `python3 view_user_data.py --schema users` |
+| `--analyze` | Analyze customer ID patterns | `python3 view_user_data.py --analyze` |
 
 ---
 
@@ -90,6 +120,230 @@ Create or update `.env`:
 AWS_REGION=ap-south-1
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
+```
+
+---
+
+## 🗄️ **SQL Query Capabilities**
+
+### **Database Schema Overview**
+
+The PostgreSQL database contains the following main tables:
+
+```sql
+-- Users table
+users (
+    user_id VARCHAR PRIMARY KEY,
+    full_name VARCHAR,
+    phone_number VARCHAR,
+    email VARCHAR,
+    birth_date DATE,
+    birth_time TIME,
+    birth_location VARCHAR,
+    gender VARCHAR,
+    language_preference VARCHAR,
+    subscription_type VARCHAR,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    metadata JSONB
+)
+
+-- Wallets table
+wallets (
+    wallet_id VARCHAR PRIMARY KEY,
+    user_id VARCHAR REFERENCES users(user_id),
+    balance DECIMAL,
+    currency VARCHAR,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+
+-- Transactions table
+transactions (
+    transaction_id VARCHAR PRIMARY KEY,
+    user_id VARCHAR,
+    wallet_id VARCHAR,
+    transaction_type VARCHAR,
+    amount DECIMAL,
+    balance_before DECIMAL,
+    balance_after DECIMAL,
+    created_at TIMESTAMP
+)
+
+-- Conversations table
+conversations (
+    conversation_id VARCHAR PRIMARY KEY,
+    user_id VARCHAR,
+    astrologer_id VARCHAR,
+    topic VARCHAR,
+    status VARCHAR,
+    total_messages INTEGER,
+    created_at TIMESTAMP,
+    ended_at TIMESTAMP
+)
+
+-- Messages table
+messages (
+    message_id VARCHAR PRIMARY KEY,
+    conversation_id VARCHAR,
+    sender_type VARCHAR,
+    message_type VARCHAR,
+    content TEXT,
+    sent_at TIMESTAMP
+)
+```
+
+### **Common SQL Queries**
+
+#### **User Analytics**
+```bash
+# Top users by wallet balance
+python3 view_user_data.py --sql "
+SELECT u.full_name, u.phone_number, w.balance 
+FROM users u 
+JOIN wallets w ON u.user_id = w.user_id 
+ORDER BY w.balance DESC 
+LIMIT 10"
+
+# Users by gender distribution
+python3 view_user_data.py --sql "
+SELECT gender, COUNT(*) as count 
+FROM users 
+WHERE gender IS NOT NULL 
+GROUP BY gender 
+ORDER BY count DESC"
+
+# Users registered in last 7 days
+python3 view_user_data.py --sql "
+SELECT user_id, full_name, created_at 
+FROM users 
+WHERE created_at >= NOW() - INTERVAL '7 days' 
+ORDER BY created_at DESC"
+```
+
+#### **Financial Analytics**
+```bash
+# Total wallet balance across all users
+python3 view_user_data.py --sql "
+SELECT SUM(balance) as total_balance, 
+       COUNT(*) as total_wallets,
+       AVG(balance) as avg_balance
+FROM wallets"
+
+# Transaction summary by type
+python3 view_user_data.py --sql "
+SELECT transaction_type, 
+       COUNT(*) as count,
+       SUM(amount) as total_amount
+FROM transactions 
+GROUP BY transaction_type"
+
+# Users with highest transaction activity
+python3 view_user_data.py --sql "
+SELECT u.full_name, COUNT(t.transaction_id) as transaction_count
+FROM users u
+JOIN transactions t ON u.user_id = t.user_id
+GROUP BY u.user_id, u.full_name
+ORDER BY transaction_count DESC
+LIMIT 10"
+```
+
+#### **Conversation Analytics**
+```bash
+# Most active conversations
+python3 view_user_data.py --sql "
+SELECT c.conversation_id, u.full_name, c.total_messages, c.created_at
+FROM conversations c
+JOIN users u ON c.user_id = u.user_id
+ORDER BY c.total_messages DESC
+LIMIT 10"
+
+# Conversation duration analysis
+python3 view_user_data.py --sql "
+SELECT 
+    CASE 
+        WHEN total_duration_seconds < 60 THEN '< 1 min'
+        WHEN total_duration_seconds < 300 THEN '1-5 min'
+        WHEN total_duration_seconds < 900 THEN '5-15 min'
+        ELSE '> 15 min'
+    END as duration_range,
+    COUNT(*) as count
+FROM conversations 
+WHERE total_duration_seconds IS NOT NULL
+GROUP BY duration_range
+ORDER BY count DESC"
+```
+
+#### **Data Quality Checks**
+```bash
+# Users with incomplete profiles
+python3 view_user_data.py --sql "
+SELECT user_id, full_name, 
+       CASE WHEN birth_date IS NULL THEN 'Missing DOB' END as missing_data
+FROM users 
+WHERE birth_date IS NULL OR birth_time IS NULL OR birth_location IS NULL"
+
+# Duplicate phone numbers
+python3 view_user_data.py --sql "
+SELECT phone_number, COUNT(*) as count
+FROM users 
+WHERE phone_number IS NOT NULL
+GROUP BY phone_number 
+HAVING COUNT(*) > 1"
+
+# Users without wallets
+python3 view_user_data.py --sql "
+SELECT u.user_id, u.full_name
+FROM users u
+LEFT JOIN wallets w ON u.user_id = w.user_id
+WHERE w.user_id IS NULL"
+```
+
+### **Interactive SQL Mode**
+
+```bash
+# Start interactive mode
+python3 view_user_data.py --sql-interactive
+
+# Example session:
+SQL> SELECT COUNT(*) FROM users;
+SQL> SELECT * FROM users WHERE gender = 'Female' LIMIT 5;
+SQL> \tables  # List all tables
+SQL> \schema users  # Show table schema
+SQL> \quit  # Exit
+```
+
+### **SQL File Execution**
+
+Create a file `user_analytics.sql`:
+```sql
+-- User Analytics Report
+SELECT 
+    'Total Users' as metric,
+    COUNT(*) as value
+FROM users
+
+UNION ALL
+
+SELECT 
+    'Users with Complete Profiles' as metric,
+    COUNT(*) as value
+FROM users 
+WHERE birth_date IS NOT NULL 
+  AND birth_time IS NOT NULL 
+  AND birth_location IS NOT NULL
+
+UNION ALL
+
+SELECT 
+    'Total Wallet Balance' as metric,
+    SUM(balance) as value
+FROM wallets;
+```
+
+Execute it:
+```bash
+python3 view_user_data.py --sql-file user_analytics.sql
 ```
 
 ---
@@ -143,6 +397,33 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 }
 ```
 
+### SQL Query Output
+```
+🔍 SQL QUERY RESULTS
+================================================================================
+
+Query: SELECT gender, COUNT(*) as count FROM users WHERE gender IS NOT NULL GROUP BY gender
+
+╒═══════════╤═══════╕
+│ Gender    │ Count │
+╞═══════════╪═══════╡
+│ Male      │ 8     │
+│ Female    │ 5     │
+╘═══════════╧═══════╛
+
+Query: SELECT u.full_name, w.balance FROM users u JOIN wallets w ON u.user_id = w.user_id ORDER BY w.balance DESC LIMIT 5
+
+╒═══════════════════════╤═══════════╕
+│ Full Name             │ Balance   │
+╞═══════════════════════╪═══════════╡
+│ UUID Test User        │ 500.00    │
+│ Final Test User       │ 500.00    │
+│ Birth Test User       │ 500.00    │
+│ Test User Success     │ 500.00    │
+│ Direct Test User      │ 500.00    │
+╘═══════════════════════╧═══════════╛
+```
+
 ### Statistics View
 ```
 📊 OVERALL STATISTICS
@@ -156,6 +437,12 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
    • Active WebSocket Connections: 0
    • Authenticated Users (Cognito): 5
    • Audio Files (S3): 127
+
+🗄️  Database Statistics:
+   • Total Users: 13
+   • UUID-based IDs: 6 (46%)
+   • Total Wallet Balance: ₹6,500.00
+   • Active Conversations: 0
 ```
 
 ---
@@ -202,18 +489,39 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 ```bash
 # See who's currently using the app
 python3 view_user_data.py --source aws
+
+# Check recent user registrations
+python3 view_user_data.py --sql "SELECT user_id, full_name, created_at FROM users ORDER BY created_at DESC LIMIT 10"
 ```
 
 ### 2. Check User Profile Completion
 ```bash
 # See which users have complete profiles
 python3 view_user_data.py --source local
+
+# SQL version - users with incomplete birth info
+python3 view_user_data.py --sql "
+SELECT user_id, full_name, 
+       CASE WHEN birth_date IS NULL THEN 'Missing DOB' 
+            WHEN birth_time IS NULL THEN 'Missing Time'
+            WHEN birth_location IS NULL THEN 'Missing Location'
+            ELSE 'Complete' END as status
+FROM users"
 ```
 
 ### 3. Debug Specific User Issues
 ```bash
 # View all data for a specific user
 python3 view_user_data.py --user user_001
+
+# SQL version - comprehensive user data
+python3 view_user_data.py --sql "
+SELECT u.*, w.balance, COUNT(t.transaction_id) as transaction_count
+FROM users u
+LEFT JOIN wallets w ON u.user_id = w.user_id
+LEFT JOIN transactions t ON u.user_id = t.user_id
+WHERE u.user_id = 'user_001'
+GROUP BY u.user_id, w.balance"
 ```
 
 ### 4. Track Audio Storage
@@ -226,6 +534,63 @@ python3 view_user_data.py --source aws
 ```bash
 # Get overview of all data
 python3 view_user_data.py --stats
+
+# SQL version - detailed analytics
+python3 view_user_data.py --sql "
+SELECT 
+    'Total Users' as metric, COUNT(*) as value FROM users
+UNION ALL
+SELECT 
+    'Total Wallet Balance' as metric, SUM(balance) as value FROM wallets
+UNION ALL
+SELECT 
+    'Avg Balance per User' as metric, AVG(balance) as value FROM wallets"
+```
+
+### 6. Financial Analysis
+```bash
+# Top spenders
+python3 view_user_data.py --sql "
+SELECT u.full_name, SUM(t.amount) as total_spent
+FROM users u
+JOIN transactions t ON u.user_id = t.user_id
+WHERE t.transaction_type = 'deduction'
+GROUP BY u.user_id, u.full_name
+ORDER BY total_spent DESC
+LIMIT 10"
+
+# Revenue analysis
+python3 view_user_data.py --sql "
+SELECT 
+    DATE_TRUNC('day', created_at) as date,
+    COUNT(*) as transactions,
+    SUM(amount) as total_amount
+FROM transactions
+WHERE transaction_type = 'deduction'
+GROUP BY DATE_TRUNC('day', created_at)
+ORDER BY date DESC
+LIMIT 30"
+```
+
+### 7. User Behavior Analysis
+```bash
+# Most active users by conversation count
+python3 view_user_data.py --sql "
+SELECT u.full_name, COUNT(c.conversation_id) as conversation_count
+FROM users u
+LEFT JOIN conversations c ON u.user_id = c.user_id
+GROUP BY u.user_id, u.full_name
+ORDER BY conversation_count DESC
+LIMIT 10"
+
+# User engagement by language preference
+python3 view_user_data.py --sql "
+SELECT language_preference, COUNT(*) as user_count,
+       AVG(w.balance) as avg_balance
+FROM users u
+LEFT JOIN wallets w ON u.user_id = w.user_id
+GROUP BY language_preference
+ORDER BY user_count DESC"
 ```
 
 ---
@@ -266,6 +631,37 @@ export AWS_SECRET_ACCESS_KEY=your_secret
   - DynamoDB: Scan
   - S3: ListBucket, GetObject
   - Cognito: ListUsers
+
+### Database Connection Error
+```
+❌ Error: Database connection failed
+```
+
+**Solution:**
+- Check PostgreSQL service is running: `brew services list | grep postgresql`
+- Verify database credentials in `.env` file
+- Test connection: `python3 view_user_data.py --sql "SELECT version()"`
+
+### SQL Syntax Error
+```
+❌ Error: syntax error at or near "SELECT"
+```
+
+**Solution:**
+- Check SQL syntax - use proper PostgreSQL syntax
+- Escape quotes in queries: `python3 view_user_data.py --sql "SELECT * FROM users WHERE name = 'John'"` 
+- Use single quotes for string literals
+- Check table and column names exist: `python3 view_user_data.py --tables`
+
+### Query Timeout Error
+```
+❌ Error: Query execution timeout
+```
+
+**Solution:**
+- Add LIMIT to large queries: `SELECT * FROM users LIMIT 1000`
+- Use indexes for better performance
+- Break complex queries into smaller parts
 
 ---
 
@@ -315,11 +711,52 @@ python3 view_user_data.py --source local | grep "Complete"
 
 ## 💡 **Tips**
 
+### **General Monitoring**
 1. **Regular Monitoring**: Check `--stats` daily to track growth
 2. **User Support**: Use `--user` to debug user-reported issues
 3. **Data Migration**: Use local data as backup before AWS migration
 4. **Cost Tracking**: Monitor S3 audio file counts for storage costs
 5. **Performance**: Check DynamoDB connections for scaling needs
+
+### **SQL Query Tips**
+1. **Always Use LIMIT**: Prevent accidental large result sets
+   ```bash
+   python3 view_user_data.py --sql "SELECT * FROM users LIMIT 100"
+   ```
+
+2. **Use Indexes**: Query on indexed columns for better performance
+   ```bash
+   python3 view_user_data.py --sql "SELECT * FROM users WHERE user_id = 'specific_id'"
+   ```
+
+3. **Batch Operations**: Use transactions for multiple related queries
+   ```bash
+   python3 view_user_data.py --sql "
+   BEGIN;
+   UPDATE wallets SET balance = balance - 100 WHERE user_id = 'user_123';
+   INSERT INTO transactions (user_id, amount, transaction_type) VALUES ('user_123', 100, 'deduction');
+   COMMIT;"
+   ```
+
+4. **Data Validation**: Always check for NULL values
+   ```bash
+   python3 view_user_data.py --sql "
+   SELECT COUNT(*) FROM users WHERE birth_date IS NULL"
+   ```
+
+5. **Performance Monitoring**: Use EXPLAIN for query optimization
+   ```bash
+   python3 view_user_data.py --sql "EXPLAIN SELECT * FROM users WHERE gender = 'Male'"
+   ```
+
+### **Security Best Practices**
+1. **Never commit** AWS credentials to Git
+2. **Restrict access** to production data
+3. **Use IAM roles** instead of access keys when possible
+4. **Rotate credentials** regularly
+5. **Enable MFA** on AWS account
+6. **Validate SQL inputs** to prevent injection attacks
+7. **Use parameterized queries** when possible
 
 ---
 
@@ -328,13 +765,18 @@ python3 view_user_data.py --source local | grep "Complete"
 1. ✅ View current local data
 2. ✅ Configure AWS credentials
 3. ✅ View AWS data
-4. ⏭️ Set up automated monitoring
-5. ⏭️ Create data export scripts
-6. ⏭️ Implement data cleanup policies
+4. ✅ SQL query capabilities implemented
+5. ✅ UUID-based user IDs implemented
+6. ⏭️ Set up automated monitoring
+7. ⏭️ Create data export scripts
+8. ⏭️ Implement data cleanup policies
+9. ⏭️ Add more advanced SQL analytics
+10. ⏭️ Create scheduled reports
 
 ---
 
 **Created**: October 4, 2025  
-**Version**: 1.0.0  
-**Status**: ✅ Ready to use
+**Updated**: October 18, 2025  
+**Version**: 2.0.0  
+**Status**: ✅ Ready to use with SQL capabilities
 
