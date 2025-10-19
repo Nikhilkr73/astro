@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,28 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
 
+// Geoapify API key for location autocomplete (client-side usage is acceptable for geocoding APIs)
+const GEOAPIFY_API_KEY = '5a3a573b36774482b168c56af6be0581';
+
 interface OnboardingFormScreenProps {
   onComplete: () => void;
   onNavigate?: (screen: string) => void;
   userId?: string;
   isEditMode?: boolean;
+}
+
+interface LocationSuggestion {
+  city: string;
+  state: string;
+  country: string;
+  formatted: string;
 }
 
 const MONTHS = [
@@ -51,6 +62,12 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
   const [showCompletion, setShowCompletion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  
+  // Location autocomplete states
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const totalSteps = 6;
 
@@ -60,6 +77,15 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
       loadUserData();
     }
   }, [isEditMode, userId]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
   const loadUserData = async () => {
     try {
@@ -102,7 +128,7 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
       
       if (userData.language_preference) {
         // Convert language preference to array
-        const languages = userData.language_preference.split(',').map(lang => lang.trim());
+        const languages = userData.language_preference.split(',').map((lang: string) => lang.trim());
         setSelectedLanguages(languages);
       }
       
@@ -138,6 +164,90 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
         return [...prev, language];
       }
     });
+  };
+
+  // Location autocomplete functions
+  const fetchLocationSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      setIsLoadingLocations(true);
+      const response = await fetch(
+        `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&limit=5&apiKey=${GEOAPIFY_API_KEY}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch location suggestions');
+      }
+      
+      const data = await response.json();
+      
+      if (data.features && Array.isArray(data.features)) {
+        const suggestions: LocationSuggestion[] = data.features.map((feature: any) => {
+          const props = feature.properties || {};
+          const city = props.city || '';
+          const state = props.state || '';
+          const country = props.country || '';
+          
+          return {
+            city,
+            state,
+            country,
+            formatted: `${city}${state ? `, ${state}` : ''}${country ? `, ${country}` : ''}`.trim()
+          };
+        }).filter((suggestion: LocationSuggestion) => suggestion.formatted.length > 0);
+        
+        setLocationSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } else {
+        setLocationSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.warn('Location autocomplete error:', error);
+      // Silent fail - allow manual input
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
+  const handleLocationInputChange = (text: string) => {
+    setBirthPlace(text);
+    
+    // Clear existing timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    // Set new timeout for debounced API call
+    debounceTimeout.current = setTimeout(() => {
+      fetchLocationSuggestions(text);
+    }, 300);
+  };
+
+  const handleLocationSuggestionSelect = (suggestion: LocationSuggestion) => {
+    setBirthPlace(suggestion.formatted);
+    setShowSuggestions(false);
+    setLocationSuggestions([]);
+  };
+
+  const handleLocationInputFocus = () => {
+    if (locationSuggestions.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleLocationInputBlur = () => {
+    // Delay hiding suggestions to allow for selection
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 200);
   };
 
   const canProceed = () => {
@@ -218,8 +328,10 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
         console.log('👤 Creating new user with phone:', phoneNumber);
         console.log('👤 Using existing user ID:', userId);
         
+        // CRITICAL: Must pass user_id from OTP verification to prevent duplicate user creation
+        // The backend expects user_id to link registration with existing OTP-verified user
         response = await apiService.registerUser({
-          user_id: userId, // Send the user ID from OTP verification
+          user_id: userId, // CRITICAL: This prevents duplicate user creation
           phone_number: phoneNumber,
           ...userData,
         });
@@ -492,13 +604,48 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
                 Your birth place helps us calculate planetary positions
               </Text>
 
-              <TextInput
-                style={styles.textInput}
-                placeholder="City, State, Country"
-                value={birthPlace}
-                onChangeText={setBirthPlace}
-                autoFocus
-              />
+              <View style={styles.locationInputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="City, State, Country"
+                  value={birthPlace}
+                  onChangeText={handleLocationInputChange}
+                  onFocus={handleLocationInputFocus}
+                  onBlur={handleLocationInputBlur}
+                  autoFocus
+                />
+                
+                {/* Location Suggestions Dropdown */}
+                {showSuggestions && (
+                  <View style={styles.suggestionsContainer}>
+                    {isLoadingLocations ? (
+                      <View style={styles.suggestionsLoadingContainer}>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={styles.suggestionsLoadingText}>Searching locations...</Text>
+                      </View>
+                    ) : locationSuggestions.length > 0 ? (
+                      <FlatList
+                        data={locationSuggestions}
+                        keyExtractor={(item, index) => `${item.formatted}-${index}`}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            style={styles.suggestionItem}
+                            onPress={() => handleLocationSuggestionSelect(item)}
+                            activeOpacity={touchableOpacity}>
+                            <Text style={styles.suggestionText}>{item.formatted}</Text>
+                          </TouchableOpacity>
+                        )}
+                        style={styles.suggestionsList}
+                        showsVerticalScrollIndicator={false}
+                      />
+                    ) : (
+                      <View style={styles.noResultsContainer}>
+                        <Text style={styles.noResultsText}>No locations found</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
@@ -788,7 +935,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.xs,
+    borderRadius: borderRadius.sm,
   },
   stepContent: {
     paddingHorizontal: 24,
@@ -1073,7 +1220,6 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(10px)',
   },
   continueButton: {
     backgroundColor: colors.primary,
@@ -1185,5 +1331,62 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
     alignItems: 'center',
+  },
+  // Location autocomplete styles
+  locationInputContainer: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: 4,
+    maxHeight: 200,
+    zIndex: 1000,
+    ...shadows.md,
+  },
+  suggestionsList: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  suggestionText: {
+    fontSize: 16,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textPrimary,
+  },
+  suggestionsLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  suggestionsLoadingText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+  },
+  noResultsContainer: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });

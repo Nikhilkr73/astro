@@ -46,6 +46,7 @@ apiClient.interceptors.response.use(
 // =============================================================================
 
 export interface UserRegistrationData {
+  user_id?: string; // CRITICAL: Must include user_id from OTP verification to prevent duplicate users
   phone_number: string;
   full_name: string;
   date_of_birth: string; // DD/MM/YYYY

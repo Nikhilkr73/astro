@@ -62,8 +62,8 @@ class WalletResponse(BaseModel):
 
 
 class UserRegistration(BaseModel):
-    """User registration model"""
-    user_id: Optional[str] = None
+    """User registration model - CRITICAL: user_id must be provided from OTP verification"""
+    user_id: Optional[str] = None  # CRITICAL: Must be provided to prevent duplicate users
     email: Optional[str] = None
     phone_number: Optional[str] = None
     full_name: Optional[str] = None
@@ -226,12 +226,15 @@ async def register_user(user: UserRegistration):
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
-        # Use provided user_id from OTP verification, or generate new one if not provided
+        # CRITICAL: Use provided user_id from OTP verification to prevent duplicate users
+        # If user_id is not provided, it means mobile app didn't send it (regression risk)
         if not user.user_id:
-            print("⚠️ No user_id provided, generating new one")
+            print("⚠️ CRITICAL: No user_id provided - this will create a duplicate user!")
+            print("⚠️ Mobile app must send user_id from OTP verification")
+            print("⚠️ Generating new user_id - this creates duplicate user issue")
             user.user_id = db.generate_user_id()
         else:
-            print(f"✅ Using provided user_id: {user.user_id}")
+            print(f"✅ Using provided user_id from OTP verification: {user.user_id}")
         
         print(f"📝 Registering user: {user.user_id}")
         print(f"   Name: {user.full_name}")

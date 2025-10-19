@@ -28,6 +28,9 @@ MESSAGE_CENTRAL_COUNTRY=IN
 MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com
 MESSAGE_CENTRAL_SENDER_ID=ASTROV
 
+# Geoapify Location Autocomplete Configuration
+GEOAPIFY_API_KEY=5a3a573b36774482b168c56af6be0581
+
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
