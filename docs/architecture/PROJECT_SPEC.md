@@ -1,7 +1,7 @@
 # AstroVoice - Complete Project Specification & Context
 
-**Last Updated:** October 18, 2025  
-**Status:** Production Ready with Complete OTP Authentication System
+**Last Updated:** October 19, 2025  
+**Status:** Production Ready with Complete OTP Authentication System + Critical Bug Fixes
 
 ## 🌟 Project Overview
 
@@ -311,8 +311,10 @@ CREATE TABLE session_reviews (
 ### **App Initialization**
 1. **Splash Screen** (3 seconds) → Always shown
 2. **Check Storage** → User ID, profile completion status
-3. **Conditional Navigation**:
+3. **Database Verification** → Verify user exists in database (CRITICAL FIX)
+4. **Conditional Navigation**:
    - **No User** → Login screen
+   - **User Not Found in Database** → Clear cache → Login screen
    - **Incomplete Profile** → Onboarding screen
    - **Complete Profile** → Main app
 
@@ -439,6 +441,30 @@ DeviceEventEmitter.emit('user_logout');
 curl http://localhost:8000/api/users/{user_id}
 ```
 
+### **CRITICAL: Deleted User Shows Onboarding Screen**
+**Problem:** User deleted from database but app shows onboarding instead of login
+**Root Cause:** AppNavigator only checked cached data, not database
+**Solution:** AppNavigator now verifies user exists in database before showing screens
+**Status:** ✅ FIXED (October 19, 2025)
+
+### **CRITICAL: Duplicate User Creation**
+**Problem:** OTP creates UUID user, registration creates old format user
+**Root Cause:** Registration endpoint ignored provided user_id and generated new one
+**Solution:** Mobile app now sends user_id from OTP verification
+**Status:** ✅ FIXED (October 19, 2025)
+
+### **CRITICAL: Profile Data Not Saving**
+**Problem:** DOB, Time, Place showing as None in database
+**Root Cause:** Field name mismatch (mobile sent birth_date, backend expected date_of_birth)
+**Solution:** Unified field names across mobile and backend
+**Status:** ✅ FIXED (October 19, 2025)
+
+### **CRITICAL: Phone Number Bug**
+**Problem:** UUID being sent as phone number instead of actual phone
+**Root Cause:** Mobile app retrieved wrong value from storage
+**Solution:** Fixed storage retrieval logic and added debug logging
+**Status:** ✅ FIXED (October 19, 2025)
+
 ## 📱 Current Features
 
 ### **Authentication System**
@@ -543,11 +569,17 @@ npx expo build:android
 7. **Navigation** → Based on profile completion
 
 ### **User Registration Flow**
-1. **OTP verification** → User account created/linked
+1. **OTP verification** → User account created/linked (UUID format)
 2. **Profile completion check** → Missing fields identified
 3. **Onboarding** → User fills missing profile data
-4. **Profile update** → `/api/users/{user_id}` endpoint
+4. **Profile update** → `/api/users/{user_id}` endpoint (uses existing user_id)
 5. **Main app access** → Complete profile → Home screen
+
+### **CRITICAL: User ID Management (Fixed October 19, 2025)**
+- **OTP Verification** → Creates UUID user (e.g., `4d96566e-14dd-4491-8bd3-460aef4d1842`)
+- **Registration** → Uses same UUID from OTP verification (no duplicate creation)
+- **Database Schema** → All tables use UUID format for user_id
+- **Mobile Storage** → Stores UUID and phone number correctly
 
 ### **Voice Conversation Flow**
 1. **User speaks** → Mobile app records audio
@@ -582,6 +614,12 @@ npx expo build:android
 - ✅ Error handling and logging
 - ✅ Database optimization
 - ✅ Mobile app polish
+- ✅ CRITICAL BUG FIXES (October 19, 2025):
+  - ✅ Fixed duplicate user creation
+  - ✅ Fixed field name mismatch
+  - ✅ Fixed deleted user navigation
+  - ✅ Fixed phone number bug
+  - ✅ Fixed AppNavigator database verification
 
 ### **Phase 2: Features** 🔄
 - 🔄 Advanced astrological calculations
@@ -622,11 +660,12 @@ python3 view_user_data.py --limit 10
 
 ### **Key Files**
 - `backend/main.py` - Server entry point
-- `backend/api/mobile_endpoints.py` - Mobile API (17 endpoints)
-- `backend/database/schema.sql` - Database schema (11 tables)
-- `mobile/src/navigation/AppNavigator.tsx` - Navigation logic
-- `mobile/src/screens/PhoneAuthScreen.tsx` - OTP authentication
-- `mobile/src/screens/ProfileScreen.tsx` - Profile management
+- `backend/api/mobile_endpoints.py` - Mobile API (17 endpoints) - **CRITICAL FIXES APPLIED**
+- `backend/database/schema.sql` - Database schema (11 tables) - **CLEANED UP**
+- `mobile/src/navigation/AppNavigator.tsx` - Navigation logic - **DATABASE VERIFICATION ADDED**
+- `mobile/src/screens/PhoneAuthScreen.tsx` - OTP authentication - **DEBUG LOGS ADDED**
+- `mobile/src/screens/OnboardingFormScreen.tsx` - Profile completion - **FIELD NAMES FIXED**
+- `mobile/src/screens/ProfileScreen.tsx` - Profile management - **LOGOUT FIXED**
 - `tests/run_tests.py` - Test runner
 - `view_user_data.py` - Database viewer
 
@@ -639,4 +678,30 @@ python3 view_user_data.py --limit 10
 
 ---
 
-*This specification reflects the current production-ready state as of October 18, 2025, with complete OTP authentication system, comprehensive testing framework, and full mobile app functionality.*
+## 🔥 CRITICAL FIXES SUMMARY (October 19, 2025)
+
+### **Issues Resolved:**
+1. **Duplicate User Creation** - OTP created UUID, registration created old format
+2. **Field Name Mismatch** - Mobile sent `birth_date`, backend expected `date_of_birth`
+3. **Deleted User Navigation** - App showed onboarding instead of login for deleted users
+4. **Phone Number Bug** - UUID sent as phone number instead of actual phone
+5. **Database Schema** - Removed duplicate columns and cleaned up structure
+
+### **Files Modified:**
+- `mobile/src/navigation/AppNavigator.tsx` - Added database verification
+- `mobile/src/screens/OnboardingFormScreen.tsx` - Fixed field names and user_id sending
+- `mobile/src/screens/PhoneAuthScreen.tsx` - Added debug logging
+- `backend/api/mobile_endpoints.py` - Fixed user_id handling and field mapping
+- `backend/database/schema.sql` - Cleaned up duplicate columns
+
+### **Testing Status:**
+- ✅ Deleted user flow works correctly
+- ✅ User registration saves profile data
+- ✅ Phone number correctly stored and retrieved
+- ✅ AppNavigator verifies database before showing screens
+- ✅ No duplicate users created
+- ✅ Field names consistent across mobile and backend
+
+---
+
+*This specification reflects the current production-ready state as of October 19, 2025, with complete OTP authentication system, comprehensive testing framework, full mobile app functionality, and all critical bugs resolved.*
