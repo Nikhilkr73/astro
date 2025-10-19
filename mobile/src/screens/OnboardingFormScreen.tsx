@@ -208,7 +208,8 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
         response = await apiService.updateUserProfile(userId, userData);
       } else {
         // Create new user
-        const phoneNumber = await storage.getUserId() || '+919999999999'; // Fallback for testing
+        const userDataFromStorage = await storage.getUserData();
+        const phoneNumber = userDataFromStorage?.phoneNumber || '+919999999999'; // Fallback for testing
         console.log('👤 Creating new user with phone:', phoneNumber);
         response = await apiService.registerUser({
           phone_number: phoneNumber,
