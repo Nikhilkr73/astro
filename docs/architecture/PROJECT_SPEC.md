@@ -1,13 +1,14 @@
 # AstroVoice - Complete Project Specification & Context
 
 **Last Updated:** October 19, 2025  
-**Status:** Production Ready with Complete OTP Authentication System + Critical Bug Fixes
+**Status:** Production Ready with Complete OTP Authentication System + Geoapify Location Autocomplete + Critical Bug Fixes
 
 ## 🌟 Project Overview
 
 AstroVoice is a comprehensive voice-based astrology consultation platform that combines:
 - **Real-time voice AI** using OpenAI Realtime API
 - **Complete OTP authentication** with Message Central SMS integration
+- **Location autocomplete** with Geoapify API integration
 - **Mobile app** built with React Native + Expo
 - **Backend API** built with FastAPI + PostgreSQL
 - **AWS Infrastructure** managed with CDK
@@ -386,6 +387,9 @@ MESSAGE_CENTRAL_COUNTRY=IN
 MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com
 MESSAGE_CENTRAL_SENDER_ID=ASTROV
 
+# Geoapify Location Autocomplete Configuration
+GEOAPIFY_API_KEY=5a3a573b36774482b168c56af6be0581
+
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
@@ -465,6 +469,12 @@ curl http://localhost:8000/api/users/{user_id}
 **Solution:** Fixed storage retrieval logic and added debug logging
 **Status:** ✅ FIXED (October 19, 2025)
 
+### **CRITICAL: Duplicate User Creation Regression**
+**Problem:** Duplicate users created when OTP verification creates UUID user but registration creates old format user
+**Root Cause:** Mobile app not sending user_id from OTP verification to registration API
+**Solution:** Added user_id to UserRegistrationData interface and registration call
+**Status:** ✅ FIXED (October 19, 2025)
+
 ## 📱 Current Features
 
 ### **Authentication System**
@@ -494,9 +504,19 @@ curl http://localhost:8000/api/users/{user_id}
 - ✅ **Beautiful UI** with Kundli-branded design
 - ✅ **Complete navigation** with splash, auth, onboarding, main app
 - ✅ **Profile management** with edit functionality
+- ✅ **Location autocomplete** with Geoapify API integration
 - ✅ **Wallet system** with transaction history
 - ✅ **Chat history** and session management
 - ✅ **Custom event system** for state management
+
+### **Location Autocomplete System**
+- ✅ **Geoapify API integration** for location suggestions
+- ✅ **Debounced API calls** (300ms delay) to reduce API usage
+- ✅ **Professional dropdown UI** with app design system
+- ✅ **Auto-fill functionality** with "City, State, Country" format
+- ✅ **Error handling** with graceful degradation to manual input
+- ✅ **Loading states** and "No results" messaging
+- ✅ **Minimum 3 characters** trigger for API calls
 
 ### **Backend API**
 - ✅ **FastAPI** with async support and comprehensive endpoints
@@ -505,6 +525,7 @@ curl http://localhost:8000/api/users/{user_id}
 - ✅ **Comprehensive error handling** and logging
 - ✅ **Message Central integration** for SMS OTP
 - ✅ **Profile completion logic** with missing fields detection
+- ✅ **Duplicate user prevention** with critical logging
 
 ## 🎯 Development Workflow
 
@@ -681,18 +702,22 @@ python3 view_user_data.py --limit 10
 ## 🔥 CRITICAL FIXES SUMMARY (October 19, 2025)
 
 ### **Issues Resolved:**
-1. **Duplicate User Creation** - OTP created UUID, registration created old format
+1. **Duplicate User Creation Regression** - Mobile app not sending user_id from OTP verification
 2. **Field Name Mismatch** - Mobile sent `birth_date`, backend expected `date_of_birth`
 3. **Deleted User Navigation** - App showed onboarding instead of login for deleted users
 4. **Phone Number Bug** - UUID sent as phone number instead of actual phone
 5. **Database Schema** - Removed duplicate columns and cleaned up structure
+6. **Location Input Enhancement** - Added Geoapify autocomplete for better UX
 
 ### **Files Modified:**
 - `mobile/src/navigation/AppNavigator.tsx` - Added database verification
-- `mobile/src/screens/OnboardingFormScreen.tsx` - Fixed field names and user_id sending
+- `mobile/src/screens/OnboardingFormScreen.tsx` - Fixed field names, user_id sending, added Geoapify autocomplete
 - `mobile/src/screens/PhoneAuthScreen.tsx` - Added debug logging
-- `backend/api/mobile_endpoints.py` - Fixed user_id handling and field mapping
+- `mobile/src/services/apiService.ts` - Added user_id to UserRegistrationData interface
+- `backend/api/mobile_endpoints.py` - Fixed user_id handling, field mapping, enhanced logging
 - `backend/database/schema.sql` - Cleaned up duplicate columns
+- `env_example.txt` - Added GEOAPIFY_API_KEY configuration
+- `DUPLICATE_USER_PREVENTION.md` - Comprehensive prevention guide
 
 ### **Testing Status:**
 - ✅ Deleted user flow works correctly
@@ -701,7 +726,9 @@ python3 view_user_data.py --limit 10
 - ✅ AppNavigator verifies database before showing screens
 - ✅ No duplicate users created
 - ✅ Field names consistent across mobile and backend
+- ✅ Geoapify location autocomplete working
+- ✅ Duplicate user prevention safeguards in place
 
 ---
 
-*This specification reflects the current production-ready state as of October 19, 2025, with complete OTP authentication system, comprehensive testing framework, full mobile app functionality, and all critical bugs resolved.*
+*This specification reflects the current production-ready state as of October 19, 2025, with complete OTP authentication system, Geoapify location autocomplete, comprehensive testing framework, full mobile app functionality, duplicate user prevention safeguards, and all critical bugs resolved.*
