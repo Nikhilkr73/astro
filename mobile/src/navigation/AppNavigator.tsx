@@ -63,23 +63,42 @@ export function AppNavigator() {
       });
       
       if (userId) {
-        // User is logged in, check profile status
-        setIsLoggedIn(true);
-        
-        if (profileComplete) {
-          // Profile is complete, go to main app
-          setIsOnboarded(true);
+        // User ID exists in storage, verify user exists in database
+        try {
+          console.log('🔍 Verifying user exists in database:', userId);
+          const userData = await apiService.getUserProfile(userId);
+          console.log('✅ User verified in database:', userData);
           
-          // Navigate to last visited screen or main
-          if (lastVisitedScreen && lastVisitedScreen !== 'login' && lastVisitedScreen !== 'onboarding') {
-            setCurrentScreen(lastVisitedScreen);
+          // User exists in database, check profile status
+          setIsLoggedIn(true);
+          
+          if (profileComplete) {
+            // Profile is complete, go to main app
+            setIsOnboarded(true);
+            
+            // Navigate to last visited screen or main
+            if (lastVisitedScreen && lastVisitedScreen !== 'login' && lastVisitedScreen !== 'onboarding') {
+              setCurrentScreen(lastVisitedScreen);
+            } else {
+              setCurrentScreen('main');
+            }
           } else {
-            setCurrentScreen('main');
+            // Profile incomplete, go to onboarding
+            setIsOnboarded(false);
+            setCurrentScreen('onboarding');
           }
-        } else {
-          // Profile incomplete, go to onboarding
+        } catch (error: any) {
+          // User doesn't exist in database (404) or other error
+          console.log('❌ User not found in database, clearing storage and logging out');
+          console.log('❌ Error details:', error?.response?.status, error?.message);
+          
+          // Clear all cached data
+          await storage.clearUserData();
+          
+          // Go to login screen
+          setIsLoggedIn(false);
           setIsOnboarded(false);
-          setCurrentScreen('onboarding');
+          setCurrentScreen('login');
         }
       } else {
         // No user logged in, go to login

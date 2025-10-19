@@ -192,9 +192,9 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
       
       const userData = {
         full_name: name,
-        birth_date: dateOfBirth,
-        birth_time: timeOfBirth,
-        birth_location: birthPlace,
+        date_of_birth: dateOfBirth,  // Changed from birth_date
+        time_of_birth: timeOfBirth,  // Changed from birth_time
+        place_of_birth: birthPlace,  // Changed from birth_location
         gender: gender || undefined,
         language_preference: selectedLanguages.join(', '),
       };
@@ -209,9 +209,17 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
       } else {
         // Create new user
         const userDataFromStorage = await storage.getUserData();
+        console.log('🔍 DEBUG: Retrieved user data from storage:');
+        console.log('  userDataFromStorage:', userDataFromStorage);
+        console.log('  phoneNumber:', userDataFromStorage?.phoneNumber);
+        
         const phoneNumber = userDataFromStorage?.phoneNumber || '+919999999999'; // Fallback for testing
+        const userId = userDataFromStorage?.userId; // Get user ID from OTP verification
         console.log('👤 Creating new user with phone:', phoneNumber);
+        console.log('👤 Using existing user ID:', userId);
+        
         response = await apiService.registerUser({
+          user_id: userId, // Send the user ID from OTP verification
           phone_number: phoneNumber,
           ...userData,
         });

@@ -73,6 +73,24 @@ python3 view_user_data.py --sql "SELECT gender, COUNT(*) FROM users GROUP BY gen
 python3 view_user_data.py --sql "SELECT user_id, balance FROM wallets ORDER BY balance DESC"
 ```
 
+### Delete Users from Database
+```bash
+# Delete specific user (CASCADE will remove all related data)
+python3 view_user_data.py --sql "DELETE FROM users WHERE user_id = 'user_id_to_delete'"
+
+# Delete users by phone number
+python3 view_user_data.py --sql "DELETE FROM users WHERE phone_number = '1234567890'"
+
+# Delete users with incomplete profiles
+python3 view_user_data.py --sql "DELETE FROM users WHERE birth_date IS NULL AND birth_time IS NULL"
+
+# Delete users created before a specific date
+python3 view_user_data.py --sql "DELETE FROM users WHERE created_at < '2025-01-01'"
+
+# Delete test users (be careful!)
+python3 view_user_data.py --sql "DELETE FROM users WHERE user_id LIKE 'test_%'"
+```
+
 ### Interactive SQL Mode
 ```bash
 # Enter interactive SQL mode
@@ -96,6 +114,8 @@ python3 view_user_data.py --sql-interactive
 | `--tables` | List all database tables | `python3 view_user_data.py --tables` |
 | `--schema TABLE` | Show table schema | `python3 view_user_data.py --schema users` |
 | `--analyze` | Analyze customer ID patterns | `python3 view_user_data.py --analyze` |
+| `--delete-user USER_ID` | Delete specific user (with confirmation) | `python3 view_user_data.py --delete-user test_user` |
+| `--soft-delete USER_ID` | Mark user as deleted (recommended) | `python3 view_user_data.py --soft-delete test_user` |
 
 ---
 
@@ -483,6 +503,124 @@ Query: SELECT u.full_name, w.balance FROM users u JOIN wallets w ON u.user_id = 
 
 ---
 
+## 🗑️ **User Deletion Guide**
+
+### **⚠️ IMPORTANT SAFETY WARNINGS**
+
+**Before deleting any user:**
+1. **Always backup data** if needed
+2. **Test on development environment** first
+3. **Verify user ID** is correct
+4. **Understand CASCADE behavior** - deleting a user removes ALL related data
+
+### **What Gets Deleted (CASCADE)**
+
+When you delete a user, the following data is **automatically deleted**:
+
+```sql
+-- Tables with ON DELETE CASCADE:
+conversations        -- All user conversations
+messages            -- All messages in those conversations  
+user_profiles       -- Astrology profile data
+readings            -- All readings/consultations
+user_sessions       -- Session tracking data
+wallets             -- User wallet and balance
+transactions        -- All transaction history
+otp_verifications   -- OTP verification records
+session_reviews     -- User reviews and ratings
+```
+
+### **Safe User Deletion Commands**
+
+```bash
+# 1. First, check what will be deleted
+python3 view_user_data.py --sql "
+SELECT 
+    u.user_id, u.full_name, u.phone_number,
+    COUNT(c.conversation_id) as conversations,
+    COUNT(t.transaction_id) as transactions,
+    w.balance
+FROM users u
+LEFT JOIN conversations c ON u.user_id = c.user_id
+LEFT JOIN transactions t ON u.user_id = t.user_id  
+LEFT JOIN wallets w ON u.user_id = w.user_id
+WHERE u.user_id = 'USER_ID_TO_DELETE'
+GROUP BY u.user_id, u.full_name, u.phone_number, w.balance"
+
+# 2. Delete specific user
+python3 view_user_data.py --sql "DELETE FROM users WHERE user_id = 'USER_ID_TO_DELETE'"
+
+# 3. Verify deletion
+python3 view_user_data.py --sql "SELECT COUNT(*) FROM users WHERE user_id = 'USER_ID_TO_DELETE'"
+```
+
+### **Bulk User Deletion**
+
+```bash
+# Delete users by phone number pattern
+python3 view_user_data.py --sql "DELETE FROM users WHERE phone_number LIKE '999%'"
+
+# Delete test users
+python3 view_user_data.py --sql "DELETE FROM users WHERE user_id LIKE 'test_%'"
+
+# Delete users with incomplete profiles (older than 30 days)
+python3 view_user_data.py --sql "
+DELETE FROM users 
+WHERE birth_date IS NULL 
+  AND birth_time IS NULL 
+  AND created_at < NOW() - INTERVAL '30 days'"
+
+# Delete users created before specific date
+python3 view_user_data.py --sql "DELETE FROM users WHERE created_at < '2025-01-01'"
+```
+
+### **Recovery Options**
+
+**If you accidentally delete a user:**
+
+1. **Check if you have backups** of the database
+2. **Restore from backup** if available
+3. **Recreate user manually** if no backup:
+   ```bash
+   # Recreate user with same data
+   python3 view_user_data.py --sql "
+   INSERT INTO users (user_id, phone_number, full_name, created_at) 
+   VALUES ('recovered_user_id', 'phone_number', 'User Name', NOW())"
+   ```
+
+### **Best Practices**
+
+1. **Always use transactions** for critical deletions:
+   ```bash
+   python3 view_user_data.py --sql "
+   BEGIN;
+   DELETE FROM users WHERE user_id = 'USER_ID';
+   -- Check results before committing
+   SELECT COUNT(*) FROM users WHERE user_id = 'USER_ID';
+   -- If OK: COMMIT; If not: ROLLBACK;
+   COMMIT;"
+   ```
+
+2. **Soft delete instead of hard delete** (recommended):
+   ```bash
+   # Instead of DELETE, mark as inactive
+   python3 view_user_data.py --sql "
+   UPDATE users 
+   SET account_status = 'deleted', updated_at = NOW() 
+   WHERE user_id = 'USER_ID'"
+   ```
+
+3. **Use LIMIT for bulk operations**:
+   ```bash
+   # Delete in batches of 10
+   python3 view_user_data.py --sql "
+   DELETE FROM users 
+   WHERE user_id LIKE 'test_%' 
+   LIMIT 10"
+   ```
+
+---
+
 ## 🔍 **Use Cases**
 
 ### 1. Monitor Active Users
@@ -522,6 +660,112 @@ LEFT JOIN wallets w ON u.user_id = w.user_id
 LEFT JOIN transactions t ON u.user_id = t.user_id
 WHERE u.user_id = 'user_001'
 GROUP BY u.user_id, w.balance"
+
+# View ALL data for user by phone number (comprehensive)
+python3 view_user_data.py --sql "
+SELECT 
+    '=== USER PROFILE ===' as section,
+    u.user_id,
+    u.full_name,
+    u.phone_number,
+    u.email,
+    u.birth_date,
+    u.birth_time,
+    u.birth_location,
+    u.gender,
+    u.language_preference,
+    u.subscription_type,
+    u.account_status,
+    u.created_at,
+    u.updated_at,
+    u.last_login_at
+FROM users u
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    '=== WALLET INFO ===' as section,
+    w.wallet_id,
+    w.balance::text,
+    w.currency,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+FROM wallets w
+JOIN users u ON w.user_id = u.user_id
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    '=== TRANSACTIONS ===' as section,
+    t.transaction_id,
+    t.transaction_type,
+    t.amount::text,
+    t.balance_before::text,
+    t.balance_after::text,
+    t.payment_method,
+    t.payment_status,
+    t.description,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+FROM transactions t
+JOIN users u ON t.user_id = u.user_id
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    '=== CONVERSATIONS ===' as section,
+    c.conversation_id,
+    c.topic,
+    c.status,
+    c.total_messages::text,
+    c.started_at::text,
+    c.ended_at::text,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+FROM conversations c
+JOIN users u ON c.user_id = u.user_id
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    '=== OTP VERIFICATIONS ===' as section,
+    o.verification_id::text,
+    o.otp_code,
+    o.status,
+    o.created_at::text,
+    o.verified_at::text,
+    o.message_central_verification_id,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+FROM otp_verifications o
+WHERE o.phone_number = '9602179666'
+
+ORDER BY section, u.created_at DESC;"
+
+# Quick user data lookup by phone (simpler format)
+python3 view_user_data.py --sql "
+SELECT 
+    'USER:' as type, u.user_id, u.full_name, u.phone_number, u.birth_date, u.gender, u.created_at
+FROM users u
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    'WALLET:' as type, w.wallet_id, w.balance::text, w.currency, NULL, NULL, w.created_at
+FROM wallets w
+JOIN users u ON w.user_id = u.user_id
+WHERE u.phone_number = '9602179666'
+
+UNION ALL
+
+SELECT 
+    'TRANSACTION:' as type, t.transaction_id, t.transaction_type, t.amount::text, t.payment_status, NULL, t.created_at
+FROM transactions t
+JOIN users u ON t.user_id = u.user_id
+WHERE u.phone_number = '9602179666'
+
+ORDER BY type, created_at DESC;"
 ```
 
 ### 4. Track Audio Storage

@@ -226,9 +226,12 @@ async def register_user(user: UserRegistration):
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
-        # Generate user_id if not provided - Always use UUID for scalability
+        # Use provided user_id from OTP verification, or generate new one if not provided
         if not user.user_id:
+            print("⚠️ No user_id provided, generating new one")
             user.user_id = db.generate_user_id()
+        else:
+            print(f"✅ Using provided user_id: {user.user_id}")
         
         print(f"📝 Registering user: {user.user_id}")
         print(f"   Name: {user.full_name}")

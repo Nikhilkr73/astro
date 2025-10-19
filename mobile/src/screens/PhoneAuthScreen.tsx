@@ -90,6 +90,11 @@ export function PhoneAuthScreen({onLogin, onSkip, onNavigate}: PhoneAuthScreenPr
             await storage.setProfileComplete(response.profile_complete || false);
             
             // Store user data for future use
+            console.log('🔍 DEBUG: Storing user data with:');
+            console.log('  userId:', response.user_id);
+            console.log('  mobile:', mobile);
+            console.log('  phoneNumber:', mobile);
+            
             await storage.saveUserData({
               userId: response.user_id,
               profileComplete: response.profile_complete || false,

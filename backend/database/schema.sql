@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
     auth_provider VARCHAR(50) DEFAULT 'email', -- email, google, apple, phone
     
     -- Profile
-    date_of_birth DATE,
     gender VARCHAR(20),
     profile_picture_url TEXT,
     language_preference VARCHAR(255) DEFAULT 'hi', -- Multiple languages supported
@@ -27,8 +26,6 @@ CREATE TABLE IF NOT EXISTS users (
     birth_time TIME,
     birth_location VARCHAR(255),
     birth_timezone VARCHAR(100),
-    birth_latitude DECIMAL(10, 8),
-    birth_longitude DECIMAL(11, 8),
     
     -- Preferences
     preferred_astrology_system VARCHAR(50) DEFAULT 'vedic', -- vedic, western, chinese
