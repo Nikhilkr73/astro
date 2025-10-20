@@ -8,6 +8,7 @@ import {
   Image,
   SafeAreaView,
   Alert,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -41,6 +42,7 @@ const ChatSessionScreen = () => {
   const [sessionTime, setSessionTime] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [walletBalance, setWalletBalance] = useState(500);
+  const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
@@ -355,6 +357,11 @@ const ChatSessionScreen = () => {
 
   const handleEndSession = async () => {
     console.log('End button pressed!');
+    setShowEndSessionModal(true);
+  };
+
+  const confirmEndSession = async () => {
+    setShowEndSessionModal(false);
     
     if (!conversationId) {
       navigation.goBack();
@@ -388,6 +395,10 @@ const ChatSessionScreen = () => {
         Alert.alert('Error', 'Failed to end session. Please try again.');
       }
     }
+  };
+
+  const cancelEndSession = () => {
+    setShowEndSessionModal(false);
   };
 
   const handleMinimize = () => {
@@ -556,6 +567,41 @@ const ChatSessionScreen = () => {
         placeholder={isSessionPaused ? 'Recharge to continue...' : 'Type your message...'}
         sending={isSendingMessage}
       />
+      
+      {/* End Session Confirmation Modal */}
+      <Modal
+        visible={showEndSessionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelEndSession}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>End Chat Session</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to end this chat session? This action cannot be undone.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={cancelEndSession}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.modalEndButton}
+                onPress={confirmEndSession}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalEndText}>End Session</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -828,6 +874,80 @@ const styles = StyleSheet.create({
   },
   sendIcon: {
     fontSize: 20,
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    shadowColor: '#F7931E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 280,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E2E2E',
+    fontFamily: 'Poppins_500Medium',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Poppins_400Regular',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalCancelText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins_500Medium',
+  },
+  modalEndButton: {
+    flex: 1,
+    backgroundColor: '#F7931E',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    shadowColor: '#F7931E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalEndText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins_500Medium',
   },
 });
 
