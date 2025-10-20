@@ -273,7 +273,7 @@ class DatabaseManager:
                            topic: str = 'general') -> Optional[str]:
         """Create a new conversation"""
         try:
-            conversation_id = f"conv_{user_id}_{int(datetime.now().timestamp())}"
+            conversation_id = self.generate_conversation_id(user_id, astrologer_id)
             
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -324,9 +324,193 @@ class DatabaseManager:
             print(f"❌ Error adding message: {e}")
             return None
     
+    def get_conversation(self, conversation_id: str) -> Optional[Dict]:
+        """Get conversation by ID"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT * FROM conversations WHERE conversation_id = %s
+                    """, (conversation_id,))
+                    return dict(cursor.fetchone()) if cursor.rowcount > 0 else None
+        except Exception as e:
+            print(f"❌ Error getting conversation: {e}")
+            return None
+    
+    def update_conversation_activity(self, conversation_id: str) -> bool:
+        """Update conversation activity timestamp"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            last_message_at = CURRENT_TIMESTAMP,
+                            total_messages = total_messages + 1
+                        WHERE conversation_id = %s
+                    """, (conversation_id,))
+                    return True
+        except Exception as e:
+            print(f"❌ Error updating conversation activity: {e}")
+            return False
+    
+    def pause_conversation_session(self, conversation_id: str, paused_at: datetime = None) -> bool:
+        """Pause an active conversation session"""
+        try:
+            if not paused_at:
+                paused_at = datetime.now()
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            session_status = 'paused',
+                            paused_at = %s
+                        WHERE conversation_id = %s AND session_status = 'active'
+                    """, (paused_at, conversation_id))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ Conversation paused: {conversation_id}")
+                        return True
+                    else:
+                        print(f"⚠️ Conversation not found or not active: {conversation_id}")
+                        return False
+        except Exception as e:
+            print(f"❌ Error pausing conversation: {e}")
+            return False
+    
+    def resume_conversation_session(self, conversation_id: str, resumed_at: datetime = None) -> bool:
+        """Resume a paused conversation session"""
+        try:
+            if not resumed_at:
+                resumed_at = datetime.now()
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # First get the paused_at time to calculate paused duration
+                    cursor.execute("""
+                        SELECT paused_at FROM conversations 
+                        WHERE conversation_id = %s AND session_status = 'paused'
+                    """, (conversation_id,))
+                    
+                    result = cursor.fetchone()
+                    if not result:
+                        print(f"⚠️ Conversation not found or not paused: {conversation_id}")
+                        return False
+                    
+                    paused_at = result[0]
+                    
+                    # Handle timezone-aware vs naive datetime comparison
+                    if paused_at.tzinfo is None and resumed_at.tzinfo is not None:
+                        # paused_at is naive, resumed_at is aware - make paused_at aware
+                        paused_at = paused_at.replace(tzinfo=resumed_at.tzinfo)
+                    elif paused_at.tzinfo is not None and resumed_at.tzinfo is None:
+                        # paused_at is aware, resumed_at is naive - make resumed_at aware
+                        resumed_at = resumed_at.replace(tzinfo=paused_at.tzinfo)
+                    elif paused_at.tzinfo is None and resumed_at.tzinfo is None:
+                        # Both are naive - keep as is
+                        pass
+                    # If both are aware, they should be compatible
+                    
+                    paused_duration = int((resumed_at - paused_at).total_seconds())
+                    
+                    # Ensure paused duration is not negative (clock sync issues)
+                    if paused_duration < 0:
+                        print(f"⚠️ Negative paused duration detected: {paused_duration}s (clock sync issue)")
+                        paused_duration = 0
+                    
+                    # Update conversation status and calculate total paused duration
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            session_status = 'active',
+                            resumed_at = %s,
+                            total_paused_duration = total_paused_duration + %s,
+                            paused_at = NULL
+                        WHERE conversation_id = %s AND session_status = 'paused'
+                    """, (resumed_at, paused_duration, conversation_id))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ Conversation resumed: {conversation_id} (paused for {paused_duration}s)")
+                        return True
+                    else:
+                        print(f"⚠️ Failed to resume conversation: {conversation_id}")
+                        return False
+        except Exception as e:
+            print(f"❌ Error resuming conversation: {e}")
+            return False
+    
+    def end_conversation_session(self, conversation_id: str, ended_at: datetime = None, 
+                                 total_duration: int = None) -> bool:
+        """End a conversation session"""
+        try:
+            if not ended_at:
+                ended_at = datetime.now()
+            
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Calculate total duration if not provided
+                    if not total_duration:
+                        cursor.execute("""
+                            SELECT started_at, total_paused_duration FROM conversations 
+                            WHERE conversation_id = %s
+                        """, (conversation_id,))
+                        
+                        result = cursor.fetchone()
+                        if result:
+                            started_at, paused_duration = result
+                            total_duration = int((ended_at - started_at).total_seconds()) - paused_duration
+                    
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            session_status = 'completed',
+                            ended_at = %s,
+                            total_duration_seconds = %s
+                        WHERE conversation_id = %s
+                    """, (ended_at, total_duration, conversation_id))
+                    
+                    if cursor.rowcount > 0:
+                        print(f"✅ Conversation ended: {conversation_id} (duration: {total_duration}s)")
+                        return True
+                    else:
+                        print(f"⚠️ Conversation not found: {conversation_id}")
+                        return False
+        except Exception as e:
+            print(f"❌ Error ending conversation: {e}")
+            return False
+    
+    def get_conversation_session_status(self, conversation_id: str) -> Optional[Dict]:
+        """Get conversation session status and details"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT 
+                            c.conversation_id,
+                            c.user_id,
+                            c.astrologer_id,
+                            c.session_status,
+                            c.session_type,
+                            c.started_at,
+                            c.paused_at,
+                            c.resumed_at,
+                            c.total_paused_duration,
+                            c.total_duration_seconds,
+                            a.name as astrologer_name,
+                            a.profile_picture_url as astrologer_image
+                        FROM conversations c
+                        LEFT JOIN astrologers a ON c.astrologer_id = a.astrologer_id
+                        WHERE c.conversation_id = %s
+                    """, (conversation_id,))
+                    
+                    result = cursor.fetchone()
+                    if result:
+                        return dict(result)
+                    return None
+        except Exception as e:
+            print(f"❌ Error getting conversation status: {e}")
+            return None
+    
     def get_conversation_history(self, conversation_id: str,
                                  limit: int = 50) -> List[Dict]:
-        """Get conversation message history"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:

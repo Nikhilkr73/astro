@@ -1084,16 +1084,16 @@ async def start_chat(session_data: dict):
             # Continue anyway with minimal data
             user_data = {'user_id': user_id}
         
-        # Create conversation ID
-        conversation_id = f"conv_{user_id}_{astrologer_id}_{int(datetime.now().timestamp())}"
+        # Create conversation using database manager
+        conversation_id = db.create_conversation(user_id, astrologer_id, topic)
+        
+        if not conversation_id:
+            raise HTTPException(status_code=500, detail="Failed to create conversation")
         
         print(f"💬 Starting chat session: {conversation_id}")
         print(f"   User: {user_id} ({user_data.get('full_name', 'Unknown')})")
         print(f"   Astrologer: {astrologer_id}")
         print(f"   Topic: {topic}")
-        
-        # Save conversation to database
-        db.create_conversation(user_id, astrologer_id, topic)
         
         # Prepare user context for astrologer
         user_context = {
@@ -1204,7 +1204,7 @@ User Information:
                 
                 # Save AI response
                 ai_msg_id = f"msg_{chat_request.conversation_id}_ai_{int(datetime.now().timestamp())}"
-                db.add_message(chat_request.conversation_id, 'astrologer', ai_response['message'], 'text')
+                db.add_message(chat_request.conversation_id, 'astrologer', response['message'], 'text')
                 
                 # Update conversation
                 db.update_conversation_activity(chat_request.conversation_id)
@@ -1278,6 +1278,237 @@ async def send_chat_message(message_data: dict):
         print(f"❌ Error sending message: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# PERSISTENT CHAT SESSION MANAGEMENT API ENDPOINTS
+# =============================================================================
+
+@router.post("/chat/session/pause")
+async def pause_chat_session(session_data: dict):
+    """Pause an active chat session"""
+    try:
+        conversation_id = session_data.get('conversation_id')
+        paused_at = session_data.get('paused_at')
+        
+        if not conversation_id:
+            raise HTTPException(status_code=400, detail="conversation_id is required")
+        
+        # Parse paused_at if provided
+        if paused_at:
+            try:
+                paused_at = datetime.fromisoformat(paused_at.replace('Z', '+00:00'))
+            except ValueError:
+                paused_at = None
+        
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"⏸️ Pausing chat session: {conversation_id}")
+        
+        success = db.pause_conversation_session(conversation_id, paused_at)
+        
+        if success:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "session_status": "paused",
+                "paused_at": (paused_at or datetime.now()).isoformat(),
+                "message": "Session paused successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to pause session - session not found or not active")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error pausing session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/session/resume")
+async def resume_chat_session(session_data: dict):
+    """Resume a paused chat session"""
+    try:
+        conversation_id = session_data.get('conversation_id')
+        resumed_at = session_data.get('resumed_at')
+        
+        if not conversation_id:
+            raise HTTPException(status_code=400, detail="conversation_id is required")
+        
+        # Parse resumed_at if provided
+        if resumed_at:
+            try:
+                resumed_at = datetime.fromisoformat(resumed_at.replace('Z', '+00:00'))
+            except ValueError:
+                resumed_at = None
+        
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"▶️ Resuming chat session: {conversation_id}")
+        
+        success = db.resume_conversation_session(conversation_id, resumed_at)
+        
+        if success:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "session_status": "active",
+                "resumed_at": (resumed_at or datetime.now()).isoformat(),
+                "message": "Session resumed successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to resume session - session not found or not paused")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error resuming session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/session/end")
+async def end_chat_session(session_data: dict):
+    """End a chat session"""
+    try:
+        conversation_id = session_data.get('conversation_id')
+        ended_at = session_data.get('ended_at')
+        total_duration = session_data.get('total_duration')
+        
+        if not conversation_id:
+            raise HTTPException(status_code=400, detail="conversation_id is required")
+        
+        # Parse ended_at if provided
+        if ended_at:
+            try:
+                ended_at = datetime.fromisoformat(ended_at.replace('Z', '+00:00'))
+            except ValueError:
+                ended_at = None
+        
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"🛑 Ending chat session: {conversation_id}")
+        
+        success = db.end_conversation_session(conversation_id, ended_at, total_duration)
+        
+        if success:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "session_status": "completed",
+                "ended_at": (ended_at or datetime.now()).isoformat(),
+                "total_duration": total_duration,
+                "message": "Session ended successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Failed to end session - session not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error ending session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chat/session/status/{conversation_id}")
+async def get_session_status(conversation_id: str):
+    """Get current session status and details"""
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"📊 Getting session status: {conversation_id}")
+        
+        session_data = db.get_conversation_session_status(conversation_id)
+        
+        if session_data:
+            # Calculate current session duration
+            started_at = session_data['started_at']
+            paused_at = session_data['paused_at']
+            total_paused_duration = session_data['total_paused_duration'] or 0
+            
+            if paused_at:
+                # Session is currently paused
+                current_duration = int((paused_at - started_at).total_seconds()) - total_paused_duration
+                is_paused = True
+            else:
+                # Session is active
+                current_duration = int((datetime.now() - started_at).total_seconds()) - total_paused_duration
+                is_paused = False
+            
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "session_status": session_data['session_status'],
+                "session_type": session_data['session_type'],
+                "is_active": session_data['session_status'] == 'active',
+                "is_paused": is_paused,
+                "current_duration": max(0, current_duration),
+                "total_paused_duration": total_paused_duration,
+                "astrologer_name": session_data['astrologer_name'],
+                "astrologer_image": session_data['astrologer_image'],
+                "started_at": session_data['started_at'].isoformat(),
+                "paused_at": session_data['paused_at'].isoformat() if session_data['paused_at'] else None,
+                "resumed_at": session_data['resumed_at'].isoformat() if session_data['resumed_at'] else None
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Session not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting session status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chat/history/{conversation_id}")
+async def get_chat_history(conversation_id: str, limit: int = 50):
+    """Get chat message history for a conversation"""
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        print(f"📜 Getting chat history: {conversation_id} (limit: {limit})")
+        
+        messages = db.get_conversation_history(conversation_id, limit)
+        
+        if messages is not None:
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "messages": messages,
+                "total_count": len(messages)
+            }
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting chat history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

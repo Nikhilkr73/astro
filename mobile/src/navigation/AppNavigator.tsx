@@ -22,6 +22,10 @@ import WalletHistoryScreen from '../screens/WalletHistoryScreen';
 import TransactionStatusScreen from '../screens/TransactionStatusScreen';
 import WebViewScreen from '../screens/WebViewScreen';
 
+// Import Chat Session Context and Persistent Bar
+import { ChatSessionProvider } from '../contexts/ChatSessionContext';
+import PersistentChatBar from '../components/chat/PersistentChatBar';
+
 const Stack = createStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
@@ -219,37 +223,42 @@ export function AppNavigator() {
 
   // Main app navigation (after login and onboarding)
   return (
-    <Stack.Navigator 
-      screenOptions={{headerShown: false}}
-      initialRouteName="Main"
-    >
-      <Stack.Screen name="Main" component={MainTabNavigator} />
-      <Stack.Screen 
-        name="AstrologerProfile" 
-        component={AstrologerProfileScreen}
-        options={{presentation: 'modal'}}
-      />
-      <Stack.Screen 
-        name="ChatSession" 
-        component={ChatSessionScreen}
-      />
-      <Stack.Screen 
-        name="VoiceCall" 
-        component={VoiceCallScreen}
-      />
-      <Stack.Screen 
-        name="ChatReview" 
-        component={ChatReviewScreen}
-        options={{presentation: 'modal'}}
-      />
-      <Stack.Screen name="Wallet" component={WalletScreen} />
-      <Stack.Screen name="WalletHistory" component={WalletHistoryScreen} />
-      <Stack.Screen name="TransactionStatus" component={TransactionStatusScreen} />
-      <Stack.Screen 
-        name="WebView" 
-        component={WebViewScreen}
-        options={{presentation: 'modal'}}
-      />
-    </Stack.Navigator>
+    <ChatSessionProvider>
+      <Stack.Navigator 
+        screenOptions={{headerShown: false}}
+        initialRouteName="Main"
+      >
+        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen 
+          name="AstrologerProfile" 
+          component={AstrologerProfileScreen}
+          options={{presentation: 'modal'}}
+        />
+        <Stack.Screen 
+          name="ChatSession" 
+          component={ChatSessionScreen}
+        />
+        <Stack.Screen 
+          name="VoiceCall" 
+          component={VoiceCallScreen}
+        />
+        <Stack.Screen 
+          name="ChatReview" 
+          component={ChatReviewScreen}
+          options={{presentation: 'modal'}}
+        />
+        <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="WalletHistory" component={WalletHistoryScreen} />
+        <Stack.Screen name="TransactionStatus" component={TransactionStatusScreen} />
+        <Stack.Screen 
+          name="WebView" 
+          component={WebViewScreen}
+          options={{presentation: 'modal'}}
+        />
+      </Stack.Navigator>
+      
+      {/* Persistent Chat Session Bar */}
+      <PersistentChatBar />
+    </ChatSessionProvider>
   );
 }

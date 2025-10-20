@@ -401,6 +401,75 @@ export const apiService = {
       throw error;
     }
   },
+
+  // =============================================================================
+  // PERSISTENT CHAT SESSION MANAGEMENT
+  // =============================================================================
+
+  /**
+   * Pause an active chat session
+   */
+  pauseChatSession: async (conversationId: string) => {
+    try {
+      const sessionData = {
+        conversation_id: conversationId,
+        paused_at: new Date().toISOString(),
+      };
+      const response = await apiClient.post('/api/chat/session/pause', sessionData);
+      return response.data;
+    } catch (error) {
+      console.error('Pause chat session failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Resume a paused chat session
+   */
+  resumeChatSession: async (conversationId: string) => {
+    try {
+      const sessionData = {
+        conversation_id: conversationId,
+        resumed_at: new Date().toISOString(),
+      };
+      const response = await apiClient.post('/api/chat/session/resume', sessionData);
+      return response.data;
+    } catch (error) {
+      console.error('Resume chat session failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * End a chat session
+   */
+  endChatSession: async (conversationId: string, totalDuration: number) => {
+    try {
+      const sessionData = {
+        conversation_id: conversationId,
+        ended_at: new Date().toISOString(),
+        total_duration: totalDuration,
+      };
+      const response = await apiClient.post('/api/chat/session/end', sessionData);
+      return response.data;
+    } catch (error) {
+      console.error('End chat session failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get session status and details
+   */
+  getSessionStatus: async (conversationId: string) => {
+    try {
+      const response = await apiClient.get(`/api/chat/session/status/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get session status failed:', error);
+      throw error;
+    }
+  },
 };
 
 export default apiService;

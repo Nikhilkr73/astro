@@ -19,6 +19,7 @@ import {RootStackParamList, Message} from '../types';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import ChatInputBar from '../components/ChatInputBar';
+import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatSessionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatSession'>;
 type ChatSessionScreenRouteProp = RouteProp<RootStackParamList, 'ChatSession'>;
@@ -47,6 +48,9 @@ const ChatSessionScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const flatListRef = useRef<FlatList>(null);
   
+  // Chat Session Context Integration
+  const { state: sessionState, actions: sessionActions } = useChatSession();
+  
   // ============================================
   // TESTING MODE CONFIGURATION
   // ============================================
@@ -69,6 +73,36 @@ const ChatSessionScreen = () => {
         console.log('🎯 ChatSessionScreen: Starting initialization...');
         setIsLoadingSession(true);
         
+        // Check if we're resuming an existing session
+        const existingConversationId = route.params?.conversationId;
+        if (existingConversationId) {
+          console.log('🔄 Resuming existing session:', existingConversationId);
+          
+          // Note: Resume API call is already handled by PersistentChatBar before navigation
+          // Just load the conversation history and set up the UI
+          
+          // Load existing conversation history
+          const historyResponse = await apiService.getChatHistory(existingConversationId);
+          if (historyResponse.success && historyResponse.messages) {
+            const formattedMessages = historyResponse.messages.map((msg: any) => ({
+              id: msg.message_id,
+              text: msg.content,
+              sender: msg.sender_type,
+              timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+            setMessages(formattedMessages);
+          }
+          
+          // Initialize session time from context for resume
+          if (sessionState.sessionDuration) {
+            setSessionTime(sessionState.sessionDuration);
+          }
+          
+          setConversationId(existingConversationId);
+          setIsLoadingSession(false);
+          return;
+        }
+        
         // Get user ID
         let userId = await storage.getUserId();
         if (!userId) {
@@ -82,8 +116,8 @@ const ChatSessionScreen = () => {
           setWalletBalance(walletResponse.balance);
         }
         
-        // Start chat session
-        console.log('🚀 Starting chat with', astrologer.name);
+        // Start NEW chat session
+        console.log('🚀 Starting NEW chat with', astrologer.name);
         // Map mobile astrologer ID to backend astrologer ID
         const astrologerIdMap: { [key: string]: string } = {
           '1': 'tina_kulkarni_vedic_marriage',
@@ -101,6 +135,21 @@ const ChatSessionScreen = () => {
         if (sessionResponse.success) {
           console.log('✅ Chat session started:', sessionResponse.conversation_id);
           setConversationId(sessionResponse.conversation_id);
+          
+          // Start session in context for persistent management
+          sessionActions.startSession({
+            conversationId: sessionResponse.conversation_id,
+            astrologerId: backendAstrologerId,
+            astrologerName: astrologer.name,
+            astrologerImage: astrologer.image,
+            sessionType: 'chat',
+            sessionStartTime: Date.now(),
+            pausedTime: undefined,
+            totalPausedDuration: 0,
+          });
+          
+          // Initialize session duration in context
+          sessionActions.updateSessionDuration(0);
           
           // Set greeting message
           setMessages([{
@@ -130,29 +179,53 @@ const ChatSessionScreen = () => {
     initializeSession();
   }, []);
 
-  // Session timer and balance deduction
+  // Handle navigation events for session pause/resume
   useEffect(() => {
-    if (!sessionEnded) {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Pause session when user navigates away
+      if (conversationId && !sessionEnded) {
+        sessionActions.pauseSession();
+        sessionActions.showSession(); // Show persistent bar
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, conversationId, sessionEnded, sessionActions]);
+
+  // Session timer and balance deduction - properly paused/resumed
+  useEffect(() => {
+    if (!sessionEnded && sessionState.isActive && !sessionState.isPaused) {
       const timer = setInterval(() => {
-        setSessionTime((prev) => prev + 1);
-        
-        // Deduct balance at configured interval (30s for testing, 60s for production)
-        if (sessionTime > 0 && sessionTime % BALANCE_DEDUCTION_INTERVAL === 0) {
-          setWalletBalance((prevBalance) => {
-            const newBalance = Math.max(0, prevBalance - CHAT_RATE_PER_MINUTE);
-            
-            // Pause session if balance hits zero
-            if (newBalance === 0) {
-              setIsSessionPaused(true);
-            }
-            
-            return newBalance;
-          });
-        }
+        setSessionTime((prev) => {
+          const newTime = prev + 1;
+          
+          // Deduct balance at configured interval (30s for testing, 60s for production)
+          if (newTime > 0 && newTime % BALANCE_DEDUCTION_INTERVAL === 0) {
+            setWalletBalance((prevBalance) => {
+              const newBalance = Math.max(0, prevBalance - CHAT_RATE_PER_MINUTE);
+              
+              // Pause session if balance hits zero
+              if (newBalance === 0) {
+                setIsSessionPaused(true);
+              }
+              
+              return newBalance;
+            });
+          }
+          
+          return newTime;
+        });
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [sessionEnded, sessionTime]);
+  }, [sessionEnded, sessionState.isActive, sessionState.isPaused]);
+
+  // Update session duration in context when sessionTime changes
+  useEffect(() => {
+    if (sessionTime > 0) {
+      sessionActions.updateSessionDuration(sessionTime);
+    }
+  }, [sessionTime, sessionActions]);
 
   // Prevent body scroll on web and auto scroll messages
   useEffect(() => {
@@ -239,11 +312,7 @@ const ChatSessionScreen = () => {
       setMessages(prev => [...prev, newMessage]);
       setInputMessage("");
 
-      // Send message to API
-      await apiService.sendMessage(conversationId, 'user', messageText);
-      console.log('✅ Message sent to API');
-
-      // Get real AI response from OpenAI chat handler
+      // Get real AI response from OpenAI chat handler (this will also save the user message)
       try {
         console.log('🤖 Getting AI response...');
         // Map mobile astrologer ID to backend astrologer ID
@@ -258,18 +327,12 @@ const ChatSessionScreen = () => {
         
         const astrologerMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: aiResponse.message || "I'm sorry, I couldn't process your request right now.",
+          text: aiResponse.ai_response || "I'm sorry, I couldn't process your request right now.",
           sender: "astrologer",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         
         setMessages(prev => [...prev, astrologerMessage]);
-        
-        // Send astrologer response to API
-        if (conversationId) {
-          apiService.sendMessage(conversationId, 'astrologer', astrologerMessage.text)
-            .catch(err => console.error('Failed to save astrologer message:', err));
-        }
       } catch (error) {
         console.error('❌ Failed to get AI response:', error);
         
@@ -299,25 +362,31 @@ const ChatSessionScreen = () => {
     }
     
     try {
-      // End conversation in database
-      await apiService.endConversation(conversationId, sessionTime);
-      console.log('✅ Conversation ended in database');
+      // End session in context (this will also end in database)
+      await sessionActions.endSession();
+      console.log('✅ Session ended via context');
       
       setSessionEnded(true);
       navigation.navigate('ChatReview', { 
         astrologer, 
-        sessionDuration: formatTime(sessionTime),
+        sessionDuration: formatTime(sessionState.sessionDuration || sessionTime),
         conversationId: conversationId 
       });
     } catch (error) {
-      console.error('❌ Failed to end conversation:', error);
-      // Still navigate to review even if API fails
-      setSessionEnded(true);
-      navigation.navigate('ChatReview', { 
-        astrologer, 
-        sessionDuration: formatTime(sessionTime),
-        conversationId: conversationId 
-      });
+      console.error('❌ Failed to end session:', error);
+      // Fallback to direct API call
+      try {
+        await apiService.endConversation(conversationId, sessionState.sessionDuration || sessionTime);
+        setSessionEnded(true);
+        navigation.navigate('ChatReview', { 
+          astrologer, 
+          sessionDuration: formatTime(sessionState.sessionDuration || sessionTime),
+          conversationId: conversationId 
+        });
+      } catch (fallbackError) {
+        console.error('❌ Fallback end session failed:', fallbackError);
+        Alert.alert('Error', 'Failed to end session. Please try again.');
+      }
     }
   };
 

@@ -165,7 +165,7 @@ const ChatSessionScreen = () => {
         
         const astrologerMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: aiResponse.message || "I'm sorry, I couldn't process your request right now.",
+          text: aiResponse.ai_response || "I'm sorry, I couldn't process your request right now.",
           sender: "astrologer",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
