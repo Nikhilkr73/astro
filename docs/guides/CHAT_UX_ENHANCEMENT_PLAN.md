@@ -69,13 +69,14 @@
 - ✅ **Color Theme**: Applied complete orange-gold theme from THEME_DESIGN_SYSTEM.md
 - ✅ **Submit Button State**: Fixed styling with proper orange theme and shadows
 
-#### 3. **🔒 End Session Confirmation Modal** ✅ **COMPLETED**
-- ✅ **ChatSessionScreen Modal**: Added confirmation modal before ending chat session
-- ✅ **VoiceCallScreen Modal**: Added confirmation modal before ending voice call
-- ✅ **Modal Design**: Follows ProfileScreen logout modal pattern
-- ✅ **Theme Integration**: Complete orange theme from THEME_DESIGN_SYSTEM.md
-- ✅ **User Experience**: Prevents accidental session endings
-- ✅ **Consistent Behavior**: Both chat and voice screens have same modal experience
+#### 4. **⌨️ Typing Indicators** ✅ **COMPLETED**
+- ✅ **Animated Typing Indicator**: Created TypingIndicator component with animated dots
+- ✅ **Real-time Feedback**: Shows when astrologer is responding to user messages
+- ✅ **Realistic Delay**: 1-2 second random delay for human-like feel
+- ✅ **Smart Display**: Only appears when user sends a message
+- ✅ **Auto-hide**: Automatically disappears when AI response is received
+- ✅ **Error Handling**: Proper cleanup on errors and fallback responses
+- ✅ **Orange Theme**: Complete design system integration with animated dots
 
 #### 2. **Smart Message Suggestions**
 - **Context-aware suggestions** based on conversation flow
@@ -594,8 +595,14 @@ mobile/src/
   - [x] Apply orange theme design system
   - [x] Follow ProfileScreen logout modal pattern
   - [x] Test modal functionality on both screens
+- [x] **⌨️ Typing Indicators** ✅ **COMPLETED**
+  - [x] Create TypingIndicator component with animated dots
+  - [x] Add typing state management to ChatSessionScreen
+  - [x] Integrate typing indicator into message list
+  - [x] Add 1-2 second random delay for realistic feel
+  - [x] Apply orange theme from design system
+  - [x] Handle error cases and cleanup properly
 - [ ] Enhanced message UI with better styling
-- [ ] Typing indicators for real-time feedback
 - [ ] Smart message suggestions implementation
 - [ ] Message status indicators
 - [ ] Improved timestamp formatting
