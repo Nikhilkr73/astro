@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/apiService';
 
@@ -104,7 +104,7 @@ function chatSessionReducer(state: ChatSessionState, action: ChatSessionAction):
         conversationId: action.payload.conversationId,
         astrologerId: action.payload.astrologerId,
         astrologerName: action.payload.astrologerName,
-        astrologerImage: action.payload.astrologerImage,
+        astrologerImage: action.payload.astrologerImage || null,
         sessionType: action.payload.sessionType,
         sessionStartTime: action.payload.sessionStartTime,
         pausedTime: null,
@@ -287,7 +287,7 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
   // ACTIONS
   // =============================================================================
 
-  const actions: ChatSessionActions = {
+  const actions: ChatSessionActions = useMemo(() => ({
     startSession: (sessionData: ChatSessionData) => {
       dispatch({ type: 'START_SESSION', payload: sessionData });
     },
@@ -375,7 +375,7 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
     clearError: () => {
       dispatch({ type: 'CLEAR_ERROR' });
     },
-  };
+  }), [state.conversationId, state.sessionDuration]); // Memoize with dependencies
 
   return (
     <ChatSessionContext.Provider value={{ state, actions }}>

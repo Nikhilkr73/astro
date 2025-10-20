@@ -225,7 +225,7 @@ const ChatSessionScreen = () => {
     if (sessionTime > 0) {
       sessionActions.updateSessionDuration(sessionTime);
     }
-  }, [sessionTime, sessionActions]);
+  }, [sessionTime]); // Removed sessionActions from dependencies
 
   // Prevent body scroll on web and auto scroll messages
   useEffect(() => {
