@@ -453,7 +453,9 @@ const VoiceCallScreen = () => {
   };
 
   const handleEndCallPress = () => {
+    console.log('🔴 End Call button pressed, showing modal...');
     setShowEndCallModal(true);
+    console.log('🔴 Modal state set to true');
   };
 
   const confirmEndCall = async () => {
@@ -659,6 +661,7 @@ const VoiceCallScreen = () => {
       </View>
 
       {/* End Call Confirmation Modal */}
+      {console.log('🔴 Modal render check - showEndCallModal:', showEndCallModal)}
       <Modal
         visible={showEndCallModal}
         transparent={true}
