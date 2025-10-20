@@ -453,9 +453,7 @@ const VoiceCallScreen = () => {
   };
 
   const handleEndCallPress = () => {
-    console.log('🔴 VoiceCallScreen: End Call button pressed, showing modal...');
     setShowEndCallModal(true);
-    console.log('🔴 VoiceCallScreen: Modal state set to true');
   };
 
   const confirmEndCall = async () => {
@@ -660,22 +658,7 @@ const VoiceCallScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Debug indicator */}
-      {showEndCallModal && (
-        <View style={{
-          position: 'absolute',
-          top: 50,
-          left: 50,
-          backgroundColor: 'red',
-          padding: 10,
-          zIndex: 9999,
-        }}>
-          <Text style={{color: 'white', fontSize: 16}}>VOICE MODAL SHOULD BE VISIBLE</Text>
-        </View>
-      )}
-
       {/* End Call Confirmation Modal */}
-      {console.log('🔴 VoiceCallScreen: Modal render check - showEndCallModal:', showEndCallModal)}
       <Modal
         visible={showEndCallModal}
         transparent={true}

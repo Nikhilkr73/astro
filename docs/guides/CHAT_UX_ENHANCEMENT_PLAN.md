@@ -69,6 +69,14 @@
 - ✅ **Color Theme**: Applied complete orange-gold theme from THEME_DESIGN_SYSTEM.md
 - ✅ **Submit Button State**: Fixed styling with proper orange theme and shadows
 
+#### 3. **🔒 End Session Confirmation Modal** ✅ **COMPLETED**
+- ✅ **ChatSessionScreen Modal**: Added confirmation modal before ending chat session
+- ✅ **VoiceCallScreen Modal**: Added confirmation modal before ending voice call
+- ✅ **Modal Design**: Follows ProfileScreen logout modal pattern
+- ✅ **Theme Integration**: Complete orange theme from THEME_DESIGN_SYSTEM.md
+- ✅ **User Experience**: Prevents accidental session endings
+- ✅ **Consistent Behavior**: Both chat and voice screens have same modal experience
+
 #### 2. **Smart Message Suggestions**
 - **Context-aware suggestions** based on conversation flow
 - **Quick reply buttons** for common responses
@@ -579,6 +587,13 @@ mobile/src/
   - [x] Update star rating icons to match theme
   - [x] Apply orange-gold color theme to review screen
   - [x] Fix Submit button styling and state
+- [x] **🔒 End Session Confirmation Modal** ✅ **COMPLETED**
+  - [x] Add confirmation modal to ChatSessionScreen
+  - [x] Add confirmation modal to VoiceCallScreen
+  - [x] Implement modal state management
+  - [x] Apply orange theme design system
+  - [x] Follow ProfileScreen logout modal pattern
+  - [x] Test modal functionality on both screens
 - [ ] Enhanced message UI with better styling
 - [ ] Typing indicators for real-time feedback
 - [ ] Smart message suggestions implementation
