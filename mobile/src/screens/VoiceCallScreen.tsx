@@ -660,6 +660,20 @@ const VoiceCallScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Debug indicator */}
+      {showEndCallModal && (
+        <View style={{
+          position: 'absolute',
+          top: 50,
+          left: 50,
+          backgroundColor: 'red',
+          padding: 10,
+          zIndex: 9999,
+        }}>
+          <Text style={{color: 'white', fontSize: 16}}>MODAL SHOULD BE VISIBLE</Text>
+        </View>
+      )}
+
       {/* End Call Confirmation Modal */}
       {console.log('🔴 Modal render check - showEndCallModal:', showEndCallModal)}
       <Modal
