@@ -8,6 +8,8 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  ScrollView,
+  Modal,
 } from 'react-native';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -31,6 +33,16 @@ const VoiceCallScreen = () => {
   const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [showEndCallModal, setShowEndCallModal] = useState(false);
+  
+  // Message suggestions for voice call
+  const messageSuggestions = [
+    "What does my birth chart say?",
+    "Tell me about my career",
+    "When will I get married?",
+    "What are my lucky numbers?",
+    "How is my health going to be?"
+  ];
   
   const websocketRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -438,8 +450,13 @@ const VoiceCallScreen = () => {
     }
   };
 
-  const endCall = async () => {
+  const handleEndCallPress = () => {
+    setShowEndCallModal(true);
+  };
+
+  const confirmEndCall = async () => {
     try {
+      setShowEndCallModal(false);
       setIsSessionEnded(true);
       
       // Stop recording
@@ -480,6 +497,10 @@ const VoiceCallScreen = () => {
       // Navigate back anyway
       navigation.goBack();
     }
+  };
+
+  const cancelEndCall = () => {
+    setShowEndCallModal(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -578,12 +599,71 @@ const VoiceCallScreen = () => {
         
         <TouchableOpacity
           style={styles.endCallButton}
-          onPress={endCall}
+          onPress={handleEndCallPress}
         >
           <Text style={styles.endCallIcon}>📞</Text>
           <Text style={styles.endCallText}>End Call</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Message Suggestions */}
+      <View style={styles.suggestionsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.suggestionsContent}
+        >
+          {messageSuggestions.map((suggestion, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.suggestionButton}
+              onPress={() => {
+                // For voice calls, we could send this as a text message
+                // or use it as a voice prompt
+                console.log('Suggestion selected:', suggestion);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.suggestionText}>{suggestion}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* End Call Confirmation Modal */}
+      <Modal
+        visible={showEndCallModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelEndCall}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>End Call</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to end this call? This action cannot be undone.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={cancelEndCall}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.modalEndCallButton}
+                onPress={confirmEndCall}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalEndCallText}>End Call</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -756,6 +836,104 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  // Message suggestions styles
+  suggestionsContainer: {
+    backgroundColor: '#FFFFFF', // Card Background from design system
+    borderTopWidth: 1,
+    borderTopColor: '#FFE4B5', // Border Gold from design system
+    paddingVertical: 12, // md spacing from design system
+  },
+  suggestionsContent: {
+    paddingHorizontal: 16, // lg spacing from design system
+  },
+  suggestionButton: {
+    backgroundColor: '#FFF8F0', // Main Background from design system
+    borderWidth: 1,
+    borderColor: '#FFE4B5', // Border Gold from design system
+    borderRadius: 12, // md border radius from design system
+    paddingHorizontal: 12, // md spacing from design system
+    paddingVertical: 8, // sm spacing from design system
+    marginRight: 8, // sm spacing from design system
+  },
+  suggestionText: {
+    fontSize: 12, // xs font size from design system
+    color: '#F7931E', // Primary Orange from design system
+    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
+  },
+  // Modal styles with orange theme
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF', // Card Background from design system
+    borderRadius: 16, // lg border radius from design system
+    padding: 24, // 2xl spacing from design system
+    margin: 20, // xl spacing from design system
+    minWidth: 280,
+    shadowColor: '#F7931E', // Orange shadow from design system
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20, // xl font size from design system
+    fontWeight: 'bold',
+    color: '#2E2E2E', // Primary Text from design system
+    textAlign: 'center',
+    marginBottom: 12, // md spacing from design system
+    fontFamily: 'Poppins_500Medium',
+  },
+  modalMessage: {
+    fontSize: 16, // base font size from design system
+    color: '#6B7280', // Secondary Text from design system
+    textAlign: 'center',
+    marginBottom: 24, // 2xl spacing from design system
+    lineHeight: 24,
+    fontFamily: 'Poppins_400Regular',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12, // md spacing from design system
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFE4B5', // Border Gold from design system
+    borderRadius: 12, // md border radius from design system
+    paddingVertical: 12, // md spacing from design system
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16, // base font size from design system
+    fontWeight: '600',
+    color: '#6B7280', // Secondary Text from design system
+    fontFamily: 'Poppins_500Medium',
+  },
+  modalEndCallButton: {
+    flex: 1,
+    backgroundColor: '#F7931E', // Primary Orange from design system
+    borderRadius: 12, // md border radius from design system
+    paddingVertical: 12, // md spacing from design system
+    alignItems: 'center',
+    shadowColor: '#F7931E', // Orange shadow from design system
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalEndCallText: {
+    fontSize: 16, // base font size from design system
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_500Medium',
   },
 });
 
