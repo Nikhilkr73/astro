@@ -20,6 +20,7 @@ import {RootStackParamList, Message} from '../types';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import ChatInputBar from '../components/ChatInputBar';
+import TypingIndicator from '../components/chat/TypingIndicator';
 import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatSessionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatSession'>;
@@ -43,6 +44,7 @@ const ChatSessionScreen = () => {
   const [sessionEnded, setSessionEnded] = useState(false);
   const [walletBalance, setWalletBalance] = useState(500);
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
@@ -314,6 +316,13 @@ const ChatSessionScreen = () => {
       setMessages(prev => [...prev, newMessage]);
       setInputMessage("");
 
+      // Show typing indicator with delay for realistic feel
+      setIsTyping(true);
+      
+      // Add 1-2 second delay before getting AI response
+      const typingDelay = Math.random() * 1000 + 1000; // 1-2 seconds
+      await new Promise(resolve => setTimeout(resolve, typingDelay));
+
       // Get real AI response from OpenAI chat handler (this will also save the user message)
       try {
         console.log('🤖 Getting AI response...');
@@ -335,6 +344,7 @@ const ChatSessionScreen = () => {
         };
         
         setMessages(prev => [...prev, astrologerMessage]);
+        setIsTyping(false); // Hide typing indicator when response is received
       } catch (error) {
         console.error('❌ Failed to get AI response:', error);
         
@@ -347,9 +357,11 @@ const ChatSessionScreen = () => {
         };
         
         setMessages(prev => [...prev, fallbackMessage]);
+        setIsTyping(false); // Hide typing indicator for fallback response too
       }
     } catch (error) {
       console.error('❌ Failed to send message:', error);
+      setIsTyping(false); // Hide typing indicator on error
     } finally {
       setIsSendingMessage(false);
     }
@@ -555,6 +567,12 @@ const ChatSessionScreen = () => {
               </View>
             </View>
           ))}
+          
+          {/* Typing Indicator */}
+          <TypingIndicator 
+            astrologerName={astrologer.name}
+            isVisible={isTyping}
+          />
         </ScrollView>
       )}
 
