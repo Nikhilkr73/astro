@@ -60,6 +60,13 @@
 - ✅ **Accurate timer billing** (only active time charged)
 - ✅ **Orange theme integration** matching app design system
 
+#### 2. **🐛 Chat Review Screen Bugs** ⭐ **IN PROGRESS**
+- **Skip Button Issue**: When "Skip" is clicked, nothing happens (no navigation)
+- **Submit Review Error**: POST /api/reviews/submit returns 422 Unprocessable Content
+- **Star Rating Icon**: Current star icons don't match theme design system
+- **Color Theme**: Page colors don't match orange-gold theme from THEME_DESIGN_SYSTEM.md
+- **Submit Button State**: Button appears disabled/inactive instead of using theme colors
+
 #### 2. **Smart Message Suggestions**
 - **Context-aware suggestions** based on conversation flow
 - **Quick reply buttons** for common responses
@@ -564,6 +571,12 @@ mobile/src/
   - [x] Fix critical timer billing issues
   - [x] Apply orange theme design system
   - [x] Fix React warning for state updates
+- [ ] **🐛 Chat Review Screen Bugs** ⭐ **IN PROGRESS**
+  - [ ] Fix Skip button navigation issue
+  - [ ] Fix Submit Review API error (422 Unprocessable Content)
+  - [ ] Update star rating icons to match theme
+  - [ ] Apply orange-gold color theme to review screen
+  - [ ] Fix Submit button styling and state
 - [ ] Enhanced message UI with better styling
 - [ ] Typing indicators for real-time feedback
 - [ ] Smart message suggestions implementation

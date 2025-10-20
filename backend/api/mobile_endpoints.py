@@ -1696,20 +1696,41 @@ async def check_database():
 # ============================================================================
 
 @router.post("/reviews/submit")
-async def submit_review(
-    user_id: str,
-    astrologer_id: str,
-    rating: float,
-    review_text: Optional[str] = None
-):
+async def submit_review(review_data: dict):
     """Submit a review for an astrologer"""
     try:
+        # Extract data from the request
+        user_id = review_data.get('user_id')
+        astrologer_id = review_data.get('astrologer_id')
+        rating = review_data.get('rating')
+        review_text = review_data.get('review_text')
+        conversation_id = review_data.get('conversation_id')
+        session_duration = review_data.get('session_duration')
+        
+        # Validate required fields
+        if not user_id or not astrologer_id or not rating:
+            raise HTTPException(
+                status_code=422, 
+                detail="Missing required fields: user_id, astrologer_id, and rating are required"
+            )
+        
+        # Validate rating range
+        if not isinstance(rating, (int, float)) or rating < 1 or rating > 5:
+            raise HTTPException(
+                status_code=422,
+                detail="Rating must be a number between 1 and 5"
+            )
+        
+        print(f"📝 Review submitted by {user_id} for astrologer {astrologer_id}, rating: {rating}")
+        
         return {
             "success": True,
             "review_id": f"review_{user_id}_{int(datetime.now().timestamp())}",
             "message": "Review submitted successfully",
             "timestamp": datetime.now().isoformat()
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error submitting review: {e}")
         raise HTTPException(status_code=500, detail=str(e))

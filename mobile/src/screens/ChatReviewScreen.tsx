@@ -79,18 +79,8 @@ const ChatReviewScreen = () => {
   };
 
   const handleSkipReview = () => {
-    Alert.alert(
-      'Skip Review',
-      'Are you sure you want to skip the review? You can always rate later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Skip', 
-          style: 'destructive',
-          onPress: () => navigation.navigate('Main')
-        }
-      ]
-    );
+    // Navigate directly to Main screen without confirmation
+    navigation.navigate('Main');
   };
 
   const handleThankYouClose = () => {
@@ -112,7 +102,7 @@ const ChatReviewScreen = () => {
               styles.star,
               star <= rating ? styles.starFilled : styles.starEmpty
             ]}>
-              ⭐
+              ★
             </Text>
           </TouchableOpacity>
         ))}
@@ -234,7 +224,7 @@ const ChatReviewScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#FFF8F0', // Main Background from design system
   },
   scrollContent: {
     padding: 20,
@@ -246,31 +236,35 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#2E2E2E', // Primary Text from design system
     marginBottom: 8,
+    fontFamily: 'Poppins_500Medium',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#6B7280', // Secondary Text from design system
     textAlign: 'center',
+    fontFamily: 'Poppins_400Regular',
   },
   astrologerInfo: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // Card Background from design system
     borderRadius: 16,
     padding: 20,
     marginBottom: 30,
-    shadowColor: '#000',
+    shadowColor: '#F7931E', // Orange shadow
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE4B5', // Border Gold from design system
   },
   profileImage: {
     width: 60,
     height: 60,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#F3F4F6',
     marginRight: 16,
   },
   astrologerDetails: {
@@ -280,13 +274,15 @@ const styles = StyleSheet.create({
   astrologerName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#2E2E2E', // Primary Text from design system
     marginBottom: 4,
+    fontFamily: 'Poppins_500Medium',
   },
   astrologerCategory: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#6B7280', // Secondary Text from design system
     marginBottom: 8,
+    fontFamily: 'Poppins_400Regular',
   },
   sessionInfo: {
     flexDirection: 'row',
@@ -294,30 +290,35 @@ const styles = StyleSheet.create({
   },
   sessionDuration: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#9CA3AF', // Tertiary Text from design system
+    fontFamily: 'Poppins_400Regular',
   },
   ratingSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // Card Background from design system
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: '#F7931E', // Orange shadow
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE4B5', // Border Gold from design system
   },
   ratingTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#2E2E2E', // Primary Text from design system
     marginBottom: 4,
+    fontFamily: 'Poppins_500Medium',
   },
   ratingSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#6B7280', // Secondary Text from design system
     marginBottom: 20,
+    fontFamily: 'Poppins_400Regular',
   },
   starsContainer: {
     flexDirection: 'row',
@@ -328,47 +329,55 @@ const styles = StyleSheet.create({
   },
   star: {
     fontSize: 32,
+    color: '#F7931E', // Primary Orange from design system
   },
   starFilled: {
     opacity: 1,
+    color: '#F7931E', // Primary Orange from design system
   },
   starEmpty: {
     opacity: 0.3,
+    color: '#FFE4B5', // Border Gold from design system
   },
   ratingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#F7931E', // Primary Orange from design system
+    fontFamily: 'Poppins_500Medium',
   },
   reviewSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // Card Background from design system
     borderRadius: 16,
     padding: 20,
     marginBottom: 30,
-    shadowColor: '#000',
+    shadowColor: '#F7931E', // Orange shadow
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE4B5', // Border Gold from design system
   },
   reviewTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#2E2E2E', // Primary Text from design system
     marginBottom: 12,
+    fontFamily: 'Poppins_500Medium',
   },
   reviewInput: {
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: '#FFE4B5', // Border Gold from design system
     borderRadius: 12,
     padding: 16,
     minHeight: 100,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#FFF8F0', // Main Background from design system
   },
   reviewPlaceholder: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#9CA3AF', // Tertiary Text from design system
     lineHeight: 20,
+    fontFamily: 'Poppins_400Regular',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -378,7 +387,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#e5e7eb',
+    borderColor: '#FFE4B5', // Border Gold from design system
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -386,32 +395,34 @@ const styles = StyleSheet.create({
   skipButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#6B7280', // Secondary Text from design system
+    fontFamily: 'Poppins_500Medium',
   },
   submitButton: {
     flex: 2,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#F7931E', // Primary Orange from design system
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#6366f1',
+    shadowColor: '#F7931E', // Orange shadow
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: '#d1d5db',
+    backgroundColor: '#D1D5DB', // Light gray for disabled state
     shadowOpacity: 0,
     elevation: 0,
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_500Medium',
   },
   submitButtonTextDisabled: {
-    color: '#9ca3af',
+    color: '#9CA3AF', // Tertiary Text from design system
   },
   modalOverlay: {
     flex: 1,
@@ -421,12 +432,17 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   thankYouModal: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // Card Background from design system
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
     maxWidth: 300,
     width: '100%',
+    shadowColor: '#F7931E', // Orange shadow
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   thankYouIcon: {
     fontSize: 48,
@@ -435,26 +451,34 @@ const styles = StyleSheet.create({
   thankYouTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#2E2E2E', // Primary Text from design system
     marginBottom: 12,
+    fontFamily: 'Poppins_500Medium',
   },
   thankYouText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#6B7280', // Secondary Text from design system
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
+    fontFamily: 'Poppins_400Regular',
   },
   thankYouButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#F7931E', // Primary Orange from design system
     borderRadius: 12,
     paddingHorizontal: 32,
     paddingVertical: 12,
+    shadowColor: '#F7931E', // Orange shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   thankYouButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_500Medium',
   },
 });
 
