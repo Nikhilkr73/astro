@@ -226,11 +226,22 @@ const ChatSessionScreen = () => {
 
   // Handle navigation events for session pause/resume
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+    const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
       // Pause session when user navigates away
       if (conversationId && !sessionEnded) {
-        sessionActions.pauseSession();
-        sessionActions.showSession(); // Show persistent bar
+        try {
+          // Check if session is actually active before trying to pause
+          const statusResponse = await apiService.getSessionStatus(conversationId);
+          if (statusResponse.success && statusResponse.session_status === 'active') {
+            await sessionActions.pauseSession();
+            sessionActions.showSession(); // Show persistent bar
+            console.log('✅ Session paused on navigation');
+          } else {
+            console.log('ℹ️ Session is not active, skipping pause');
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not pause session on navigation:', error);
+        }
       }
     });
 
