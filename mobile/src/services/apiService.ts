@@ -417,6 +417,19 @@ export const apiService = {
     }
   },
 
+  /**
+   * Get astrologer details by ID
+   */
+  getAstrologer: async (astrologerId: string) => {
+    try {
+      const response = await apiClient.get(`/api/astrologers/${astrologerId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get astrologer failed:', error);
+      throw error;
+    }
+  },
+
   // =============================================================================
   // PERSISTENT CHAT SESSION MANAGEMENT
   // =============================================================================

@@ -81,17 +81,20 @@ const ChatHistoryScreen = () => {
     try {
       // First try to get astrologer from database via API
       const response = await apiService.getAstrologer(astrologerId);
-      if (response.success && response.astrologer) {
+      console.log('🔍 Astrologer API response:', response);
+      
+      // The API returns the astrologer data directly, not wrapped in success/astrologer
+      if (response && response.name) {
         return {
           id: 999, // Use a fallback ID
-          name: response.astrologer.display_name || response.astrologer.name,
-          category: response.astrologer.speciality || "Astrology",
-          rating: response.astrologer.rating || 4.5,
-          reviews: response.astrologer.total_reviews || 0,
-          experience: `${response.astrologer.experience_years || 10}+ years`,
+          name: response.display_name || response.name,
+          category: response.speciality || "Astrology",
+          rating: response.rating || 4.5,
+          reviews: response.total_reviews || 0,
+          experience: `${response.experience_years || 10}+ years`,
           languages: ["Hindi", "English"],
-          isOnline: response.astrologer.is_available || true,
-          image: response.astrologer.profile_picture_url || "https://via.placeholder.com/50",
+          isOnline: response.is_available || true,
+          image: response.profile_picture_url || "https://via.placeholder.com/50",
           astrologer_id: astrologerId // Include the original astrologer ID
         };
       }
