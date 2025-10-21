@@ -77,6 +77,9 @@ const ChatSessionScreen = () => {
         console.log('🎯 ChatSessionScreen: Starting initialization...');
         setIsLoadingSession(true);
         
+        // Hide the persistent bar when ChatSessionScreen loads
+        sessionActions.hideSession();
+        
         // Check if we're resuming an existing session
         const existingConversationId = route.params?.conversationId;
         if (existingConversationId) {
@@ -227,7 +230,6 @@ const ChatSessionScreen = () => {
   // Handle navigation events for session pause/resume
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
-      console.log('🔍 ChatSessionScreen: beforeRemove triggered');
       // Pause session when user navigates away
       if (conversationId && !sessionEnded) {
         try {
@@ -243,12 +245,6 @@ const ChatSessionScreen = () => {
         } catch (error) {
           console.warn('⚠️ Could not pause session on navigation:', error);
         }
-      } else {
-        console.log('🔍 ChatSessionScreen: Not pausing because:', {
-          conversationId: !!conversationId,
-          sessionEnded,
-          reason: !conversationId ? 'no conversationId' : 'session ended'
-        });
       }
     });
 

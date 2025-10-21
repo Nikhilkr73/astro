@@ -21,20 +21,8 @@ export function PersistentChatBar() {
 
   // Don't render if no active session or not visible
   if (!state.conversationId || !state.isVisible) {
-    console.log('🔍 PersistentChatBar: Not rendering because:', {
-      conversationId: state.conversationId,
-      isVisible: state.isVisible,
-      reason: !state.conversationId ? 'no conversationId' : 'not visible'
-    });
     return null;
   }
-
-  console.log('🔍 PersistentChatBar: Rendering with state:', {
-    conversationId: state.conversationId,
-    isVisible: state.isVisible,
-    isPaused: state.isPaused,
-    isActive: state.isActive
-  });
 
   const handleResume = async () => {
     try {
@@ -60,8 +48,8 @@ export function PersistentChatBar() {
         } as never);
       }
       
-      // Hide the persistent bar after successful navigation
-      actions.hideSession();
+      // Don't hide the session here - let the target screen handle it
+      // This prevents the banner from disappearing before navigation completes
     } catch (error) {
       console.error('❌ Failed to resume session:', error);
     }
