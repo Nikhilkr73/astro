@@ -14,6 +14,9 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
 
+  // Debug log
+  console.log('⌨️ TypingIndicator render:', { astrologerName, isVisible });
+
   useEffect(() => {
     if (isVisible) {
       const animateDots = () => {
