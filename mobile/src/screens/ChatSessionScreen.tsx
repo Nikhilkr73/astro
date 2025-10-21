@@ -506,14 +506,27 @@ const ChatSessionScreen = () => {
       {/* Messages - Simple HTML scrolling for web */}
       {Platform.OS === 'web' ? (
         // Web: Use the exact same approach that worked in SimpleChatScreen
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '16px',
-          backgroundColor: '#f8f9fa',
-          height: 'calc(100vh - 200px)', // Fixed height to prevent whole window scroll
-          maxHeight: 'calc(100vh - 200px)'
-        }}>
+        <>
+          <style>{`
+            @keyframes typingDot {
+              0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.3;
+              }
+              40% {
+                transform: scale(1);
+                opacity: 1;
+              }
+            }
+          `}</style>
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            backgroundColor: '#f8f9fa',
+            height: 'calc(100vh - 200px)', // Fixed height to prevent whole window scroll
+            maxHeight: 'calc(100vh - 200px)'
+          }}>
           {messages.map((message) => (
             <div key={message.id} style={{
               display: 'flex',
@@ -548,7 +561,62 @@ const ChatSessionScreen = () => {
               </div>
             </div>
           ))}
-        </div>
+          
+          {/* Typing Indicator for Web */}
+          {isTyping && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-start',
+              marginBottom: '12px'
+            }}>
+              <div style={{
+                maxWidth: '70%',
+                padding: '12px 16px',
+                borderRadius: '18px',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #FFE4B5',
+                boxShadow: '0 2px 4px rgba(247, 147, 30, 0.1)'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '14px',
+                  color: '#6B7280',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                }}>
+                  <span style={{ marginRight: '8px' }}>{astrologer.name} is typing</span>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '3px',
+                      backgroundColor: '#F7931E',
+                      margin: '0 2px',
+                      animation: 'typingDot 1.4s infinite ease-in-out both'
+                    }}></div>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '3px',
+                      backgroundColor: '#F7931E',
+                      margin: '0 2px',
+                      animation: 'typingDot 1.4s infinite ease-in-out both 0.2s'
+                    }}></div>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '3px',
+                      backgroundColor: '#F7931E',
+                      margin: '0 2px',
+                      animation: 'typingDot 1.4s infinite ease-in-out both 0.4s'
+                    }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          </div>
+        </>
       ) : (
         // Mobile: Use ScrollView with map (simpler than FlatList)
         <ScrollView 

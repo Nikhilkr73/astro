@@ -49,9 +49,11 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
       dot2.setValue(0.3);
       dot3.setValue(0.3);
     }
-  }, [isVisible, dot1, dot2, dot3]);
+  }, [isVisible]);
 
   if (!isVisible) return null;
+
+  console.log('⌨️ TypingIndicator: Rendering component with isVisible:', isVisible);
 
   return (
     <View style={styles.container}>
@@ -74,6 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     alignItems: 'flex-start',
+    backgroundColor: 'rgba(255, 0, 0, 0.1)', // Debug background
   },
   messageBubble: {
     backgroundColor: '#FFFFFF',
