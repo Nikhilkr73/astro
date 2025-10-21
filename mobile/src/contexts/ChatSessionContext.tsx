@@ -146,12 +146,14 @@ function chatSessionReducer(state: ChatSessionState, action: ChatSessionAction):
       };
 
     case 'HIDE_SESSION':
+      console.log('🔍 HIDE_SESSION action dispatched');
       return {
         ...state,
         isVisible: false,
       };
 
     case 'SHOW_SESSION':
+      console.log('🔍 SHOW_SESSION action dispatched');
       return {
         ...state,
         isVisible: true,
@@ -379,10 +381,12 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
     },
 
     hideSession: () => {
+      console.log('🔍 hideSession called');
       dispatch({ type: 'HIDE_SESSION' });
     },
 
     showSession: () => {
+      console.log('🔍 showSession called');
       dispatch({ type: 'SHOW_SESSION' });
     },
 

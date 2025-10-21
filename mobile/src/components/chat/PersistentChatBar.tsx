@@ -21,8 +21,20 @@ export function PersistentChatBar() {
 
   // Don't render if no active session or not visible
   if (!state.conversationId || !state.isVisible) {
+    console.log('🔍 PersistentChatBar: Not rendering because:', {
+      conversationId: state.conversationId,
+      isVisible: state.isVisible,
+      reason: !state.conversationId ? 'no conversationId' : 'not visible'
+    });
     return null;
   }
+
+  console.log('🔍 PersistentChatBar: Rendering with state:', {
+    conversationId: state.conversationId,
+    isVisible: state.isVisible,
+    isPaused: state.isPaused,
+    isActive: state.isActive
+  });
 
   const handleResume = async () => {
     try {
