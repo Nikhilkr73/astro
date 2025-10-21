@@ -320,7 +320,11 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
         }
       } catch (error) {
         console.error('❌ Failed to pause session:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to pause session' });
+        // If status check fails, still update UI state for better UX
+        dispatch({ 
+          type: 'PAUSE_SESSION', 
+          payload: { pausedTime: Date.now() } 
+        });
       }
     },
 
@@ -346,7 +350,8 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
         }
       } catch (error) {
         console.error('❌ Failed to resume session:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to resume session' });
+        // If status check fails, still update UI state for better UX
+        dispatch({ type: 'RESUME_SESSION' });
       }
     },
 
