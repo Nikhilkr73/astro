@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 export function PersistentChatBar() {
   const { state, actions } = useChatSession();
   const navigation = useNavigation();
+  const [isResuming, setIsResuming] = useState(false);
 
   // Don't render if no active session or not visible
   if (!state.conversationId || !state.isVisible) {
@@ -25,7 +26,13 @@ export function PersistentChatBar() {
   }
 
   const handleResume = async () => {
+    if (isResuming) {
+      console.log('🔄 PersistentChatBar: Resume already in progress, skipping...');
+      return;
+    }
+    
     try {
+      setIsResuming(true);
       console.log('🔄 PersistentChatBar: Starting resume...');
       await actions.resumeSession();
       console.log('🔄 PersistentChatBar: Resume completed, navigating...');
@@ -57,6 +64,8 @@ export function PersistentChatBar() {
       // This prevents the banner from disappearing before navigation completes
     } catch (error) {
       console.error('❌ Failed to resume session:', error);
+    } finally {
+      setIsResuming(false);
     }
   };
 
