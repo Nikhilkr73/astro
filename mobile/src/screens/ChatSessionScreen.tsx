@@ -91,7 +91,7 @@ const ChatSessionScreen = () => {
             astrologerId: astrologer.astrologer_id || astrologer.id.toString(),
             astrologerName: astrologer.name,
             astrologerImage: astrologer.image,
-            sessionType: 'text',
+            sessionType: 'chat',
             sessionStartTime: Date.now(),
             isActive: true,
             isPaused: false,
