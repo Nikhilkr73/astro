@@ -82,12 +82,40 @@ const ChatSessionScreen = () => {
         if (existingConversationId) {
           console.log('🔄 Resuming existing session:', existingConversationId);
           
-          // Resume the session via API
+          // Initialize the session in context first
+          sessionActions.updateSessionData({
+            conversationId: existingConversationId,
+            astrologerId: astrologer.astrologer_id || astrologer.id.toString(),
+            astrologerName: astrologer.name,
+            astrologerImage: astrologer.image,
+            sessionType: 'text',
+            sessionStartTime: Date.now(),
+            isActive: true,
+            isPaused: false,
+            isVisible: false,
+            sessionDuration: 0 // Will be updated from database if available
+          });
+
+          // Check if the session is actually paused before trying to resume
           try {
-            await sessionActions.resumeSession(existingConversationId);
-            console.log('✅ Session resumed successfully');
+            const statusResponse = await apiService.getSessionStatus(existingConversationId);
+            if (statusResponse.success) {
+              if (statusResponse.session_status === 'paused') {
+                await sessionActions.resumeSession();
+                console.log('✅ Session resumed successfully');
+              } else {
+                console.log('ℹ️ Session is active, no resume needed');
+              }
+              
+              // Update session duration from database if available
+              if (statusResponse.session_duration) {
+                sessionActions.updateSessionDuration(statusResponse.session_duration);
+                setSessionTime(statusResponse.session_duration);
+                console.log('🕐 Initialized session time from database:', statusResponse.session_duration);
+              }
+            }
           } catch (error) {
-            console.error('❌ Failed to resume session:', error);
+            console.warn('⚠️ Could not check session status, continuing without resume:', error);
           }
           
           // Load existing conversation history
@@ -102,15 +130,7 @@ const ChatSessionScreen = () => {
             setMessages(formattedMessages);
           }
           
-          // Initialize session time from context for resume
-          if (sessionState.sessionDuration) {
-            setSessionTime(sessionState.sessionDuration);
-            console.log('🕐 Initialized session time from context:', sessionState.sessionDuration);
-          } else {
-            // If no session duration in context, start from 0
-            setSessionTime(0);
-            console.log('🕐 No session duration in context, starting from 0');
-          }
+          // Session time is now initialized from database status above
           
           setConversationId(existingConversationId);
           setIsLoadingSession(false);

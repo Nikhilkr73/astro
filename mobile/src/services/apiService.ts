@@ -430,6 +430,19 @@ export const apiService = {
     }
   },
 
+  /**
+   * Get session status
+   */
+  getSessionStatus: async (conversationId: string) => {
+    try {
+      const response = await apiClient.get(`/api/chat/session/status/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get session status failed:', error);
+      throw error;
+    }
+  },
+
   // =============================================================================
   // PERSISTENT CHAT SESSION MANAGEMENT
   // =============================================================================
