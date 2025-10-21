@@ -19,6 +19,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
 
   useEffect(() => {
     if (isVisible) {
+      console.log('⌨️ TypingIndicator: Starting animation');
       const animateDots = () => {
         const createAnimation = (dot: Animated.Value, delay: number) => {
           return Animated.loop(
@@ -47,6 +48,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
 
       animateDots();
     } else {
+      console.log('⌨️ TypingIndicator: Stopping animation');
       // Reset dots when not visible
       dot1.setValue(0.3);
       dot2.setValue(0.3);
@@ -67,9 +69,9 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
         <View style={styles.typingContainer}>
           <Text style={styles.typingText}>{astrologerName} is typing</Text>
           <View style={styles.dotsContainer}>
-            <View style={[styles.dot, {backgroundColor: 'red'}]} />
-            <View style={[styles.dot, {backgroundColor: 'red'}]} />
-            <View style={[styles.dot, {backgroundColor: 'red'}]} />
+            <Animated.View style={[styles.dot, { opacity: dot1 }]} />
+            <Animated.View style={[styles.dot, { opacity: dot2 }]} />
+            <Animated.View style={[styles.dot, { opacity: dot3 }]} />
           </View>
         </View>
       </View>
