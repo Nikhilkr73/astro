@@ -33,6 +33,34 @@ export function PersistentChatBar() {
       return;
     }
     
+    // Additional check - if session is already active, just navigate
+    if (state.isActive && !state.isPaused) {
+      console.log('🔄 PersistentChatBar: Session already active, navigating directly...');
+      
+      // Navigate directly without calling resumeSession
+      if (state.sessionType === 'chat') {
+        const navigationParams = {
+          astrologer: {
+            id: parseInt(state.astrologerId) || 999,
+            name: state.astrologerName || 'Astrologer',
+            category: 'Astrology',
+            rating: 4.5,
+            reviews: 0,
+            experience: 'Expert',
+            languages: ['Hindi', 'English'],
+            isOnline: true,
+            image: state.astrologerImage || 'https://via.placeholder.com/50',
+          },
+          conversationId: state.conversationId,
+        };
+        
+        console.log('🔄 PersistentChatBar: Direct navigation params:', navigationParams);
+        navigation.navigate('ChatSession', navigationParams);
+        console.log('🔄 PersistentChatBar: Direct navigated to ChatSession');
+      }
+      return;
+    }
+    
     try {
       setIsResuming(true);
       console.log('🔄 PersistentChatBar: Starting resume...');
@@ -57,8 +85,12 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
-        navigation.navigate('ChatSession', navigationParams);
-        console.log('🔄 PersistentChatBar: Navigated to ChatSession');
+        
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          navigation.navigate('ChatSession', navigationParams);
+          console.log('🔄 PersistentChatBar: Navigated to ChatSession');
+        }, 100);
       } else if (state.sessionType === 'voice') {
         const navigationParams = {
           astrologer: {
@@ -76,8 +108,12 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
-        navigation.navigate('VoiceCall', navigationParams);
-        console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
+        
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          navigation.navigate('VoiceCall', navigationParams);
+          console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
+        }, 100);
       }
       
       // Don't hide the session here - let the target screen handle it

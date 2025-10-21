@@ -330,6 +330,12 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
 
     resumeSession: async () => {
       if (!state.conversationId) return;
+      
+      // Prevent multiple simultaneous resume calls
+      if (state.isLoading) {
+        console.log('🔄 Resume already in progress, skipping...');
+        return;
+      }
 
       dispatch({ type: 'SET_LOADING', payload: true });
       
