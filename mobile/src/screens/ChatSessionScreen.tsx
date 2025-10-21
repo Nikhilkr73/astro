@@ -351,10 +351,12 @@ const ChatSessionScreen = () => {
         
         setMessages(prev => [...prev, astrologerMessage]);
         console.log('⌨️ Setting typing indicator to false (AI response received)');
-        // Ensure typing indicator is visible for at least 500ms
+        // Ensure typing indicator is visible for at least 1 second
         const elapsedTime = Date.now() - typingStartTime;
-        const minDisplayTime = 500;
+        const minDisplayTime = 1000; // 1 second minimum
         const remainingTime = Math.max(0, minDisplayTime - elapsedTime);
+        
+        console.log(`⌨️ Elapsed time: ${elapsedTime}ms, remaining: ${remainingTime}ms`);
         
         setTimeout(() => {
           console.log('⌨️ Actually hiding typing indicator');
@@ -588,7 +590,7 @@ const ChatSessionScreen = () => {
           {/* Typing Indicator */}
           <TypingIndicator 
             astrologerName={astrologer.name}
-            isVisible={isTyping}
+            isVisible={isTyping || true} // Force visible for debugging
           />
         </ScrollView>
       )}
