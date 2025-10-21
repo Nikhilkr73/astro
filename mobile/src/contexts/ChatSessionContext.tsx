@@ -133,7 +133,7 @@ function chatSessionReducer(state: ChatSessionState, action: ChatSessionAction):
         pausedTime: null,
         isPaused: false,
         isActive: true,
-        isVisible: false, // Hide persistent bar when resumed
+        // Keep isVisible true until navigation completes
         isLoading: false,
         error: null,
       };

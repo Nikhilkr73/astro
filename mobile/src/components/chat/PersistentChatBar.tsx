@@ -47,6 +47,9 @@ export function PersistentChatBar() {
           conversationId: state.conversationId,
         } as never);
       }
+      
+      // Hide the persistent bar after successful navigation
+      actions.hideSession();
     } catch (error) {
       console.error('❌ Failed to resume session:', error);
     }
