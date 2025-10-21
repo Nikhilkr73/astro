@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { useChatSession, formatSessionDuration } from '../../contexts/ChatSessionContext';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../types';
 
 // =============================================================================
 // COMPONENT
@@ -17,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 
 export function PersistentChatBar() {
   const { state, actions } = useChatSession();
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [isResuming, setIsResuming] = useState(false);
 
   // Don't render if no active session or not visible
@@ -39,24 +41,42 @@ export function PersistentChatBar() {
       
       // Navigate back to chat screen
       if (state.sessionType === 'chat') {
-        navigation.navigate('ChatSession' as never, {
+        const navigationParams = {
           astrologer: {
-            id: state.astrologerId,
-            name: state.astrologerName,
-            image: state.astrologerImage,
+            id: parseInt(state.astrologerId) || 999,
+            name: state.astrologerName || 'Astrologer',
+            category: 'Astrology',
+            rating: 4.5,
+            reviews: 0,
+            experience: 'Expert',
+            languages: ['Hindi', 'English'],
+            isOnline: true,
+            image: state.astrologerImage || 'https://via.placeholder.com/50',
           },
           conversationId: state.conversationId,
-        } as never);
+        };
+        
+        console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
+        navigation.navigate('ChatSession', navigationParams);
         console.log('🔄 PersistentChatBar: Navigated to ChatSession');
       } else if (state.sessionType === 'voice') {
-        navigation.navigate('VoiceCall' as never, {
+        const navigationParams = {
           astrologer: {
-            id: state.astrologerId,
-            name: state.astrologerName,
-            image: state.astrologerImage,
+            id: parseInt(state.astrologerId) || 999,
+            name: state.astrologerName || 'Astrologer',
+            category: 'Astrology',
+            rating: 4.5,
+            reviews: 0,
+            experience: 'Expert',
+            languages: ['Hindi', 'English'],
+            isOnline: true,
+            image: state.astrologerImage || 'https://via.placeholder.com/50',
           },
           conversationId: state.conversationId,
-        } as never);
+        };
+        
+        console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
+        navigation.navigate('VoiceCall', navigationParams);
         console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
       }
       
