@@ -345,7 +345,7 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
             dispatch({ type: 'SET_ERROR', payload: 'Failed to resume session' });
           }
         } else {
-          console.log('ℹ️ Session is not paused, skipping resume API call');
+          console.log('ℹ️ Session is not paused, updating UI state anyway');
           dispatch({ type: 'RESUME_SESSION' }); // Update UI state anyway
         }
       } catch (error) {

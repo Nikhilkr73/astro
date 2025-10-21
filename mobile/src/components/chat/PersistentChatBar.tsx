@@ -26,7 +26,10 @@ export function PersistentChatBar() {
 
   const handleResume = async () => {
     try {
+      console.log('🔄 PersistentChatBar: Starting resume...');
       await actions.resumeSession();
+      console.log('🔄 PersistentChatBar: Resume completed, navigating...');
+      
       // Navigate back to chat screen
       if (state.sessionType === 'chat') {
         navigation.navigate('ChatSession' as never, {
@@ -37,6 +40,7 @@ export function PersistentChatBar() {
           },
           conversationId: state.conversationId,
         } as never);
+        console.log('🔄 PersistentChatBar: Navigated to ChatSession');
       } else if (state.sessionType === 'voice') {
         navigation.navigate('VoiceCall' as never, {
           astrologer: {
@@ -46,6 +50,7 @@ export function PersistentChatBar() {
           },
           conversationId: state.conversationId,
         } as never);
+        console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
       }
       
       // Don't hide the session here - let the target screen handle it
