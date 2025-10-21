@@ -55,8 +55,18 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Direct navigation params:', navigationParams);
-        navigation.navigate('ChatSession', navigationParams);
-        console.log('🔄 PersistentChatBar: Direct navigated to ChatSession');
+        try {
+          navigation.navigate('ChatSession', navigationParams);
+          console.log('🔄 PersistentChatBar: Direct navigated to ChatSession');
+        } catch (navError) {
+          console.error('❌ Direct navigation error:', navError);
+          try {
+            navigation.push('ChatSession', navigationParams);
+            console.log('🔄 PersistentChatBar: Direct pushed to ChatSession');
+          } catch (pushError) {
+            console.error('❌ Direct push also failed:', pushError);
+          }
+        }
       }
       return;
     }
@@ -86,11 +96,22 @@ export function PersistentChatBar() {
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
         
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
+        // Try immediate navigation first
+        try {
+          console.log('🔄 PersistentChatBar: About to call navigation.navigate...');
           navigation.navigate('ChatSession', navigationParams);
-          console.log('🔄 PersistentChatBar: Navigated to ChatSession');
-        }, 100);
+          console.log('🔄 PersistentChatBar: navigation.navigate called successfully');
+        } catch (navError) {
+          console.error('❌ Navigation error:', navError);
+          // Fallback: try push instead
+          try {
+            console.log('🔄 PersistentChatBar: Trying navigation.push as fallback...');
+            navigation.push('ChatSession', navigationParams);
+            console.log('🔄 PersistentChatBar: navigation.push called successfully');
+          } catch (pushError) {
+            console.error('❌ Push navigation also failed:', pushError);
+          }
+        }
       } else if (state.sessionType === 'voice') {
         const navigationParams = {
           astrologer: {
