@@ -1553,7 +1553,6 @@ def calculate_time_ago(timestamp):
 @router.get("/chat/conversations/{user_id}")
 async def get_user_conversations(user_id: str, limit: int = 20):
     """Get user's conversation history"""
-    print(f"🔍 DEBUG: get_user_conversations called with user_id={user_id}, limit={limit}")
     try:
         # Import database manager
         try:

@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    width: Dimensions.get('window').width * 0.85,
-    maxWidth: 400,
+    width: Dimensions.get('window').width * 0.6,
+    maxWidth: 300,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',

@@ -78,10 +78,36 @@ const ChatHistoryScreen = () => {
 
   // Find astrologer by ID from allAstrologersData
   const findAstrologerById = (astrologerId: string) => {
-    return allAstrologersData.find(astrologer => 
-      astrologer.id.toString() === astrologerId || 
-      astrologer.name.toLowerCase().replace(/\s+/g, '_') === astrologerId
+    // First try exact ID match
+    let astrologer = allAstrologersData.find(astrologer => 
+      astrologer.id.toString() === astrologerId
     );
+    
+    // If not found, try name-based matching
+    if (!astrologer) {
+      astrologer = allAstrologersData.find(astrologer => 
+        astrologer.name.toLowerCase().replace(/\s+/g, '_') === astrologerId ||
+        astrologer.name.toLowerCase().replace(/\s+/g, '_').includes(astrologerId.split('_')[0])
+      );
+    }
+    
+    // If still not found, create a fallback astrologer object
+    if (!astrologer) {
+      console.warn('Astrologer not found in data, creating fallback:', astrologerId);
+      return {
+        id: 999, // Fallback ID
+        name: astrologerId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        category: "Astrology",
+        rating: 4.5,
+        reviews: 0,
+        experience: "Expert",
+        languages: ["Hindi", "English"],
+        isOnline: true,
+        image: "https://via.placeholder.com/50"
+      };
+    }
+    
+    return astrologer;
   };
 
   // Handle continue chat
