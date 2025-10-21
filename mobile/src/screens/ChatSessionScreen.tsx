@@ -306,6 +306,9 @@ const ChatSessionScreen = () => {
     try {
       setIsSendingMessage(true);
       
+      // Record when typing started
+      const typingStartTime = Date.now();
+      
       const newMessage: Message = {
         id: Date.now().toString(),
         text: messageText,
@@ -323,6 +326,7 @@ const ChatSessionScreen = () => {
       // Add 1-2 second delay before getting AI response
       const typingDelay = Math.random() * 1000 + 1000; // 1-2 seconds
       console.log(`⌨️ Typing delay: ${typingDelay}ms`);
+      
       await new Promise(resolve => setTimeout(resolve, typingDelay));
 
       // Get real AI response from OpenAI chat handler (this will also save the user message)
@@ -347,7 +351,15 @@ const ChatSessionScreen = () => {
         
         setMessages(prev => [...prev, astrologerMessage]);
         console.log('⌨️ Setting typing indicator to false (AI response received)');
-        setIsTyping(false); // Hide typing indicator when response is received
+        // Ensure typing indicator is visible for at least 500ms
+        const elapsedTime = Date.now() - typingStartTime;
+        const minDisplayTime = 500;
+        const remainingTime = Math.max(0, minDisplayTime - elapsedTime);
+        
+        setTimeout(() => {
+          console.log('⌨️ Actually hiding typing indicator');
+          setIsTyping(false);
+        }, remainingTime);
       } catch (error) {
         console.error('❌ Failed to get AI response:', error);
         
@@ -577,7 +589,7 @@ const ChatSessionScreen = () => {
           {console.log('⌨️ ChatSessionScreen render - isTyping:', isTyping)}
           <TypingIndicator 
             astrologerName={astrologer.name}
-            isVisible={isTyping}
+            isVisible={true} // Force visible for debugging
           />
         </ScrollView>
       )}

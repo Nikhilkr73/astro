@@ -54,7 +54,12 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
     }
   }, [isVisible, dot1, dot2, dot3]);
 
-  if (!isVisible) return null;
+  if (!isVisible) {
+    console.log('⌨️ TypingIndicator: Not visible, returning null');
+    return null;
+  }
+
+  console.log('⌨️ TypingIndicator: Rendering visible component');
 
   return (
     <View style={styles.container}>
