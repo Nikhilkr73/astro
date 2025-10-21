@@ -67,9 +67,9 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
         <View style={styles.typingContainer}>
           <Text style={styles.typingText}>{astrologerName} is typing</Text>
           <View style={styles.dotsContainer}>
-            <Animated.View style={[styles.dot, { opacity: dot1 }]} />
-            <Animated.View style={[styles.dot, { opacity: dot2 }]} />
-            <Animated.View style={[styles.dot, { opacity: dot3 }]} />
+            <View style={[styles.dot, {backgroundColor: 'red'}]} />
+            <View style={[styles.dot, {backgroundColor: 'red'}]} />
+            <View style={[styles.dot, {backgroundColor: 'red'}]} />
           </View>
         </View>
       </View>

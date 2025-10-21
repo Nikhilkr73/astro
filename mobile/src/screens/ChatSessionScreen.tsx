@@ -594,6 +594,18 @@ const ChatSessionScreen = () => {
         </ScrollView>
       )}
 
+      {/* Typing Indicator - Test outside ScrollView */}
+      {console.log('⌨️ ChatSessionScreen render - isTyping:', isTyping)}
+      <TypingIndicator 
+        astrologerName={astrologer.name}
+        isVisible={true} // Force visible for debugging
+      />
+      
+      {/* Simple test component */}
+      <View style={{backgroundColor: 'red', padding: 10, margin: 10}}>
+        <Text style={{color: 'white', textAlign: 'center'}}>TEST COMPONENT - Can you see this?</Text>
+      </View>
+
       {/* Input Bar - fixed bottom component */}
       <ChatInputBar
         value={inputMessage}
