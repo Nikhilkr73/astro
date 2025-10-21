@@ -584,15 +584,14 @@ const ChatSessionScreen = () => {
               </View>
             </View>
           ))}
+          
+          {/* Typing Indicator */}
+          <TypingIndicator 
+            astrologerName={astrologer.name}
+            isVisible={isTyping}
+          />
         </ScrollView>
       )}
-
-      {/* Typing Indicator - Test outside ScrollView */}
-      {console.log('⌨️ ChatSessionScreen render - isTyping:', isTyping)}
-      <TypingIndicator 
-        astrologerName={astrologer.name}
-        isVisible={isTyping}
-      />
 
       {/* Input Bar - fixed bottom component */}
       <ChatInputBar

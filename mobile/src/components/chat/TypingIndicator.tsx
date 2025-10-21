@@ -14,12 +14,8 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
 
-  // Debug log
-  console.log('⌨️ TypingIndicator render:', { astrologerName, isVisible });
-
   useEffect(() => {
     if (isVisible) {
-      console.log('⌨️ TypingIndicator: Starting animation');
       const animateDots = () => {
         const createAnimation = (dot: Animated.Value, delay: number) => {
           return Animated.loop(
@@ -48,7 +44,6 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
 
       animateDots();
     } else {
-      console.log('⌨️ TypingIndicator: Stopping animation');
       // Reset dots when not visible
       dot1.setValue(0.3);
       dot2.setValue(0.3);
@@ -56,12 +51,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
     }
   }, [isVisible, dot1, dot2, dot3]);
 
-  if (!isVisible) {
-    console.log('⌨️ TypingIndicator: Not visible, returning null');
-    return null;
-  }
-
-  console.log('⌨️ TypingIndicator: Rendering visible component');
+  if (!isVisible) return null;
 
   return (
     <View style={styles.container}>
