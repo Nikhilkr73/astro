@@ -93,17 +93,6 @@ export function PersistentChatBar() {
     }
   };
 
-  const handleEnd = async () => {
-    try {
-      await actions.endSession();
-    } catch (error) {
-      console.error('❌ Failed to end session:', error);
-    }
-  };
-
-  const handleClose = () => {
-    actions.hideSession();
-  };
 
   // Simple function to format seconds to MM:SS
   const formatSeconds = (seconds: number): string => {
@@ -154,13 +143,6 @@ export function PersistentChatBar() {
             <Text style={styles.resumeButtonText}>
               {state.isLoading ? '...' : 'Resume'}
             </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleClose}
-          >
-            <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -277,19 +259,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Poppins_500Medium', // Typography from design system
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
