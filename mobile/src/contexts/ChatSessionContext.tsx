@@ -298,15 +298,25 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
-        const response = await apiService.pauseChatSession(state.conversationId);
-        if (response.success) {
+        // Check if session is actually active before trying to pause
+        const statusResponse = await apiService.getSessionStatus(state.conversationId);
+        if (statusResponse.success && statusResponse.session_status === 'active') {
+          const response = await apiService.pauseChatSession(state.conversationId);
+          if (response.success) {
+            dispatch({ 
+              type: 'PAUSE_SESSION', 
+              payload: { pausedTime: Date.now() } 
+            });
+            console.log('✅ Session paused successfully');
+          } else {
+            dispatch({ type: 'SET_ERROR', payload: 'Failed to pause session' });
+          }
+        } else {
+          console.log('ℹ️ Session is not active, skipping pause API call');
           dispatch({ 
             type: 'PAUSE_SESSION', 
             payload: { pausedTime: Date.now() } 
-          });
-          console.log('✅ Session paused successfully');
-        } else {
-          dispatch({ type: 'SET_ERROR', payload: 'Failed to pause session' });
+          }); // Update UI state anyway
         }
       } catch (error) {
         console.error('❌ Failed to pause session:', error);
@@ -320,12 +330,19 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
-        const response = await apiService.resumeChatSession(state.conversationId);
-        if (response.success) {
-          dispatch({ type: 'RESUME_SESSION' });
-          console.log('✅ Session resumed successfully');
+        // Check if session is actually paused before trying to resume
+        const statusResponse = await apiService.getSessionStatus(state.conversationId);
+        if (statusResponse.success && statusResponse.session_status === 'paused') {
+          const response = await apiService.resumeChatSession(state.conversationId);
+          if (response.success) {
+            dispatch({ type: 'RESUME_SESSION' });
+            console.log('✅ Session resumed successfully');
+          } else {
+            dispatch({ type: 'SET_ERROR', payload: 'Failed to resume session' });
+          }
         } else {
-          dispatch({ type: 'SET_ERROR', payload: 'Failed to resume session' });
+          console.log('ℹ️ Session is not paused, skipping resume API call');
+          dispatch({ type: 'RESUME_SESSION' }); // Update UI state anyway
         }
       } catch (error) {
         console.error('❌ Failed to resume session:', error);
