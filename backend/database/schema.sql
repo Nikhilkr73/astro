@@ -146,6 +146,10 @@ CREATE TABLE IF NOT EXISTS conversations (
     total_messages INTEGER DEFAULT 0,
     total_duration_seconds INTEGER DEFAULT 0,
     
+    -- Last Message Info (for chat history)
+    last_message_text TEXT,
+    last_message_preview VARCHAR(200),
+    
     -- Metadata
     metadata JSONB DEFAULT '{}'::jsonb,
     

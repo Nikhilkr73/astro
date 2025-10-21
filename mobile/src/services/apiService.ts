@@ -402,6 +402,21 @@ export const apiService = {
     }
   },
 
+  /**
+   * Get user's conversation history
+   */
+  getUserConversations: async (userId: string, limit: number = 20) => {
+    try {
+      const response = await apiClient.get(`/api/chat/conversations/${userId}`, {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get user conversations failed:', error);
+      throw error;
+    }
+  },
+
   // =============================================================================
   // PERSISTENT CHAT SESSION MANAGEMENT
   // =============================================================================

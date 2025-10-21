@@ -324,6 +324,23 @@ class DatabaseManager:
             print(f"❌ Error adding message: {e}")
             return None
     
+    def update_conversation_last_message(self, conversation_id: str, message_text: str):
+        """Update the last message info for a conversation"""
+        try:
+            preview = message_text[:200] if len(message_text) > 200 else message_text
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        UPDATE conversations SET
+                            last_message_text = %s,
+                            last_message_preview = %s,
+                            last_message_at = CURRENT_TIMESTAMP
+                        WHERE conversation_id = %s
+                    """, (message_text, preview, conversation_id))
+        except Exception as e:
+            print(f"❌ Error updating conversation last message: {e}")
+    
     def get_conversation(self, conversation_id: str) -> Optional[Dict]:
         """Get conversation by ID"""
         try:
@@ -533,11 +550,16 @@ class DatabaseManager:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                     cursor.execute("""
-                        SELECT c.*, a.display_name as astrologer_name
+                        SELECT 
+                            c.*,
+                            a.display_name as astrologer_name,
+                            a.profile_picture_url as astrologer_image,
+                            c.last_message_preview,
+                            c.last_message_at
                         FROM conversations c
                         JOIN astrologers a ON c.astrologer_id = a.astrologer_id
                         WHERE c.user_id = %s
-                        ORDER BY c.last_message_at DESC
+                        ORDER BY c.last_message_at DESC NULLS LAST
                         LIMIT %s
                     """, (user_id, limit))
                     

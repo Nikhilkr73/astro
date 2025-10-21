@@ -1202,6 +1202,9 @@ User Information:
                 user_msg_id = f"msg_{chat_request.conversation_id}_user_{int(datetime.now().timestamp())}"
                 db.add_message(chat_request.conversation_id, 'user', chat_request.message, 'text')
                 
+                # Update conversation last message info
+                db.update_conversation_last_message(chat_request.conversation_id, chat_request.message)
+                
                 # Save AI response
                 ai_msg_id = f"msg_{chat_request.conversation_id}_ai_{int(datetime.now().timestamp())}"
                 db.add_message(chat_request.conversation_id, 'astrologer', response['message'], 'text')
@@ -1509,6 +1512,76 @@ async def get_chat_history(conversation_id: str, limit: int = 50):
         raise
     except Exception as e:
         print(f"❌ Error getting chat history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def calculate_time_ago(timestamp):
+    """Calculate human-readable time ago string"""
+    if not timestamp:
+        return "No recent activity"
+    
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    
+    # Handle both timezone-aware and naive timestamps
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        if diff.days == 1:
+            return "1 day ago"
+        elif diff.days < 7:
+            return f"{diff.days} days ago"
+        elif diff.days < 30:
+            weeks = diff.days // 7
+            return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+        else:
+            months = diff.days // 30
+            return f"{months} month{'s' if months > 1 else ''} ago"
+    elif diff.seconds > 3600:
+        hours = diff.seconds // 3600
+        return f"{hours} hour{'s' if hours > 1 else ''} ago"
+    elif diff.seconds > 60:
+        minutes = diff.seconds // 60
+        return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+    else:
+        return "Just now"
+
+
+@router.get("/chat/conversations/{user_id}")
+async def get_user_conversations(user_id: str, limit: int = 20):
+    """Get user's conversation history"""
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import DatabaseManager
+            db = DatabaseManager()
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        conversations = db.get_user_conversations(user_id, limit)
+        
+        # Format response with time ago calculation
+        formatted = []
+        for conv in conversations:
+            time_ago = calculate_time_ago(conv.get('last_message_at'))
+            formatted.append({
+                'conversation_id': conv['conversation_id'],
+                'astrologer_id': conv['astrologer_id'],
+                'astrologer_name': conv['astrologer_name'],
+                'astrologer_image': conv.get('astrologer_image'),
+                'last_message': conv.get('last_message_preview', 'No messages yet'),
+                'last_message_time': time_ago,
+                'status': conv['status'],
+                'total_messages': conv.get('total_messages', 0)
+            })
+        
+        return {'success': True, 'conversations': formatted}
+    except Exception as e:
+        print(f"❌ Error getting user conversations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

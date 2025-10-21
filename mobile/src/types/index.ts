@@ -4,7 +4,10 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Main: undefined;
   AstrologerProfile: { astrologer: Astrologer };
-  ChatSession: { astrologer: Astrologer };
+  ChatSession: { 
+    astrologer: Astrologer; 
+    conversationId?: string;  // Add this for continuing chats
+  };
   VoiceCall: { astrologer: Astrologer };
   ChatReview: { astrologer: Astrologer; sessionDuration: string; conversationId: string };
   Wallet: undefined;
@@ -37,6 +40,18 @@ export interface Message {
   text: string;
   sender: 'user' | 'astrologer';
   timestamp: string;
+}
+
+export interface ConversationHistory {
+  conversation_id: string;
+  astrologer_id: string;
+  astrologer_name: string;
+  astrologer_image?: string;
+  last_message: string;
+  last_message_time: string;
+  status: string;
+  total_messages: number;
+  isUnread?: boolean;
 }
 
 export interface ChatSession {

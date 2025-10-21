@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,153 @@ import {
   StyleSheet,
   Image,
   SafeAreaView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {StackNavigationProp} from '@react-navigation/stack';
-import {RootStackParamList} from '../types';
-import {allAstrologersData} from '../constants/astrologers';
-import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList, ConversationHistory } from '../types';
+import { allAstrologersData } from '../constants/astrologers';
+import { colors, typography, spacing, borderRadius, shadows, touchableOpacity } from '../constants/theme';
+import apiService from '../services/apiService';
+import storage from '../utils/storage';
+import ChatActionModal from '../components/chat/ChatActionModal';
 
 type ChatHistoryScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const ChatHistoryScreen = () => {
   const navigation = useNavigation<ChatHistoryScreenNavigationProp>();
+  
+  // State management
+  const [conversations, setConversations] = useState<ConversationHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Modal state
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationHistory | null>(null);
 
-  // Sample chat history data (first 4 astrologers for demo)
-  const recentChats = allAstrologersData.slice(0, 4).map(astrologer => ({
-    ...astrologer,
-    lastMessage: "Thank you for the consultation. May the stars guide you!",
-    lastMessageTime: "2 hours ago",
-    isUnread: Math.random() > 0.5,
-  }));
+  // Load conversations from API
+  const loadConversations = async () => {
+    try {
+      setError(null);
+      const userId = await storage.getUserId();
+      if (!userId) {
+        setError('User not found');
+        return;
+      }
 
-  const handleChatClick = (astrologer: any) => {
-    navigation.navigate('ChatSession', { astrologer });
+      const response = await apiService.getUserConversations(userId);
+      if (response.success) {
+        setConversations(response.conversations);
+      } else {
+        setError('Failed to load conversations');
+      }
+    } catch (err) {
+      console.error('Error loading conversations:', err);
+      setError('Failed to load conversations');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
+
+  // Load conversations on component mount
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  // Handle pull-to-refresh
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadConversations();
+  };
+
+  // Handle chat item click
+  const handleChatClick = (conversation: ConversationHistory) => {
+    setSelectedConversation(conversation);
+    setShowActionModal(true);
+  };
+
+  // Find astrologer by ID from allAstrologersData
+  const findAstrologerById = (astrologerId: string) => {
+    return allAstrologersData.find(astrologer => 
+      astrologer.id.toString() === astrologerId || 
+      astrologer.name.toLowerCase().replace(/\s+/g, '_') === astrologerId
+    );
+  };
+
+  // Handle continue chat
+  const handleContinueChat = () => {
+    if (!selectedConversation) return;
+    
+    setShowActionModal(false);
+    const astrologer = findAstrologerById(selectedConversation.astrologer_id);
+    
+    if (astrologer) {
+      navigation.navigate('ChatSession', { 
+        astrologer, 
+        conversationId: selectedConversation.conversation_id 
+      });
+    } else {
+      console.error('Astrologer not found:', selectedConversation.astrologer_id);
+    }
+  };
+
+  // Handle start new chat
+  const handleStartNewChat = () => {
+    if (!selectedConversation) return;
+    
+    setShowActionModal(false);
+    const astrologer = findAstrologerById(selectedConversation.astrologer_id);
+    
+    if (astrologer) {
+      navigation.navigate('ChatSession', { astrologer });
+    } else {
+      console.error('Astrologer not found:', selectedConversation.astrologer_id);
+    }
+  };
+
+  // Handle modal cancel
+  const handleCancelModal = () => {
+    setShowActionModal(false);
+    setSelectedConversation(null);
+  };
+
+  // Render loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Chat History</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading conversations...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Chat History</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Unable to load conversations</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadConversations}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,37 +161,58 @@ const ChatHistoryScreen = () => {
         <Text style={styles.headerTitle}>Chat History</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {recentChats.length > 0 ? (
-          recentChats.map((chat) => (
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {conversations.length > 0 ? (
+          conversations.map((conversation) => (
             <TouchableOpacity
-              key={chat.id}
+              key={conversation.conversation_id}
               style={styles.chatItem}
-              onPress={() => handleChatClick(chat)}
+              onPress={() => handleChatClick(conversation)}
               activeOpacity={touchableOpacity}
             >
               <View style={styles.chatContent}>
-                <Image source={{ uri: chat.image }} style={styles.avatar} />
+                <Image 
+                  source={{ 
+                    uri: conversation.astrologer_image || 
+                    allAstrologersData.find(a => 
+                      a.id.toString() === conversation.astrologer_id ||
+                      a.name.toLowerCase().replace(/\s+/g, '_') === conversation.astrologer_id
+                    )?.image || 
+                    'https://via.placeholder.com/50'
+                  }} 
+                  style={styles.avatar} 
+                />
                 
                 <View style={styles.chatInfo}>
                   <View style={styles.chatHeader}>
                     <Text style={styles.astrologerName} numberOfLines={1}>
-                      {chat.name}
+                      {conversation.astrologer_name}
                     </Text>
-                    <Text style={styles.chatTime}>{chat.lastMessageTime}</Text>
+                    <Text style={styles.chatTime}>{conversation.last_message_time}</Text>
                   </View>
                   
                   <View style={styles.chatMessage}>
                     <Text 
                       style={[
                         styles.lastMessage,
-                        chat.isUnread && styles.unreadMessage
+                        conversation.status === 'active' && styles.unreadMessage
                       ]} 
                       numberOfLines={2}
                     >
-                      {chat.lastMessage}
+                      {conversation.last_message}
                     </Text>
-                    {chat.isUnread && <View style={styles.unreadDot} />}
+                    {conversation.status === 'active' && <View style={styles.unreadDot} />}
                   </View>
                 </View>
               </View>
@@ -83,6 +228,15 @@ const ChatHistoryScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Chat Action Modal */}
+      <ChatActionModal
+        visible={showActionModal}
+        astrologerName={selectedConversation?.astrologer_name || ''}
+        onContinue={handleContinueChat}
+        onStartNew={handleStartNewChat}
+        onCancel={handleCancelModal}
+      />
     </SafeAreaView>
   );
 };
@@ -105,6 +259,54 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  loadingText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing['3xl'],
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: spacing.lg,
+  },
+  errorTitle: {
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  retryButtonText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: '#FFFFFF',
   },
   chatItem: {
     backgroundColor: colors.backgroundCard,
