@@ -331,6 +331,14 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
     resumeSession: async () => {
       if (!state.conversationId) return;
 
+      console.log('🔄 ChatSessionContext: Starting resume session...');
+      console.log('🔄 Current state before resume:', {
+        conversationId: state.conversationId,
+        isVisible: state.isVisible,
+        isPaused: state.isPaused,
+        isActive: state.isActive
+      });
+
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
@@ -353,6 +361,8 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
         // If status check fails, still update UI state for better UX
         dispatch({ type: 'RESUME_SESSION' });
       }
+      
+      console.log('🔄 Resume session completed');
     },
 
     endSession: async () => {
