@@ -82,8 +82,13 @@ const ChatSessionScreen = () => {
         if (existingConversationId) {
           console.log('🔄 Resuming existing session:', existingConversationId);
           
-          // Note: Resume API call is already handled by PersistentChatBar before navigation
-          // Just load the conversation history and set up the UI
+          // Resume the session via API
+          try {
+            await sessionActions.resumeSession(existingConversationId);
+            console.log('✅ Session resumed successfully');
+          } catch (error) {
+            console.error('❌ Failed to resume session:', error);
+          }
           
           // Load existing conversation history
           const historyResponse = await apiService.getChatHistory(existingConversationId);
@@ -100,6 +105,11 @@ const ChatSessionScreen = () => {
           // Initialize session time from context for resume
           if (sessionState.sessionDuration) {
             setSessionTime(sessionState.sessionDuration);
+            console.log('🕐 Initialized session time from context:', sessionState.sessionDuration);
+          } else {
+            // If no session duration in context, start from 0
+            setSessionTime(0);
+            console.log('🕐 No session duration in context, starting from 0');
           }
           
           setConversationId(existingConversationId);
@@ -122,13 +132,24 @@ const ChatSessionScreen = () => {
         
         // Start NEW chat session
         console.log('🚀 Starting NEW chat with', astrologer.name);
-        // Map mobile astrologer ID to backend astrologer ID
-        const astrologerIdMap: { [key: string]: string } = {
-          '1': 'tina_kulkarni_vedic_marriage',
-          '2': 'arjun_sharma_career', 
-          '3': 'meera_nanda_love'
-        };
-        const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+        
+        // Determine the backend astrologer ID
+        let backendAstrologerId: string;
+        
+        // If astrologer has a custom astrologer_id (from database), use it
+        if ((astrologer as any).astrologer_id) {
+          backendAstrologerId = (astrologer as any).astrologer_id;
+        } else {
+          // Otherwise, use the mapping for frontend astrologers
+          const astrologerIdMap: { [key: string]: string } = {
+            '1': 'tina_kulkarni_vedic_marriage',
+            '2': 'arjun_sharma_career', 
+            '3': 'meera_nanda_love'
+          };
+          backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+        }
+        
+        console.log('🎯 Using backend astrologer ID:', backendAstrologerId);
         
         const sessionResponse = await apiService.startChatSession(
           userId,

@@ -76,14 +76,34 @@ const ChatHistoryScreen = () => {
     setShowActionModal(true);
   };
 
-  // Find astrologer by ID from allAstrologersData
-  const findAstrologerById = (astrologerId: string) => {
-    // First try exact ID match
+  // Find astrologer by ID - use database astrologer data
+  const findAstrologerById = async (astrologerId: string) => {
+    try {
+      // First try to get astrologer from database via API
+      const response = await apiService.getAstrologer(astrologerId);
+      if (response.success && response.astrologer) {
+        return {
+          id: 999, // Use a fallback ID
+          name: response.astrologer.display_name || response.astrologer.name,
+          category: response.astrologer.speciality || "Astrology",
+          rating: response.astrologer.rating || 4.5,
+          reviews: response.astrologer.total_reviews || 0,
+          experience: `${response.astrologer.experience_years || 10}+ years`,
+          languages: ["Hindi", "English"],
+          isOnline: response.astrologer.is_available || true,
+          image: response.astrologer.profile_picture_url || "https://via.placeholder.com/50",
+          astrologer_id: astrologerId // Include the original astrologer ID
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to fetch astrologer from API:', error);
+    }
+    
+    // Fallback to frontend data
     let astrologer = allAstrologersData.find(astrologer => 
       astrologer.id.toString() === astrologerId
     );
     
-    // If not found, try name-based matching
     if (!astrologer) {
       astrologer = allAstrologersData.find(astrologer => 
         astrologer.name.toLowerCase().replace(/\s+/g, '_') === astrologerId ||
@@ -103,7 +123,8 @@ const ChatHistoryScreen = () => {
         experience: "Expert",
         languages: ["Hindi", "English"],
         isOnline: true,
-        image: "https://via.placeholder.com/50"
+        image: "https://via.placeholder.com/50",
+        astrologer_id: astrologerId // Include the original astrologer ID
       };
     }
     
@@ -111,11 +132,11 @@ const ChatHistoryScreen = () => {
   };
 
   // Handle continue chat
-  const handleContinueChat = () => {
+  const handleContinueChat = async () => {
     if (!selectedConversation) return;
     
     setShowActionModal(false);
-    const astrologer = findAstrologerById(selectedConversation.astrologer_id);
+    const astrologer = await findAstrologerById(selectedConversation.astrologer_id);
     
     if (astrologer) {
       navigation.navigate('ChatSession', { 
@@ -128,11 +149,11 @@ const ChatHistoryScreen = () => {
   };
 
   // Handle start new chat
-  const handleStartNewChat = () => {
+  const handleStartNewChat = async () => {
     if (!selectedConversation) return;
     
     setShowActionModal(false);
-    const astrologer = findAstrologerById(selectedConversation.astrologer_id);
+    const astrologer = await findAstrologerById(selectedConversation.astrologer_id);
     
     if (astrologer) {
       navigation.navigate('ChatSession', { astrologer });
