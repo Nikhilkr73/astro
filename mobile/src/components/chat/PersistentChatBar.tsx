@@ -33,47 +33,12 @@ export function PersistentChatBar() {
       return;
     }
     
-    // Additional check - if session is already active, just navigate
-    if (state.isActive && !state.isPaused) {
-      console.log('🔄 PersistentChatBar: Session already active, navigating directly...');
-      
-      // Navigate directly without calling resumeSession
-      if (state.sessionType === 'chat') {
-        const navigationParams = {
-          astrologer: {
-            id: parseInt(state.astrologerId) || 999,
-            name: state.astrologerName || 'Astrologer',
-            category: 'Astrology',
-            rating: 4.5,
-            reviews: 0,
-            experience: 'Expert',
-            languages: ['Hindi', 'English'],
-            isOnline: true,
-            image: state.astrologerImage || 'https://via.placeholder.com/50',
-          },
-          conversationId: state.conversationId,
-        };
-        
-        console.log('🔄 PersistentChatBar: Direct navigation params:', navigationParams);
-        try {
-          navigation.navigate('ChatSession', navigationParams);
-          console.log('🔄 PersistentChatBar: Direct navigated to ChatSession');
-        } catch (navError) {
-          console.error('❌ Direct navigation error:', navError);
-          try {
-            navigation.push('ChatSession', navigationParams);
-            console.log('🔄 PersistentChatBar: Direct pushed to ChatSession');
-          } catch (pushError) {
-            console.error('❌ Direct push also failed:', pushError);
-          }
-        }
-      }
-      return;
-    }
-    
     try {
       setIsResuming(true);
       console.log('🔄 PersistentChatBar: Starting resume...');
+      console.log('🔄 PersistentChatBar: Current state - isActive:', state.isActive, 'isPaused:', state.isPaused);
+      
+      // Always resume the session first
       await actions.resumeSession();
       console.log('🔄 PersistentChatBar: Resume completed, navigating...');
       
@@ -95,23 +60,9 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
-        
-        // Try immediate navigation first
-        try {
-          console.log('🔄 PersistentChatBar: About to call navigation.navigate...');
-          navigation.navigate('ChatSession', navigationParams);
-          console.log('🔄 PersistentChatBar: navigation.navigate called successfully');
-        } catch (navError) {
-          console.error('❌ Navigation error:', navError);
-          // Fallback: try push instead
-          try {
-            console.log('🔄 PersistentChatBar: Trying navigation.push as fallback...');
-            navigation.push('ChatSession', navigationParams);
-            console.log('🔄 PersistentChatBar: navigation.push called successfully');
-          } catch (pushError) {
-            console.error('❌ Push navigation also failed:', pushError);
-          }
-        }
+        console.log('🔄 PersistentChatBar: About to call navigation.navigate...');
+        navigation.navigate('ChatSession', navigationParams);
+        console.log('🔄 PersistentChatBar: navigation.navigate called successfully');
       } else if (state.sessionType === 'voice') {
         const navigationParams = {
           astrologer: {
@@ -129,12 +80,8 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
-        
-        // Add a small delay to ensure state is updated
-        setTimeout(() => {
-          navigation.navigate('VoiceCall', navigationParams);
-          console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
-        }, 100);
+        navigation.navigate('VoiceCall', navigationParams);
+        console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
       }
       
       // Don't hide the session here - let the target screen handle it
