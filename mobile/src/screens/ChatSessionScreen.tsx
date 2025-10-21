@@ -55,6 +55,14 @@ const ChatSessionScreen = () => {
   // Chat Session Context Integration
   const { state: sessionState, actions: sessionActions } = useChatSession();
   
+  // Sync local sessionTime with context sessionDuration when resuming
+  useEffect(() => {
+    if (sessionState.sessionDuration > 0 && sessionTime === 0) {
+      console.log('🕐 Syncing sessionTime from context:', sessionState.sessionDuration);
+      setSessionTime(sessionState.sessionDuration);
+    }
+  }, [sessionState.sessionDuration]);
+  
   // ============================================
   // TESTING MODE CONFIGURATION
   // ============================================
