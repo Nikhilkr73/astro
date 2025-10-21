@@ -26,26 +26,9 @@ export function PersistentChatBar() {
 
   const handleResume = async () => {
     try {
-      console.log('🔄 PersistentChatBar: Starting resume process...');
-      console.log('🔄 Session state before resume:', {
-        conversationId: state.conversationId,
-        isVisible: state.isVisible,
-        isPaused: state.isPaused,
-        isActive: state.isActive
-      });
-      
       await actions.resumeSession();
-      
-      console.log('🔄 Session state after resume:', {
-        conversationId: state.conversationId,
-        isVisible: state.isVisible,
-        isPaused: state.isPaused,
-        isActive: state.isActive
-      });
-      
       // Navigate back to chat screen
       if (state.sessionType === 'chat') {
-        console.log('🔄 Navigating to ChatSession...');
         navigation.navigate('ChatSession' as never, {
           astrologer: {
             id: state.astrologerId,
@@ -55,7 +38,6 @@ export function PersistentChatBar() {
           conversationId: state.conversationId,
         } as never);
       } else if (state.sessionType === 'voice') {
-        console.log('🔄 Navigating to VoiceCall...');
         navigation.navigate('VoiceCall' as never, {
           astrologer: {
             id: state.astrologerId,
@@ -67,7 +49,6 @@ export function PersistentChatBar() {
       }
       
       // Hide the persistent bar after successful navigation
-      console.log('🔄 Hiding persistent bar...');
       actions.hideSession();
     } catch (error) {
       console.error('❌ Failed to resume session:', error);

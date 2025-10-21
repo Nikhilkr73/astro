@@ -92,7 +92,7 @@ const ChatSessionScreen = () => {
             sessionStartTime: Date.now(),
             isActive: true,
             isPaused: false,
-            isVisible: false,
+            // Don't override isVisible - let the context manage it
             sessionDuration: 0 // Will be updated from database if available
           });
 
