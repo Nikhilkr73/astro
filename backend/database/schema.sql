@@ -430,7 +430,7 @@ INSERT INTO astrologers (
 CREATE TABLE IF NOT EXISTS wallets (
     wallet_id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) UNIQUE NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    balance DECIMAL(10, 2) DEFAULT 0.00,
+    balance DECIMAL(10, 2) DEFAULT 50.00,
     currency VARCHAR(10) DEFAULT 'INR',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -584,4 +584,85 @@ COMMENT ON COLUMN astrologers.system_prompt IS 'Custom AI system prompt for this
 COMMENT ON COLUMN wallets.balance IS 'Current wallet balance in specified currency';
 COMMENT ON COLUMN transactions.reference_id IS 'Links transaction to conversation or reading';
 COMMENT ON COLUMN session_reviews.session_duration IS 'Duration of chat session in MM:SS format';
+
+-- =============================================================================
+-- GOOGLE PLAY BILLING INTEGRATION
+-- =============================================================================
+
+-- Add Google Play columns to transactions table
+ALTER TABLE transactions 
+ADD COLUMN IF NOT EXISTS google_play_purchase_token TEXT,
+ADD COLUMN IF NOT EXISTS google_play_product_id VARCHAR(50),
+ADD COLUMN IF NOT EXISTS google_play_order_id VARCHAR(100),
+ADD COLUMN IF NOT EXISTS platform VARCHAR(20) DEFAULT 'android',
+ADD COLUMN IF NOT EXISTS bonus_amount DECIMAL(10, 2) DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS session_duration_minutes INTEGER,
+ADD COLUMN IF NOT EXISTS astrologer_name VARCHAR(255);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_purchase_token ON transactions(google_play_purchase_token);
+CREATE INDEX IF NOT EXISTS idx_transactions_platform ON transactions(platform);
+
+-- =============================================================================
+-- RECHARGE_PRODUCTS TABLE (Product catalog with bonus structure)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS recharge_products (
+    product_id VARCHAR(50) PRIMARY KEY,
+    platform VARCHAR(20) NOT NULL, -- 'android' or 'ios'
+    amount DECIMAL(10, 2) NOT NULL,
+    bonus_percentage DECIMAL(5, 2) DEFAULT 0.00, -- e.g., 10.00 for 10%
+    bonus_amount DECIMAL(10, 2) DEFAULT 0.00, -- Calculated bonus
+    total_amount DECIMAL(10, 2) NOT NULL, -- amount + bonus_amount
+    display_name VARCHAR(100),
+    is_most_popular BOOLEAN DEFAULT false,
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_recharge_products_platform ON recharge_products(platform);
+CREATE INDEX idx_recharge_products_active ON recharge_products(is_active);
+CREATE INDEX idx_recharge_products_sort ON recharge_products(sort_order);
+
+-- Insert initial products for Android (based on screenshots)
+INSERT INTO recharge_products (product_id, platform, amount, bonus_percentage, bonus_amount, total_amount, display_name, is_most_popular, sort_order, is_active) 
+VALUES
+('astro_recharge_1', 'android', 1.00, 0.00, 0.00, 1.00, '₹1 Test', false, 0, true),
+('astro_recharge_50', 'android', 50.00, 0.00, 0.00, 50.00, '₹50 Recharge', false, 1, true),
+('astro_recharge_100', 'android', 100.00, 10.00, 10.00, 110.00, '₹100 Recharge', false, 2, true),
+('astro_recharge_200', 'android', 200.00, 12.50, 25.00, 225.00, '₹200 Recharge', true, 3, true),
+('astro_recharge_500', 'android', 500.00, 15.00, 75.00, 575.00, '₹500 Recharge', false, 4, true),
+('astro_recharge_1000', 'android', 1000.00, 20.00, 200.00, 1200.00, '₹1000 Recharge', false, 5, true)
+ON CONFLICT (product_id) DO NOTHING;
+
+-- =============================================================================
+-- FIRST_RECHARGE_BONUSES TABLE (Track first-time ₹50 bonus)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS first_recharge_bonuses (
+    bonus_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    bonus_amount DECIMAL(10, 2) NOT NULL,
+    transaction_id VARCHAR(255) REFERENCES transactions(transaction_id),
+    claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_bonus_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_bonus_transaction FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
+);
+
+CREATE INDEX idx_first_recharge_user ON first_recharge_bonuses(user_id);
+CREATE INDEX idx_first_recharge_claimed ON first_recharge_bonuses(claimed_at);
+
+-- Trigger for recharge_products table
+CREATE TRIGGER update_recharge_products_updated_at BEFORE UPDATE ON recharge_products
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Comments for new tables
+COMMENT ON TABLE recharge_products IS 'Recharge product catalog with percentage-based bonuses for Google Play';
+COMMENT ON TABLE first_recharge_bonuses IS 'Tracks first-time recharge bonus (₹50) for each user';
+COMMENT ON COLUMN recharge_products.bonus_percentage IS 'Percentage bonus (e.g., 10.00 = 10%)';
+COMMENT ON COLUMN recharge_products.bonus_amount IS 'Calculated bonus amount in rupees';
+COMMENT ON COLUMN transactions.google_play_purchase_token IS 'Google Play purchase token for verification';
+COMMENT ON COLUMN transactions.bonus_amount IS 'Total bonus amount (product bonus + first-time bonus)';
+COMMENT ON COLUMN transactions.session_duration_minutes IS 'Session duration for deduction transactions';
+COMMENT ON COLUMN transactions.astrologer_name IS 'Astrologer name for display in transaction history';
 

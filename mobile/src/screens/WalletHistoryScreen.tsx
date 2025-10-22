@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,144 +6,246 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
+import apiService from '../services/apiService';
+import storage from '../utils/storage';
+import {colors, typography, spacing, borderRadius, shadows, touchableOpacity} from '../constants/theme';
 
-type WalletHistoryScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+type WalletHistoryNavigationProp = StackNavigationProp<RootStackParamList>;
+
+interface Transaction {
+  transaction_id: string;
+  transaction_type: string;
+  amount: number;
+  description: string;
+  created_at: string;
+  payment_status: string;
+  bonus_amount?: number;
+  session_duration?: number;
+  astrologer_name?: string;
+  google_play_order_id?: string;
+}
+
+type TabType = 'wallet' | 'payment';
 
 const WalletHistoryScreen = () => {
-  const navigation = useNavigation<WalletHistoryScreenNavigationProp>();
+  const navigation = useNavigation<WalletHistoryNavigationProp>();
+  const [activeTab, setActiveTab] = useState<TabType>('wallet');
+  const [walletHistory, setWalletHistory] = useState<Transaction[]>([]);
+  const [paymentLogs, setPaymentLogs] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const transactionHistory = [
-    {
-      id: '1',
-      type: 'debit',
-      amount: 32,
-      description: 'Chat with Pandit Rajesh Kumar',
-      date: '2 hours ago',
-      status: 'completed',
-      transactionId: 'TXN001234567'
-    },
-    {
-      id: '2',
-      type: 'credit',
-      amount: 500,
-      description: 'Wallet Recharge',
-      date: 'Yesterday',
-      status: 'completed',
-      transactionId: 'TXN001234566'
-    },
-    {
-      id: '3',
-      type: 'debit',
-      amount: 24,
-      description: 'Chat with Dr. Priya Sharma',
-      date: '2 days ago',
-      status: 'completed',
-      transactionId: 'TXN001234565'
-    },
-    {
-      id: '4',
-      type: 'credit',
-      amount: 250,
-      description: 'Wallet Recharge',
-      date: '3 days ago',
-      status: 'completed',
-      transactionId: 'TXN001234564'
-    },
-    {
-      id: '5',
-      type: 'debit',
-      amount: 56,
-      description: 'Chat with Guru Vikash Joshi',
-      date: '5 days ago',
-      status: 'completed',
-      transactionId: 'TXN001234563'
-    },
-    {
-      id: '6',
-      type: 'debit',
-      amount: 16,
-      description: 'Chat with Acharya Meera Devi',
-      date: '1 week ago',
-      status: 'completed',
-      transactionId: 'TXN001234562'
-    },
-  ];
+  // Load transaction history
+  const loadTransactions = async () => {
+    try {
+      const userId = await storage.getUserId();
+      if (!userId) return;
+
+      // Fetch wallet history (deductions)
+      const walletResponse = await apiService.getWalletTransactions(userId, 'deduction', 50);
+      if (walletResponse.success) {
+        setWalletHistory(walletResponse.transactions || []);
+      }
+
+      // Fetch payment logs (recharges)
+      const paymentResponse = await apiService.getWalletTransactions(userId, 'recharge', 50);
+      if (paymentResponse.success) {
+        setPaymentLogs(paymentResponse.transactions || []);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load transaction history:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadTransactions();
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    const time = date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    return `${day} ${month} ${year}, ${time}`;
+  };
+
+  // Format duration
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return '';
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
+  };
+
+  // Render wallet history item (deductions)
+  const renderWalletItem = (transaction: Transaction) => (
+    <View key={transaction.transaction_id} style={styles.transactionCard}>
+      <View style={styles.cardHeader}>
+        <View style={styles.iconContainer}>
+          <Text style={styles.iconText}>💸</Text>
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={styles.transactionTitle}>
+            {transaction.astrologer_name || 'Astrology Session'}
+          </Text>
+          <Text style={styles.transactionDate}>
+            {formatDate(transaction.created_at)}
+          </Text>
+          {transaction.session_duration && (
+            <Text style={styles.sessionDuration}>
+              Duration: {formatDuration(transaction.session_duration)}
+            </Text>
+          )}
+        </View>
+        <View style={styles.amountContainer}>
+          <Text style={styles.debitAmount}>-₹{transaction.amount}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Render payment log item (recharges)
+  const renderPaymentItem = (transaction: Transaction) => (
+    <View key={transaction.transaction_id} style={styles.transactionCard}>
+      <View style={styles.cardHeader}>
+        <View style={[styles.iconContainer, styles.iconSuccess]}>
+          <Text style={styles.iconText}>💰</Text>
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={styles.transactionTitle}>Wallet Recharge</Text>
+          <Text style={styles.transactionDate}>
+            {formatDate(transaction.created_at)}
+          </Text>
+          {transaction.google_play_order_id && (
+            <Text style={styles.orderId}>
+              Order: {transaction.google_play_order_id.substring(0, 20)}...
+            </Text>
+          )}
+          {transaction.bonus_amount && transaction.bonus_amount > 0 && (
+            <View style={styles.bonusContainer}>
+              <Text style={styles.bonusText}>
+                Bonus: +₹{transaction.bonus_amount}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.amountContainer}>
+          <Text style={styles.creditAmount}>+₹{transaction.amount}</Text>
+          <View style={[
+            styles.statusBadge,
+            transaction.payment_status === 'completed' ? styles.statusSuccess : styles.statusPending
+          ]}>
+            <Text style={styles.statusText}>
+              {transaction.payment_status === 'completed' ? 'Success' : 'Pending'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading history...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const currentTransactions = activeTab === 'wallet' ? walletHistory : paymentLogs;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
+        <TouchableOpacity 
           onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
+          style={styles.backButton}
+          activeOpacity={touchableOpacity}
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction History</Text>
-        <View style={styles.headerSpace} />
+        <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {transactionHistory.map((transaction) => (
-          <View key={transaction.id} style={styles.transactionCard}>
-            <View style={styles.transactionHeader}>
-              <View style={styles.transactionIcon}>
-                <Text style={styles.transactionIconText}>
-                  {transaction.type === 'credit' ? '💰' : '💸'}
-                </Text>
-              </View>
-              
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionDescription}>
-                  {transaction.description}
-                </Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
-                <Text style={styles.transactionId}>ID: {transaction.transactionId}</Text>
-              </View>
-              
-              <View style={styles.transactionAmountContainer}>
-                <Text style={[
-                  styles.transactionAmount,
-                  transaction.type === 'credit' ? styles.creditAmount : styles.debitAmount
-                ]}>
-                  {transaction.type === 'credit' ? '+' : '-'}₹{transaction.amount}
-                </Text>
-                <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: transaction.status === 'completed' ? '#10b981' : '#f59e0b' }
-                ]}>
-                  <Text style={styles.statusText}>
-                    {transaction.status === 'completed' ? 'Completed' : 'Pending'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        ))}
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'wallet' && styles.tabActive]}
+          onPress={() => setActiveTab('wallet')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabText, activeTab === 'wallet' && styles.tabTextActive]}>
+            Wallet History
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'payment' && styles.tabActive]}
+          onPress={() => setActiveTab('payment')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabText, activeTab === 'payment' && styles.tabTextActive]}>
+            Payment Logs
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Monthly Summary</Text>
-          <View style={styles.summaryStats}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>₹750</Text>
-              <Text style={styles.summaryLabel}>Total Recharged</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>₹128</Text>
-              <Text style={styles.summaryLabel}>Total Spent</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>₹622</Text>
-              <Text style={styles.summaryLabel}>Net Balance</Text>
-            </View>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {currentTransactions.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>
+              {activeTab === 'wallet' ? '💬' : '💳'}
+            </Text>
+            <Text style={styles.emptyText}>No transactions yet</Text>
+            <Text style={styles.emptySubtext}>
+              {activeTab === 'wallet' 
+                ? 'Your consultation history will appear here'
+                : 'Your recharge history will appear here'}
+            </Text>
           </View>
-        </View>
+        ) : (
+          <View style={styles.transactionList}>
+            {currentTransactions.map(transaction =>
+              activeTab === 'wallet'
+                ? renderWalletItem(transaction)
+                : renderPaymentItem(transaction)
+            )}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -152,157 +254,192 @@ const WalletHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.lg,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    ...shadows.sm,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: spacing.sm,
   },
   backIcon: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#374151',
+    fontSize: typography.fontSize['2xl'],
+    color: colors.textPrimary,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
   },
-  headerSpace: {
+  placeholder: {
     width: 40,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundCard,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    fontFamily: typography.fontFamily.bold,
+    color: colors.primary,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  transactionList: {
+    padding: spacing.lg,
   },
   transactionCard: {
-    backgroundColor: '#ffffff',
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: colors.backgroundCard,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.md,
   },
-  transactionHeader: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#FFEBEE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
-  transactionIconText: {
-    fontSize: 20,
+  iconSuccess: {
+    backgroundColor: '#E8F5E9',
   },
-  transactionDetails: {
+  iconText: {
+    fontSize: typography.fontSize.xl,
+  },
+  cardContent: {
     flex: 1,
   },
-  transactionDescription: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
+  transactionTitle: {
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   transactionDate: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 2,
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
   },
-  transactionId: {
-    fontSize: 12,
-    color: '#9ca3af',
+  sessionDuration: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textTertiary,
   },
-  transactionAmountContainer: {
+  orderId: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+  },
+  bonusContainer: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+  bonusText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.bold,
+    color: '#2E7D32',
+  },
+  amountContainer: {
     alignItems: 'flex-end',
   },
-  transactionAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  debitAmount: {
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.error,
   },
   creditAmount: {
-    color: '#10b981',
-  },
-  debitAmount: {
-    color: '#ef4444',
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.success,
+    marginBottom: spacing.xs,
   },
   statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 4,
   },
+  statusSuccess: {
+    backgroundColor: '#E8F5E9',
+  },
+  statusPending: {
+    backgroundColor: '#FFF3E0',
+  },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.bold,
+    color: '#2E7D32',
   },
-  summaryCard: {
-    backgroundColor: '#ffffff',
-    marginTop: 16,
-    marginBottom: 24,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  summaryStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
-    alignItems: 'center',
+  emptyState: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing['4xl'],
   },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
   },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
+  emptyText: {
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.semiBold,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  emptySubtext: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textTertiary,
     textAlign: 'center',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#e5e7eb',
   },
 });
 

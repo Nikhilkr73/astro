@@ -35,3 +35,11 @@ GEOAPIFY_API_KEY=5a3a573b36774482b168c56af6be0581
 HOST=0.0.0.0
 PORT=8000
 
+# Google Play Billing Configuration
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON=/path/to/google-play-service-account.json
+GOOGLE_PLAY_PACKAGE_NAME=com.astrovoice.app
+GOOGLE_PLAY_ENABLED=true
+
+# First Recharge Bonus
+FIRST_RECHARGE_BONUS_AMOUNT=50.00
+

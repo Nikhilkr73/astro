@@ -42,7 +42,7 @@ const ChatSessionScreen = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [sessionTime, setSessionTime] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(500);
+  const [walletBalance, setWalletBalance] = useState(50);
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);

@@ -29,7 +29,7 @@ const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [walletBalance, setWalletBalance] = useState(500);
+  const [walletBalance, setWalletBalance] = useState(50);
   const [astrologers, setAstrologers] = useState<Astrologer[]>([]);
   const [error, setError] = useState<string | null>(null);
 

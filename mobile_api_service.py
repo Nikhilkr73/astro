@@ -151,8 +151,8 @@ async def register_user(user_data: UserRegistration):
         }
         db.update_user_birth_info(created_user_id, birth_info)
         
-        # Create wallet with initial balance of 500
-        wallet_id = db.create_wallet(created_user_id, initial_balance=500.00)
+        # Create wallet with initial balance of 50
+        wallet_id = db.create_wallet(created_user_id, initial_balance=50.00)
         
         # Get complete user profile
         user_profile = db.get_user(created_user_id)
@@ -474,17 +474,205 @@ async def recharge_wallet(recharge: WalletRecharge):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/wallet/transactions/{user_id}")
-async def get_transactions(user_id: str, limit: int = 20):
-    """Get user transaction history"""
+async def get_transactions(user_id: str, type: str = None, limit: int = 20):
+    """
+    Get user transaction history with optional filtering.
+    Query params:
+    - type: Optional filter ('recharge' or 'deduction')
+    - limit: Maximum number of transactions (default 20)
+    """
     try:
-        transactions = db.get_user_transactions(user_id, limit)
+        if type:
+            transactions = db.get_filtered_transactions(user_id, type, limit)
+        else:
+            transactions = db.get_user_transactions(user_id, limit)
+        
+        # Format transactions for mobile app
+        formatted_transactions = []
+        for txn in transactions:
+            formatted = {
+                'transaction_id': txn.get('transaction_id'),
+                'type': txn.get('transaction_type'),
+                'amount': float(txn.get('amount', 0)),
+                'bonus_amount': float(txn.get('bonus_amount', 0)) if txn.get('bonus_amount') else 0,
+                'status': txn.get('payment_status', ''),
+                'payment_method': txn.get('payment_method', ''),
+                'payment_reference': txn.get('payment_reference') or txn.get('google_play_order_id', ''),
+                'description': txn.get('description', ''),
+                'created_at': txn.get('created_at').isoformat() if txn.get('created_at') else '',
+            }
+            
+            # Add session-specific fields for deductions
+            if txn.get('transaction_type') == 'deduction':
+                formatted['astrologer_name'] = txn.get('astrologer_name', '')
+                formatted['session_duration'] = txn.get('session_duration_minutes', 0)
+            
+            formatted_transactions.append(formatted)
         
         return {
             "success": True,
-            "transactions": transactions,
-            "count": len(transactions)
+            "transactions": formatted_transactions,
+            "count": len(formatted_transactions)
         }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =============================================================================
+# GOOGLE PLAY BILLING ENDPOINTS
+# =============================================================================
+
+@app.get("/api/wallet/products")
+async def get_recharge_products(platform: str = 'android'):
+    """Get available recharge products with bonus information"""
+    try:
+        products = db.get_recharge_products(platform)
+        
+        # Format for mobile app
+        formatted_products = []
+        for product in products:
+            formatted_products.append({
+                'product_id': product['product_id'],
+                'amount': float(product['amount']),
+                'bonus_percentage': float(product['bonus_percentage']),
+                'bonus_amount': float(product['bonus_amount']),
+                'total_amount': float(product['total_amount']),
+                'display_name': product['display_name'],
+                'is_most_popular': product['is_most_popular']
+            })
+        
+        return {
+            'success': True,
+            'products': formatted_products,
+            'count': len(formatted_products)
+        }
+    except Exception as e:
+        print(f"❌ Error getting products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class GooglePlayPurchase(BaseModel):
+    user_id: str
+    product_id: str
+    purchase_token: str
+    order_id: str
+    platform: str = 'android'
+
+@app.post("/api/wallet/verify-purchase")
+async def verify_google_play_purchase(purchase: GooglePlayPurchase):
+    """
+    Verify Google Play purchase and credit wallet.
+    Handles product bonus + first-time ₹50 bonus.
+    """
+    try:
+        from backend.services.google_play_billing import get_billing_service
+        
+        print(f"🔍 Verifying Google Play purchase:")
+        print(f"   User: {purchase.user_id}")
+        print(f"   Product: {purchase.product_id}")
+        print(f"   Token: {purchase.purchase_token[:20]}...")
+        
+        # 1. Check if purchase token already processed (prevent duplicate)
+        if db.check_purchase_token_exists(purchase.purchase_token):
+            raise HTTPException(
+                status_code=400,
+                detail="Purchase already processed. Each purchase can only be used once."
+            )
+        
+        # 2. Verify with Google Play API
+        billing_service = get_billing_service()
+        if billing_service.is_available():
+            verification = await billing_service.verify_purchase(
+                purchase.product_id,
+                purchase.purchase_token
+            )
+            
+            if not verification.get('valid'):
+                error_msg = verification.get('error') or verification.get('reason', 'Invalid purchase')
+                print(f"❌ Purchase verification failed: {error_msg}")
+                raise HTTPException(status_code=400, detail=f"Purchase verification failed: {error_msg}")
+            
+            print(f"✅ Purchase verified with Google Play")
+        else:
+            print(f"⚠️ Google Play verification not available, proceeding without verification (development mode)")
+        
+        # 3. Get product details from database
+        product = db.get_product_by_id(purchase.product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product not found: {purchase.product_id}")
+        
+        # 4. Calculate total bonus (product bonus + first-time bonus)
+        base_amount = float(product['amount'])
+        product_bonus = float(product['bonus_amount'])
+        
+        # Check for first-time recharge bonus
+        first_time_bonus = 0.00
+        if not db.has_first_recharge_bonus(purchase.user_id):
+            first_time_bonus = 50.00  # Flat ₹50 bonus
+            print(f"🎉 First-time recharge detected! Adding ₹{first_time_bonus} bonus")
+        
+        total_bonus = product_bonus + first_time_bonus
+        total_credited = base_amount + total_bonus
+        
+        print(f"💰 Recharge breakdown:")
+        print(f"   Base amount: ₹{base_amount}")
+        print(f"   Product bonus ({product['bonus_percentage']}%): ₹{product_bonus}")
+        print(f"   First-time bonus: ₹{first_time_bonus}")
+        print(f"   Total bonus: ₹{total_bonus}")
+        print(f"   Total credited: ₹{total_credited}")
+        
+        # 5. Get user's wallet
+        wallet = db.get_wallet(purchase.user_id)
+        if not wallet:
+            # Create wallet if it doesn't exist
+            wallet_id = db.create_wallet(purchase.user_id, initial_balance=0)
+            wallet = db.get_wallet(purchase.user_id)
+            if not wallet:
+                raise HTTPException(status_code=500, detail="Failed to create or retrieve wallet")
+        
+        # 6. Create transaction and update wallet
+        transaction_id = db.create_google_play_transaction(
+            user_id=purchase.user_id,
+            wallet_id=wallet['wallet_id'],
+            product_id=purchase.product_id,
+            amount=base_amount,
+            bonus_amount=total_bonus,
+            purchase_token=purchase.purchase_token,
+            order_id=purchase.order_id,
+            platform=purchase.platform
+        )
+        
+        if not transaction_id:
+            raise HTTPException(status_code=500, detail="Failed to create transaction")
+        
+        # 7. Acknowledge purchase with Google Play (prevent automatic refund)
+        if billing_service.is_available():
+            acknowledged = await billing_service.acknowledge_purchase(
+                purchase.product_id,
+                purchase.purchase_token
+            )
+            if acknowledged:
+                print(f"✅ Purchase acknowledged with Google Play")
+        
+        # 8. Get updated wallet balance
+        updated_wallet = db.get_wallet(purchase.user_id)
+        
+        return {
+            'success': True,
+            'transaction_id': transaction_id,
+            'amount_paid': float(base_amount),
+            'product_bonus': float(product_bonus),
+            'first_time_bonus': float(first_time_bonus),
+            'total_bonus': float(total_bonus),
+            'total_credited': float(total_credited),
+            'new_balance': float(updated_wallet['balance']),
+            'message': f"₹{total_credited} credited to your wallet!"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Purchase verification failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # =============================================================================

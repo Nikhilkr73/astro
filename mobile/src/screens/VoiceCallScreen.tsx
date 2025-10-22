@@ -30,7 +30,7 @@ const VoiceCallScreen = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const [walletBalance, setWalletBalance] = useState(500);
+  const [walletBalance, setWalletBalance] = useState(50);
   const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);

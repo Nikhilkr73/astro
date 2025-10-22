@@ -25,12 +25,16 @@
         "backgroundColor": "#6366f1"
       },
       "backgroundColor": "#6366f1",
-      "package": "com.astrovoice.kundli",
-      "versionCode": 1
+      "package": "com.astrovoice.kundli"
     },
     "web": {
       "bundler": "metro"
     },
-    "scheme": "kundli"
+    "scheme": "kundli",
+    "extra": {
+      "eas": {
+        "projectId": "5084fa71-34f5-427e-9d18-c05946dbc8bd"
+      }
+    }
   }
 }

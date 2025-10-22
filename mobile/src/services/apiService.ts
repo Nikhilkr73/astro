@@ -388,7 +388,7 @@ export const apiService = {
   },
 
   /**
-   * Get user transaction history
+   * Get user transaction history with optional filtering
    */
   getTransactions: async (userId: string, limit: number = 20) => {
     try {
@@ -398,6 +398,87 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Get transactions failed:', error);
+      throw error;
+    }
+  },
+
+  // ===========================================================================
+  // GOOGLE PLAY BILLING APIs
+  // ===========================================================================
+
+  /**
+   * Get available recharge products from backend
+   */
+  getRechargeProducts: async (platform: string = 'android') => {
+    try {
+      const response = await apiClient.get('/api/wallet/products', {
+        params: { platform },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get recharge products failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verify Google Play purchase and credit wallet
+   * Includes product bonus + first-time ₹50 bonus if applicable
+   */
+  verifyGooglePlayPurchase: async (
+    userId: string,
+    productId: string,
+    purchaseToken: string,
+    orderId: string,
+    platform: string = 'android'
+  ) => {
+    try {
+      const purchaseData = {
+        user_id: userId,
+        product_id: productId,
+        purchase_token: purchaseToken,
+        order_id: orderId,
+        platform,
+      };
+      
+      console.log('🔍 Verifying Google Play purchase with backend...');
+      console.log('   Product:', productId);
+      console.log('   User:', userId);
+      
+      const response = await apiClient.post('/api/wallet/verify-purchase', purchaseData);
+      
+      console.log('✅ Purchase verified successfully');
+      console.log('   Amount credited:', response.data.total_credited);
+      console.log('   New balance:', response.data.new_balance);
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Google Play purchase verification failed:', error);
+      console.error('   Error response:', error.response?.data);
+      throw error;
+    }
+  },
+
+  /**
+   * Get wallet transactions with filtering (for transaction history tabs)
+   */
+  getWalletTransactions: async (
+    userId: string,
+    type?: 'recharge' | 'deduction',
+    limit: number = 20
+  ) => {
+    try {
+      const params: any = { limit };
+      if (type) {
+        params.type = type;
+      }
+      
+      const response = await apiClient.get(API_ENDPOINTS.WALLET_TRANSACTIONS(userId), {
+        params,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Get wallet transactions failed:', error);
       throw error;
     }
   },

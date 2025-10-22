@@ -14,9 +14,11 @@ import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
 import apiService from '../services/apiService';
+import billingService from '../services/billingService';
 import storage from '../utils/storage';
 import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
-import LinearGradient from 'expo-linear-gradient';
+import {RECHARGE_PRODUCTS, RechargeProduct} from '../config/billing';
+import {TEST_MODE} from '../config/testMode';
 
 type WalletScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -35,9 +37,8 @@ const WalletScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRecharging, setIsRecharging] = useState(false);
-
-  const rechargeAmounts = [100, 250, 500, 1000, 2000, 5000];
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<RechargeProduct | null>(null);
 
   // Load wallet data
   const loadWalletData = async () => {
@@ -78,43 +79,118 @@ const WalletScreen = () => {
     loadWalletData();
   };
 
-  const handleRecharge = async (amount: number) => {
+  // Initialize billing service on mount
+  useEffect(() => {
+    const initBilling = async () => {
+      try {
+        await billingService.init();
+        console.log('✅ Billing service initialized');
+      } catch (error) {
+        console.error('❌ Billing init failed:', error);
+      }
+    };
+    initBilling();
+  }, []);
+
+  const handleProductSelect = (product: RechargeProduct) => {
+    setSelectedProduct(product);
+  };
+
+  const handleContinue = async () => {
+    if (!selectedProduct) {
+      Alert.alert('Select Amount', 'Please select a recharge amount to continue');
+      return;
+    }
+
     try {
-      setIsRecharging(true);
+      setIsPurchasing(true);
       
       const userId = await storage.getUserId();
       if (!userId) {
         Alert.alert('Error', 'User not found. Please login again.');
+        setIsPurchasing(false);
+        return;
+      }
+
+      console.log(`🛒 Starting purchase for ${selectedProduct.productId}`);
+      
+      // Trigger Google Play purchase
+      const purchase = await billingService.purchaseProduct(selectedProduct.productId);
+      
+      if (!purchase || !purchase.purchaseToken) {
+        throw new Error('Purchase token not received');
+      }
+
+      console.log('✅ Google Play purchase successful, verifying with backend...');
+
+      // Verify purchase with backend
+      const response = await apiService.verifyGooglePlayPurchase(
+        userId,
+        selectedProduct.productId,
+        purchase.purchaseToken,
+        purchase.transactionId || `android_${Date.now()}`,
+        'android'
+      );
+
+      if (response.success) {
+        // Finalize purchase (mark as consumed)
+        await billingService.finalizePurchase(purchase);
+        
+        console.log(`✅ Purchase complete! Credited: ₹${response.total_credited}`);
+        
+        // Update local balance
+        await storage.saveWalletBalance(response.new_balance);
+        setWalletBalance(response.new_balance);
+        
+        // Show success with bonus details
+        let message = `₹${response.amount_paid} added to your wallet`;
+        if (response.total_bonus > 0) {
+          message += `\n\n🎉 Bonus: ₹${response.total_bonus}`;
+          if (response.first_time_bonus > 0) {
+            message += `\n• First-time bonus: ₹${response.first_time_bonus}`;
+          }
+          if (response.product_bonus > 0) {
+            message += `\n• Product bonus: ₹${response.product_bonus}`;
+          }
+          message += `\n\nTotal credited: ₹${response.total_credited}`;
+        }
+        
+        Alert.alert('Recharge Successful! 🎉', message, [
+          {
+            text: 'OK',
+            onPress: () => {
+              setSelectedProduct(null);
+              loadWalletData();
+            }
+          }
+        ]);
+      }
+    } catch (error: any) {
+      console.error('❌ Purchase failed:', error);
+      
+      // Handle user cancellation gracefully
+      if (error.code === 'E_USER_CANCELLED') {
+        console.log('ℹ️ User cancelled purchase');
         return;
       }
       
-      // Call recharge API
-      const response = await apiService.rechargeWallet(
-        userId,
-        amount,
-        'upi',
-        `UPI_${Date.now()}`
-      );
-      
-      if (response.success) {
-        console.log(`✅ Recharged ₹${amount}, new balance: ₹${response.new_balance}`);
-        await storage.saveWalletBalance(response.new_balance);
-        
-        // Reload wallet data
-        await loadWalletData();
-        
-        // Navigate to success screen
-        navigation.navigate('TransactionStatus', { status: 'success' });
+      // Handle IAP not available
+      if (error.code === 'E_IAP_NOT_AVAILABLE' || error.message?.includes('not available')) {
+        Alert.alert(
+          'IAP Not Available',
+          'In-app purchases are not available in Expo Go or simulator.\n\nPlease:\n1. Build app with EAS: eas build --profile development\n2. Or use physical device with standalone build',
+          [{ text: 'OK' }]
+        );
+        return;
       }
-    } catch (error: any) {
-      console.error('❌ Recharge failed:', error);
+      
       Alert.alert(
-        'Recharge Failed',
-        error.response?.data?.detail || 'Failed to recharge wallet. Please try again.',
+        'Purchase Failed',
+        error.response?.data?.detail || error.message || 'Failed to complete purchase. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
-      setIsRecharging(false);
+      setIsPurchasing(false);
     }
   };
 
@@ -184,24 +260,69 @@ const WalletScreen = () => {
 
         {/* Recharge Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Recharge</Text>
-          <View style={styles.rechargeGrid}>
-            {rechargeAmounts.map((amount, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.rechargeButton}
-                onPress={() => handleRecharge(amount)}
-                activeOpacity={touchableOpacity}
-              >
-                <Text style={styles.rechargeAmount}>₹{amount}</Text>
-                {amount === 500 && (
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularText}>Popular</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recharge Amount</Text>
+            {TEST_MODE.MOCK_PURCHASES && (
+              <View style={styles.testModeBadge}>
+                <Text style={styles.testModeText}>🧪 TEST MODE</Text>
+              </View>
+            )}
           </View>
+          
+          <View style={styles.rechargeGridContainer}>
+            {RECHARGE_PRODUCTS.map((product) => {
+              const isSelected = selectedProduct?.productId === product.productId;
+              return (
+                <View key={product.productId} style={styles.rechargeCardWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.rechargeCard,
+                      isSelected && styles.rechargeCardSelected
+                    ]}
+                    onPress={() => handleProductSelect(product)}
+                    activeOpacity={0.7}
+                  >
+                    {product.isMostPopular && (
+                      <View style={styles.mostPopularBadge}>
+                        <Text style={styles.mostPopularText}>Most Popular</Text>
+                      </View>
+                    )}
+                    
+                    <Text style={styles.rechargeAmount}>₹{product.amount}</Text>
+                    
+                    {product.bonusPercentage > 0 && (
+                      <View style={styles.bonusTag}>
+                        <Text style={styles.bonusTagText}>
+                          +{product.bonusPercentage}% (₹{product.bonusAmount})
+                        </Text>
+                      </View>
+                    )}
+                    
+                    <Text style={styles.totalAmount}>
+                      You'll get ₹{product.totalAmount}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+
+          {selectedProduct && (
+            <TouchableOpacity
+              style={[styles.continueButton, isPurchasing && styles.continueButtonDisabled]}
+              onPress={handleContinue}
+              activeOpacity={0.8}
+              disabled={isPurchasing}
+            >
+              {isPurchasing ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.continueButtonText}>
+                  Continue (₹{selectedProduct.amount})
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Recent Transactions */}
@@ -247,30 +368,6 @@ const WalletScreen = () => {
               </View>
             ))
           )}
-        </View>
-
-        {/* Usage Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>This Month's Usage</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statIcon}>💬</Text>
-              <Text style={styles.statValue}>8</Text>
-              <Text style={styles.statLabel}>Chat Sessions</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statIcon}>⏱️</Text>
-              <Text style={styles.statValue}>2.5 hrs</Text>
-              <Text style={styles.statLabel}>Total Time</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statIcon}>💸</Text>
-              <Text style={styles.statValue}>₹240</Text>
-              <Text style={styles.statLabel}>Total Spent</Text>
-            </View>
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -376,44 +473,106 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadows.md,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.bold,
     color: colors.textPrimary,
-    marginBottom: spacing.lg,
   },
-  rechargeGrid: {
+  testModeBadge: {
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#FFC107',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  testModeText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.bold,
+    color: '#856404',
+  },
+  rechargeGridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    marginHorizontal: -spacing.xs, // Negative margin to offset wrapper padding
   },
-  rechargeButton: {
-    flex: 1,
-    minWidth: '30%',
+  rechargeCardWrapper: {
+    width: '50%', // 2 columns
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  rechargeCard: {
     backgroundColor: colors.background,
     borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
     position: 'relative',
+    minHeight: 120,
+  },
+  rechargeCardSelected: {
+    borderColor: '#FF6B35',
+    borderWidth: 2,
+    backgroundColor: '#FFF5F0',
+  },
+  mostPopularBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: '#4CAF50',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  mostPopularText: {
+    fontSize: 10,
+    fontFamily: typography.fontFamily.bold,
+    color: colors.white,
+    textTransform: 'uppercase',
   },
   rechargeAmount: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize['2xl'],
     fontFamily: typography.fontFamily.bold,
     color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
-  popularBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: colors.success,
+  bonusTag: {
+    backgroundColor: '#E8F5E9',
     borderRadius: borderRadius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.xs,
   },
-  popularText: {
-    fontSize: 10,
+  bonusTagText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.semiBold,
+    color: '#2E7D32',
+  },
+  totalAmount: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+  },
+  continueButton: {
+    backgroundColor: '#FF6B35',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    ...shadows.md,
+  },
+  continueButtonDisabled: {
+    opacity: 0.6,
+  },
+  continueButtonText: {
+    fontSize: typography.fontSize.lg,
     fontFamily: typography.fontFamily.bold,
     color: colors.white,
   },
@@ -470,36 +629,6 @@ const styles = StyleSheet.create({
   },
   debitAmount: {
     color: colors.error,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statIcon: {
-    fontSize: typography.fontSize['2xl'],
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    fontSize: typography.fontSize.xs,
-    fontFamily: typography.fontFamily.regular,
-    color: colors.textTertiary,
-    textAlign: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.borderLight,
   },
 });
 

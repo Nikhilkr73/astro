@@ -602,7 +602,7 @@ class DatabaseManager:
     # WALLET OPERATIONS
     # =============================================================================
     
-    def create_wallet(self, user_id: str, initial_balance: float = 0.00) -> Optional[str]:
+    def create_wallet(self, user_id: str, initial_balance: float = 50.00) -> Optional[str]:
         """Create wallet for new user"""
         try:
             wallet_id = f"wallet_{user_id}"
@@ -743,6 +743,220 @@ class DatabaseManager:
                     return [dict(row) for row in cursor.fetchall()]
         except Exception as e:
             print(f"❌ Error getting transactions: {e}")
+            return []
+    
+    # =============================================================================
+    # GOOGLE PLAY BILLING OPERATIONS
+    # =============================================================================
+    
+    def get_recharge_products(self, platform: str = 'android') -> List[Dict]:
+        """Get all active recharge products for a platform"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT product_id, platform, amount, bonus_percentage,
+                               bonus_amount, total_amount, display_name, is_most_popular
+                        FROM recharge_products
+                        WHERE platform = %s AND is_active = true
+                        ORDER BY sort_order
+                    """, (platform,))
+                    
+                    return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error getting recharge products: {e}")
+            return []
+    
+    def get_product_by_id(self, product_id: str) -> Optional[Dict]:
+        """Get a specific recharge product by ID"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT * FROM recharge_products
+                        WHERE product_id = %s AND is_active = true
+                    """, (product_id,))
+                    
+                    result = cursor.fetchone()
+                    return dict(result) if result else None
+        except Exception as e:
+            print(f"❌ Error getting product: {e}")
+            return None
+    
+    def check_purchase_token_exists(self, purchase_token: str) -> bool:
+        """Check if a purchase token has already been processed"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT EXISTS(
+                            SELECT 1 FROM transactions 
+                            WHERE google_play_purchase_token = %s
+                        )
+                    """, (purchase_token,))
+                    
+                    result = cursor.fetchone()
+                    return result[0] if result else False
+        except Exception as e:
+            print(f"❌ Error checking purchase token: {e}")
+            return False
+    
+    def has_first_recharge_bonus(self, user_id: str) -> bool:
+        """Check if user has already claimed first recharge bonus"""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT EXISTS(
+                            SELECT 1 FROM first_recharge_bonuses 
+                            WHERE user_id = %s
+                        )
+                    """, (user_id,))
+                    
+                    result = cursor.fetchone()
+                    return result[0] if result else False
+        except Exception as e:
+            print(f"❌ Error checking first recharge bonus: {e}")
+            return False
+    
+    def create_google_play_transaction(
+        self,
+        user_id: str,
+        wallet_id: str,
+        product_id: str,
+        amount: float,
+        bonus_amount: float,
+        purchase_token: str,
+        order_id: str,
+        platform: str = 'android'
+    ) -> Optional[str]:
+        """
+        Create a wallet recharge transaction with Google Play details.
+        Handles wallet balance update and first-time bonus if applicable.
+        """
+        try:
+            transaction_id = f"txn_{user_id}_{int(datetime.now().timestamp())}"
+            total_amount = float(amount) + float(bonus_amount)
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get current wallet balance
+                    cursor.execute("""
+                        SELECT balance FROM wallets WHERE wallet_id = %s
+                    """, (wallet_id,))
+                    
+                    wallet_result = cursor.fetchone()
+                    if not wallet_result:
+                        print(f"❌ Wallet not found: {wallet_id}")
+                        return None
+                    
+                    balance_before = float(wallet_result['balance'])
+                    balance_after = balance_before + total_amount
+                    
+                    # Insert transaction record
+                    cursor.execute("""
+                        INSERT INTO transactions (
+                            transaction_id, user_id, wallet_id,
+                            transaction_type, amount, bonus_amount,
+                            balance_before, balance_after,
+                            payment_method, payment_status, payment_reference,
+                            google_play_purchase_token, google_play_product_id,
+                            google_play_order_id, platform,
+                            reference_type, description, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP
+                        )
+                        RETURNING transaction_id
+                    """, (
+                        transaction_id, user_id, wallet_id,
+                        'recharge', total_amount, bonus_amount,
+                        balance_before, balance_after,
+                        'google_play', 'completed', order_id,
+                        purchase_token, product_id, order_id, platform,
+                        'recharge',
+                        f'Wallet recharge via Google Play - ₹{amount} + ₹{bonus_amount} bonus'
+                    ))
+                    
+                    # Update wallet balance
+                    cursor.execute("""
+                        UPDATE wallets SET
+                            balance = %s,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE wallet_id = %s
+                    """, (balance_after, wallet_id))
+                    
+                    # Check if this includes first-time bonus and record it
+                    is_first_recharge = not self.has_first_recharge_bonus(user_id)
+                    if is_first_recharge and bonus_amount > 0:
+                        # Assuming ₹50 is always the first-time bonus portion
+                        first_time_bonus = min(50.00, bonus_amount)
+                        bonus_id = f"bonus_{user_id}_{int(datetime.now().timestamp())}"
+                        
+                        cursor.execute("""
+                            INSERT INTO first_recharge_bonuses (
+                                bonus_id, user_id, bonus_amount, transaction_id, claimed_at
+                            ) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                        """, (bonus_id, user_id, first_time_bonus, transaction_id))
+                        
+                        print(f"🎉 First recharge bonus recorded: ₹{first_time_bonus}")
+                    
+                    print(f"✅ Google Play transaction created: {transaction_id}")
+                    print(f"   Amount: ₹{amount} + ₹{bonus_amount} bonus = ₹{total_amount}")
+                    print(f"   New balance: ₹{balance_after}")
+                    
+                    return transaction_id
+                    
+        except Exception as e:
+            print(f"❌ Error creating Google Play transaction: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def get_filtered_transactions(
+        self, 
+        user_id: str, 
+        transaction_type: Optional[str] = None,
+        limit: int = 20
+    ) -> List[Dict]:
+        """
+        Get user transactions with optional filtering by type.
+        
+        Args:
+            user_id: User ID
+            transaction_type: Optional filter ('recharge' or 'deduction')
+            limit: Maximum number of transactions to return
+        """
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    if transaction_type:
+                        cursor.execute("""
+                            SELECT 
+                                transaction_id, transaction_type, amount, bonus_amount,
+                                payment_method, payment_status, payment_reference,
+                                description, created_at, session_duration_minutes,
+                                astrologer_name, google_play_order_id
+                            FROM transactions
+                            WHERE user_id = %s AND transaction_type = %s
+                            ORDER BY created_at DESC
+                            LIMIT %s
+                        """, (user_id, transaction_type, limit))
+                    else:
+                        cursor.execute("""
+                            SELECT 
+                                transaction_id, transaction_type, amount, bonus_amount,
+                                payment_method, payment_status, payment_reference,
+                                description, created_at, session_duration_minutes,
+                                astrologer_name, google_play_order_id
+                            FROM transactions
+                            WHERE user_id = %s
+                            ORDER BY created_at DESC
+                            LIMIT %s
+                        """, (user_id, limit))
+                    
+                    return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error getting filtered transactions: {e}")
             return []
     
     # =============================================================================
