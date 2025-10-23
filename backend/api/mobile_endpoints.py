@@ -1765,6 +1765,139 @@ async def check_database():
 
 
 # ============================================================================
+# Google Play Purchase Verification
+# ============================================================================
+
+class GooglePlayPurchase(BaseModel):
+    """Google Play purchase verification model"""
+    user_id: str
+    product_id: str
+    purchase_token: str
+    order_id: str
+    platform: str = 'android'
+
+
+@router.post("/wallet/verify-purchase")
+async def verify_google_play_purchase(purchase: GooglePlayPurchase):
+    """
+    Verify Google Play purchase and credit wallet.
+    Handles product bonus + first-time ₹50 bonus.
+    """
+    try:
+        from backend.services.google_play_billing import get_billing_service
+        
+        print(f"🔍 Verifying Google Play purchase:")
+        print(f"   User: {purchase.user_id}")
+        print(f"   Product: {purchase.product_id}")
+        print(f"   Token: {purchase.purchase_token[:20]}...")
+        
+        # 1. Check if purchase token already processed (prevent duplicate)
+        if db.check_purchase_token_exists(purchase.purchase_token):
+            raise HTTPException(
+                status_code=400,
+                detail="Purchase already processed. Each purchase can only be used once."
+            )
+        
+        # 2. Verify with Google Play API
+        billing_service = get_billing_service()
+        if billing_service.is_available():
+            verification = await billing_service.verify_purchase(
+                purchase.product_id,
+                purchase.purchase_token
+            )
+            
+            if not verification.get('valid'):
+                error_msg = verification.get('error') or verification.get('reason', 'Invalid purchase')
+                print(f"❌ Purchase verification failed: {error_msg}")
+                raise HTTPException(status_code=400, detail=f"Purchase verification failed: {error_msg}")
+            
+            print(f"✅ Purchase verified with Google Play")
+        else:
+            print(f"⚠️ Google Play verification not available, proceeding without verification (development mode)")
+        
+        # 3. Get product details from database
+        product = db.get_product_by_id(purchase.product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product not found: {purchase.product_id}")
+        
+        # 4. Calculate total bonus (product bonus + first-time bonus)
+        base_amount = float(product['amount'])
+        product_bonus = float(product['bonus_amount'])
+        
+        # Check for first-time recharge bonus
+        first_time_bonus = 0.00
+        if not db.has_first_recharge_bonus(purchase.user_id):
+            first_time_bonus = 50.00  # Flat ₹50 bonus
+            print(f"🎉 First-time recharge detected! Adding ₹{first_time_bonus} bonus")
+        
+        total_bonus = product_bonus + first_time_bonus
+        total_credited = base_amount + total_bonus
+        
+        print(f"💰 Recharge breakdown:")
+        print(f"   Base amount: ₹{base_amount}")
+        print(f"   Product bonus ({product['bonus_percentage']}%): ₹{product_bonus}")
+        print(f"   First-time bonus: ₹{first_time_bonus}")
+        print(f"   Total bonus: ₹{total_bonus}")
+        print(f"   Total credited: ₹{total_credited}")
+        
+        # 5. Get user's wallet
+        wallet = db.get_wallet(purchase.user_id)
+        if not wallet:
+            # Create wallet if it doesn't exist
+            wallet_id = db.create_wallet(purchase.user_id, initial_balance=0)
+            wallet = db.get_wallet(purchase.user_id)
+            if not wallet:
+                raise HTTPException(status_code=500, detail="Failed to create or retrieve wallet")
+        
+        # 6. Create transaction and update wallet
+        transaction_id = db.create_google_play_transaction(
+            user_id=purchase.user_id,
+            wallet_id=wallet['wallet_id'],
+            product_id=purchase.product_id,
+            amount=base_amount,
+            bonus_amount=total_bonus,
+            purchase_token=purchase.purchase_token,
+            order_id=purchase.order_id,
+            platform=purchase.platform
+        )
+        
+        if not transaction_id:
+            raise HTTPException(status_code=500, detail="Failed to create transaction")
+        
+        # 7. Acknowledge purchase with Google Play (prevent automatic refund)
+        if billing_service.is_available():
+            acknowledged = await billing_service.acknowledge_purchase(
+                purchase.product_id,
+                purchase.purchase_token
+            )
+            if acknowledged:
+                print(f"✅ Purchase acknowledged with Google Play")
+        
+        # 8. Get updated wallet balance
+        updated_wallet = db.get_wallet(purchase.user_id)
+        
+        return {
+            'success': True,
+            'transaction_id': transaction_id,
+            'amount_paid': float(base_amount),
+            'product_bonus': float(product_bonus),
+            'first_time_bonus': float(first_time_bonus),
+            'total_bonus': float(total_bonus),
+            'total_credited': float(total_credited),
+            'new_balance': float(updated_wallet['balance']),
+            'message': f"₹{total_credited} credited to your wallet!"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Purchase verification failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # Review Endpoints
 # ============================================================================
 

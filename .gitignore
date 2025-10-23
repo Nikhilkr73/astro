@@ -97,3 +97,4 @@ backend-deployment/
 
 # AI assistant
 .claude/
+backend/credentials/

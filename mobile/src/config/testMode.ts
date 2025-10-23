@@ -5,7 +5,7 @@
  */
 
 export const TEST_MODE = {
-  // Enable mock purchases (set to false for production builds)
+  // Enable mock purchases (set to false for real Google Play testing)
   MOCK_PURCHASES: false,  // ← DISABLED for real Google Play testing
   
   // Mock purchase delay (milliseconds) to simulate Google Play

@@ -238,10 +238,11 @@ export function AppNavigator() {
           name="ChatSession" 
           component={ChatSessionScreen}
         />
-        <Stack.Screen 
+        {/* Voice call disabled for testing - no privacy policy required */}
+        {/* <Stack.Screen 
           name="VoiceCall" 
           component={VoiceCallScreen}
-        />
+        /> */}
         <Stack.Screen 
           name="ChatReview" 
           component={ChatReviewScreen}

@@ -28,7 +28,6 @@
 //   PurchaseError
 // } from 'react-native-iap';
 import { Platform } from 'react-native';
-// import { BILLING_CONFIG } from '../config/billing';
 import { TEST_MODE, generateMockPurchase } from '../config/testMode';
 
 // Mock types for temporary build
