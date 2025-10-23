@@ -19,6 +19,7 @@ import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
 import LinearGradient from 'expo-linear-gradient';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -103,7 +104,13 @@ const HomeScreen = () => {
   };
 
   const handleCallClick = (astrologer: Astrologer) => {
-    navigation.navigate('VoiceCall', { astrologer });
+    // Voice call disabled for testing - no privacy policy required
+    if (FEATURE_FLAGS.VOICE_CHAT_ENABLED) {
+      navigation.navigate('VoiceCall', { astrologer });
+    } else {
+      // Fallback to chat instead
+      navigation.navigate('ChatSession', { astrologer });
+    }
   };
 
   const handleWalletClick = () => {
@@ -290,11 +297,14 @@ const HomeScreen = () => {
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.callButton} 
-                  onPress={() => handleCallClick(astrologer)}
-                  activeOpacity={touchableOpacity}
+                  style={[styles.callButton, !FEATURE_FLAGS.VOICE_CHAT_ENABLED && styles.disabledButton]}
+                  onPress={() => FEATURE_FLAGS.VOICE_CHAT_ENABLED ? handleCallClick(astrologer) : null}
+                  activeOpacity={FEATURE_FLAGS.VOICE_CHAT_ENABLED ? touchableOpacity : 1}
+                  disabled={!FEATURE_FLAGS.VOICE_CHAT_ENABLED}
                 >
-                  <Text style={styles.callButtonText}>Call • ₹12/min</Text>
+                  <Text style={[styles.callButtonText, !FEATURE_FLAGS.VOICE_CHAT_ENABLED && styles.disabledButtonText]}>
+                    {FEATURE_FLAGS.VOICE_CHAT_ENABLED ? 'Call • ₹12/min' : 'Coming Soon'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -598,6 +608,12 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.semiBold,
     color: colors.primary,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    color: colors.textTertiary,
   },
   errorContainer: {
     backgroundColor: '#fee2e2',

@@ -12,6 +12,7 @@ import { useChatSession, formatSessionDuration } from '../../contexts/ChatSessio
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../types';
+import { FEATURE_FLAGS } from '../../config/featureFlags';
 
 // =============================================================================
 // COMPONENT
@@ -80,8 +81,15 @@ export function PersistentChatBar() {
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
-        navigation.navigate('VoiceCall', navigationParams);
-        console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
+        // Voice call disabled for testing - no privacy policy required
+        if (FEATURE_FLAGS.VOICE_CHAT_ENABLED) {
+          navigation.navigate('VoiceCall', navigationParams);
+          console.log('🔄 PersistentChatBar: Navigated to VoiceCall');
+        } else {
+          // Fallback to chat instead
+          navigation.navigate('ChatSession', navigationParams);
+          console.log('🔄 PersistentChatBar: Navigated to ChatSession (voice disabled)');
+        }
       }
       
       // Don't hide the session here - let the target screen handle it
@@ -136,12 +144,12 @@ export function PersistentChatBar() {
         {/* Action Buttons */}
         <View style={styles.actions}>
           <TouchableOpacity
-            style={styles.resumeButton}
-            onPress={handleResume}
-            disabled={state.isLoading}
+            style={[styles.resumeButton, !FEATURE_FLAGS.VOICE_CHAT_ENABLED && styles.disabledButton]}
+            onPress={FEATURE_FLAGS.VOICE_CHAT_ENABLED ? handleResume : null}
+            disabled={state.isLoading || !FEATURE_FLAGS.VOICE_CHAT_ENABLED}
           >
             <Text style={styles.resumeButtonText}>
-              {state.isLoading ? '...' : 'Resume'}
+              {state.isLoading ? '...' : (FEATURE_FLAGS.VOICE_CHAT_ENABLED ? 'Resume' : 'Coming Soon')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -259,6 +267,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Poppins_500Medium', // Typography from design system
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
 
