@@ -21,6 +21,7 @@ import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import ChatInputBar from '../components/ChatInputBar';
 import TypingIndicator from '../components/chat/TypingIndicator';
+import RechargeBar from '../components/chat/RechargeBar';
 import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatSessionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatSession'>;
@@ -43,17 +44,27 @@ const ChatSessionScreen = () => {
   const [sessionTime, setSessionTime] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [walletBalance, setWalletBalance] = useState(50);
+  const [initialWalletBalance, setInitialWalletBalance] = useState(50);
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(0); // Countdown timer in seconds
+  const [astrologerRate, setAstrologerRate] = useState(8); // Per minute rate
+  const [showRechargeBar, setShowRechargeBar] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const flatListRef = useRef<FlatList>(null);
   
   // Chat Session Context Integration
   const { state: sessionState, actions: sessionActions } = useChatSession();
+  
+  // Utility function to calculate remaining time based on wallet balance
+  const calculateRemainingTime = (balance: number, ratePerMinute: number): number => {
+    if (ratePerMinute === 0) return 0;
+    return Math.floor((balance / ratePerMinute) * 60); // Returns seconds
+  };
   
   // Sync local sessionTime with context sessionDuration when resuming
   useEffect(() => {
@@ -157,9 +168,25 @@ const ChatSessionScreen = () => {
         
         // Get wallet balance
         const walletResponse = await apiService.getWalletBalance(userId);
+        let currentBalance = 50; // Default fallback
         if (walletResponse.success) {
-          setWalletBalance(walletResponse.balance);
+          currentBalance = walletResponse.balance;
+          setWalletBalance(currentBalance);
+          setInitialWalletBalance(currentBalance);
+        } else {
+          console.warn('⚠️ Failed to load wallet balance, using default');
+          setWalletBalance(currentBalance);
+          setInitialWalletBalance(currentBalance);
         }
+        
+        // Get astrologer rate (default to 8 if not available)
+        const rate = (astrologer as any).price_per_minute || astrologerRate;
+        setAstrologerRate(rate);
+        
+        // Calculate and set remaining time based on balance
+        const remaining = calculateRemainingTime(currentBalance, rate);
+        setRemainingTime(remaining);
+        console.log(`💰 Wallet: ₹${currentBalance}, Rate: ₹${rate}/min, Remaining time: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`);
         
         // Start NEW chat session
         console.log('🚀 Starting NEW chat with', astrologer.name);
@@ -259,33 +286,33 @@ const ChatSessionScreen = () => {
     return unsubscribe;
   }, [navigation, conversationId, sessionEnded, sessionActions]);
 
-  // Session timer and balance deduction - properly paused/resumed
+  // Dual timer system: forward counter for session time + countdown for remaining time
   useEffect(() => {
-    if (!sessionEnded && sessionState.isActive && !sessionState.isPaused) {
+    if (!sessionEnded && sessionState.isActive && !sessionState.isPaused && !showRechargeBar) {
       const timer = setInterval(() => {
-        setSessionTime((prev) => {
-          const newTime = prev + 1;
-          
-          // Deduct balance at configured interval (30s for testing, 60s for production)
-          if (newTime > 0 && newTime % BALANCE_DEDUCTION_INTERVAL === 0) {
-            setWalletBalance((prevBalance) => {
-              const newBalance = Math.max(0, prevBalance - CHAT_RATE_PER_MINUTE);
-              
-              // Pause session if balance hits zero
-              if (newBalance === 0) {
-                setIsSessionPaused(true);
-              }
-              
-              return newBalance;
-            });
+        // Increment session time (for billing)
+        setSessionTime((prev) => prev + 1);
+        
+        // Decrement remaining time (countdown)
+        setRemainingTime((prev) => {
+          if (prev <= 0) {
+            // Balance exhausted - show recharge bar
+            setShowRechargeBar(true);
+            console.log('⏸️ Balance exhausted - showing recharge bar');
+            return 0;
           }
           
-          return newTime;
+          // Show warning at 1 minute remaining
+          if (prev === 60) {
+            console.log('⚠️ Warning: Only 1 minute remaining!');
+          }
+          
+          return prev - 1;
         });
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [sessionEnded, sessionState.isActive, sessionState.isPaused]);
+  }, [sessionEnded, sessionState.isActive, sessionState.isPaused, showRechargeBar]);
 
   // Update session duration in context when sessionTime changes
   useEffect(() => {
@@ -463,6 +490,37 @@ const ChatSessionScreen = () => {
     }
     
     try {
+      // Calculate total cost based on session duration
+      const sessionDurationMinutes = Math.ceil(sessionTime / 60);
+      const totalCost = sessionDurationMinutes * astrologerRate;
+      const finalBalance = Math.max(0, initialWalletBalance - totalCost);
+      
+      console.log(`💰 Session End - Duration: ${sessionDurationMinutes}min, Cost: ₹${totalCost}, Final Balance: ₹${finalBalance}`);
+      
+      // Get user ID for wallet deduction
+      const userId = await storage.getUserId();
+      if (userId) {
+        // Deduct balance from wallet
+        try {
+          await apiService.deductSessionBalance(
+            userId,
+            conversationId,
+            astrologer.astrologer_id || astrologer.id.toString(),
+            astrologer.name,
+            astrologerRate,
+            sessionDurationMinutes,
+            'per_minute'
+          );
+          console.log('✅ Wallet balance deducted successfully');
+        } catch (deductError) {
+          console.error('❌ Failed to deduct wallet balance:', deductError);
+          // Continue with session end even if deduction fails
+        }
+      }
+      
+      // Update local balance for display
+      setWalletBalance(finalBalance);
+      
       // End session in context (this will also end in database)
       await sessionActions.endSession();
       console.log('✅ Session ended via context');
@@ -499,12 +557,20 @@ const ChatSessionScreen = () => {
     navigation.goBack();
   };
 
-  const handleRecharge = () => {
-    Alert.alert(
-      "Recharge Wallet",
-      "This would normally open the wallet recharge screen.",
-      [{ text: "OK" }]
-    );
+  const handleRecharge = async () => {
+    try {
+      // Pause the session before navigating to wallet
+      await sessionActions.pauseSession();
+      sessionActions.showSession(); // Show persistent bar
+      console.log('✅ Session paused for recharge');
+      
+      // Navigate to Wallet screen
+      navigation.navigate('Wallet');
+    } catch (error) {
+      console.error('❌ Failed to pause session for recharge:', error);
+      // Navigate anyway
+      navigation.navigate('Wallet');
+    }
   };
 
   // Show loading screen while initializing session
@@ -542,7 +608,13 @@ const ChatSessionScreen = () => {
             </Text>
             <View style={styles.sessionInfo}>
               <Text style={styles.sessionIcon}>⏱️</Text>
-              <Text style={styles.sessionTime}>{formatTime(sessionTime)}</Text>
+              <Text style={[
+                styles.sessionTime,
+                remainingTime <= 60 && remainingTime > 0 && styles.sessionTimeWarning,
+                remainingTime === 0 && styles.sessionTimeZero
+              ]}>
+                {formatTime(remainingTime)}
+              </Text>
               <Text style={styles.sessionDivider}>•</Text>
               <Text style={styles.walletIcon}>💳</Text>
               <Text style={[
@@ -726,15 +798,22 @@ const ChatSessionScreen = () => {
         </ScrollView>
       )}
 
-      {/* Input Bar - fixed bottom component */}
-      <ChatInputBar
-        value={inputMessage}
-        onChangeText={setInputMessage}
-        onSend={() => handleSendMessage()}
-        disabled={isSessionPaused || sessionEnded}
-        placeholder={isSessionPaused ? 'Recharge to continue...' : 'Type your message...'}
-        sending={isSendingMessage}
-      />
+      {/* Input Bar or Recharge Bar - fixed bottom component */}
+      {showRechargeBar ? (
+        <RechargeBar
+          visible={showRechargeBar}
+          onRecharge={handleRecharge}
+        />
+      ) : (
+        <ChatInputBar
+          value={inputMessage}
+          onChangeText={setInputMessage}
+          onSend={() => handleSendMessage()}
+          disabled={isSessionPaused || sessionEnded || remainingTime === 0}
+          placeholder={remainingTime === 0 ? 'Recharge to continue...' : 'Type your message...'}
+          sending={isSendingMessage}
+        />
+      )}
       
       {/* End Session Confirmation Modal */}
       <Modal
@@ -860,6 +939,14 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     minWidth: 44,
   },
+  sessionTimeWarning: {
+    color: '#f59e0b', // Yellow/amber warning color
+    fontWeight: 'bold',
+  },
+  sessionTimeZero: {
+    color: '#ef4444', // Red color for zero balance
+    fontWeight: 'bold',
+  },
   sessionDivider: {
     fontSize: 12,
     color: '#d1d5db',
@@ -881,7 +968,9 @@ const styles = StyleSheet.create({
   endButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: '#FFE4B5', // Light peach/gold from theme
+    borderWidth: 1,
+    borderColor: '#F7931E', // Orange border
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -893,7 +982,7 @@ const styles = StyleSheet.create({
   endText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#F7931E', // Orange text instead of white
   },
   messageContainer: {
     marginBottom: 16,

@@ -105,6 +105,7 @@ class OTPResponse(BaseModel):
 async def get_astrologers(
     language: Optional[str] = None,
     speciality: Optional[str] = None,
+    category: Optional[str] = None,
     active_only: bool = True
 ):
     """
@@ -113,44 +114,63 @@ async def get_astrologers(
     Query Parameters:
     - language: Filter by language (Hindi/English)
     - speciality: Filter by speciality
+    - category: Filter by mobile category (All, Love, Education, Career, etc.)
     - active_only: Only return active astrologers (default: True)
     """
     try:
         print("🔮 Fetching astrologers for mobile app...")
         
-        # Get astrologers from manager
-        astrologers = astrologer_manager.get_all_astrologers()
+        # Get astrologers from database instead of JSON file
+        astrologers = db.get_all_astrologers(active_only=active_only)
         
         # Apply filters
         if language:
             astrologers = [a for a in astrologers if a.get('language') == language]
         
         if speciality:
-            astrologers = [a for a in astrologers if a.get('speciality') == speciality]
+            astrologers = [a for a in astrologers if a.get('specialization') == speciality]
         
-        if active_only:
-            astrologers = [a for a in astrologers if a.get('status') == 'active']
+        # Map database specialization to mobile category and filter
+        category_map = {
+            'vedic marriage & relationship remedies': 'Love',
+            'love and emotional compatibility': 'Love',
+            'career and growth astrology': 'Career',
+            'education': 'Education',
+            'health': 'Health',
+            'family': 'Family',
+            'general': 'General'
+        }
+        
+        if category and category != "All":
+            # Filter by category - map specialization to category
+            filtered_astrologers = []
+            for astrologer in astrologers:
+                astrologer_specialization = astrologer.get('specialization', '').lower()
+                mapped_category = category_map.get(astrologer_specialization, 'General')
+                if mapped_category == category:
+                    filtered_astrologers.append(astrologer)
+            astrologers = filtered_astrologers
         
         # Transform to mobile app format
         mobile_astrologers = []
         for i, astrologer in enumerate(astrologers):
-            # Map speciality to mobile category
-            category_map = {
-                "Vedic Marriage & Relationship Remedies": "Love",
-                "Career and Growth Astrology": "Career", 
-                "Love and Emotional Compatibility": "Love"
-            }
+            # Map database specialization to mobile category
+            db_specialization = astrologer.get('specialization', '').lower()
+            mapped_category = category_map.get(db_specialization, 'General')
             
             mobile_astrologer = {
-                "id": i + 1,  # Convert to number for mobile
-                "name": astrologer.get('name', 'Unknown'),
-                "category": category_map.get(astrologer.get('speciality', ''), "General"),
-                "rating": astrologer.get('rating', 4.8),
-                "reviews": astrologer.get('total_reviews', 0),  # Map field name
-                "experience": f"{astrologer.get('experience_years', 10)} years",  # Convert to string
-                "languages": [astrologer.get('language', 'Hindi')],  # Convert to array
-                "isOnline": astrologer.get('status') == 'active',  # Map field name
-                "image": None  # No image to avoid external URL issues
+                "id": astrologer.get('astrologer_id', f"astrologer_{i+1}"),  # Use database ID
+                "name": astrologer.get('display_name', astrologer.get('name', 'Unknown')),
+                "category": mapped_category,
+                "rating": float(astrologer.get('rating', 4.8)),
+                "reviews": int(astrologer.get('total_reviews', 0)),
+                "experience": f"{astrologer.get('experience_years', 10)} years",
+                "languages": astrologer.get('languages') or ['Hindi'],
+                "image": astrologer.get('profile_picture_url', 'https://via.placeholder.com/150'),
+                "isOnline": astrologer.get('is_active', True),
+                "speciality": astrologer.get('specialization', 'General'),
+                "description": astrologer.get('bio', ''),
+                "price_per_minute": astrologer.get('price_per_minute', 8)
             }
             mobile_astrologers.append(mobile_astrologer)
         
@@ -496,6 +516,216 @@ async def update_user_profile(user_id: str, update_data: UserUpdateRequest):
 
 
 # ============================================================================
+# Test Phone Number System (Cost-Saving for Beta Testing)
+# ============================================================================
+
+def is_test_phone_number(phone_number: str) -> bool:
+    """
+    Check if phone number is a test number to avoid Message Central costs.
+    Test numbers: Only specific test patterns, not all numbers starting with certain digits.
+    """
+    if not phone_number or len(phone_number) != 10:
+        return False
+    
+    # Specific test number patterns (more restrictive)
+    test_numbers = [
+        '9999999999',  # Main test user
+        '8888888888',  # Secondary test user  
+        '7777777777',  # Wallet testing
+        '6666666666',  # Chat testing
+        '5555555555',  # Voice testing
+        '1111111111',  # Admin test
+        '2222222222',  # Error testing
+        '3333333333',  # Bonus testing
+    ]
+    
+    # Check if it's an exact match with test numbers
+    if phone_number in test_numbers:
+        return True
+    
+    # Check for repeated digit patterns (like 9999999999, 8888888888, etc.)
+    if len(set(phone_number)) == 1:  # All digits are the same
+        return True
+    
+    return False
+
+
+def get_test_otp(phone_number: str) -> str:
+    """
+    Get the OTP code for test phone numbers.
+    Most test numbers use 112233, special numbers have different codes.
+    """
+    special_otps = {
+        '1111111111': '000000',  # Admin test
+        '2222222222': '999999',  # Error testing
+        '3333333333': '123456',  # Bonus testing
+    }
+    
+    return special_otps.get(phone_number, '112233')
+
+
+async def handle_test_otp_request(phone_number: str) -> OTPResponse:
+    """
+    Handle OTP request for test phone numbers without calling Message Central.
+    This saves costs during beta testing.
+    """
+    try:
+        # Get test OTP
+        otp_code = get_test_otp(phone_number)
+        expires_at = datetime.now() + timedelta(minutes=5)  # 5 minutes expiry
+        
+        print(f"🧪 TEST MODE: Generated OTP {otp_code} for {phone_number}")
+        
+        # Store OTP in database (for verification)
+        try:
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Delete any existing OTP for this phone number
+                    cursor.execute(
+                        "DELETE FROM otp_verifications WHERE phone_number = %s",
+                        (phone_number,)
+                    )
+                    
+                    # Insert new OTP
+                    cursor.execute("""
+                        INSERT INTO otp_verifications 
+                        (phone_number, otp_code, expires_at, created_at, metadata)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (
+                        phone_number,
+                        otp_code,
+                        expires_at,
+                        datetime.now(),
+                        json.dumps({
+                            'test_mode': True,
+                            'bypassed_message_central': True,
+                            'cost_saved': True
+                        })
+                    ))
+                    
+                    conn.commit()
+                    print(f"✅ TEST MODE: OTP stored in database for {phone_number}")
+                    
+        except Exception as db_error:
+            print(f"⚠️ TEST MODE: Database error (continuing anyway): {db_error}")
+        
+        return OTPResponse(
+            success=True,
+            message=f"Test OTP sent to {phone_number}. Use OTP: {otp_code}",
+            expires_in=300,  # 5 minutes
+            retry_after=None
+        )
+        
+    except Exception as e:
+        print(f"❌ TEST MODE: Error handling test OTP request: {e}")
+        return OTPResponse(
+            success=False,
+            message=f"Test OTP generation failed: {str(e)}",
+            expires_in=None,
+            retry_after=None
+        )
+
+
+async def handle_test_otp_verification(phone_number: str, otp_code: str) -> OTPResponse:
+    """
+    Handle OTP verification for test phone numbers.
+    This bypasses Message Central verification and saves costs.
+    """
+    try:
+        # Get expected test OTP
+        expected_otp = get_test_otp(phone_number)
+        
+        print(f"🧪 TEST MODE: Expected OTP: {expected_otp}, Received: {otp_code}")
+        
+        # Verify OTP
+        if otp_code != expected_otp:
+            print(f"❌ TEST MODE: Invalid OTP for {phone_number}")
+            return OTPResponse(
+                success=False,
+                message=f"Invalid test OTP. Expected: {expected_otp}",
+                expires_in=None,
+                retry_after=None
+            )
+        
+        print(f"✅ TEST MODE: OTP verified for {phone_number}")
+        
+        # Create or find user for this phone number
+        try:
+            with db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Check if user exists
+                    cursor.execute(
+                        "SELECT user_id, full_name, email FROM users WHERE phone_number = %s",
+                        (phone_number,)
+                    )
+                    user_data = cursor.fetchone()
+                    
+                    if user_data:
+                        user_id, full_name, email = user_data
+                        print(f"✅ TEST MODE: Found existing user {user_id} for {phone_number}")
+                        
+                        # Check profile completion
+                        profile_complete, missing_fields = await check_profile_completion(user_id)
+                        
+                        return OTPResponse(
+                            success=True,
+                            message=f"Test OTP verified successfully for {phone_number}",
+                            expires_in=None,
+                            retry_after=None,
+                            user_id=user_id,
+                            profile_complete=profile_complete,
+                            missing_fields=missing_fields
+                        )
+                    else:
+                        # Create new user
+                        user_id = f"test_user_{phone_number}_{int(datetime.now().timestamp())}"
+                        
+                        cursor.execute("""
+                            INSERT INTO users (user_id, phone_number, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s)
+                        """, (user_id, phone_number, datetime.now(), datetime.now()))
+                        
+                        # Create wallet for new user
+                        wallet_id = db.create_wallet(user_id, initial_balance=50.00)
+                        
+                        conn.commit()
+                        print(f"✅ TEST MODE: Created new test user {user_id} for {phone_number}")
+                        
+                        return OTPResponse(
+                            success=True,
+                            message=f"Test OTP verified successfully for {phone_number}",
+                            expires_in=None,
+                            retry_after=None,
+                            user_id=user_id,
+                            profile_complete=False,
+                            missing_fields=['full_name', 'date_of_birth', 'gender']
+                        )
+                        
+        except Exception as db_error:
+            print(f"⚠️ TEST MODE: Database error (continuing anyway): {db_error}")
+            
+            # Return success even if database fails (for testing)
+            return OTPResponse(
+                success=True,
+                message=f"Test OTP verified successfully for {phone_number} (database error ignored)",
+                expires_in=None,
+                retry_after=None,
+                user_id=f"test_user_{phone_number}_{int(datetime.now().timestamp())}",
+                profile_complete=False,
+                missing_fields=['full_name', 'date_of_birth', 'gender']
+            )
+        
+    except Exception as e:
+        print(f"❌ TEST MODE: Error verifying test OTP: {e}")
+        return OTPResponse(
+            success=False,
+            message=f"Test OTP verification failed: {str(e)}",
+            expires_in=None,
+            retry_after=None
+        )
+
+
+# ============================================================================
 # OTP Authentication Endpoints
 # ============================================================================
 
@@ -504,6 +734,7 @@ async def send_otp(otp_request: OTPRequest):
     """
     Send OTP to phone number for verification.
     Integrates with Message Central for SMS delivery.
+    Supports test phone numbers to avoid costs during beta testing.
     """
     try:
         phone_number = otp_request.phone_number.strip()
@@ -511,6 +742,12 @@ async def send_otp(otp_request: OTPRequest):
         # Validate phone number format (Indian mobile numbers)
         if not phone_number.isdigit() or len(phone_number) != 10:
             raise HTTPException(status_code=400, detail="Invalid phone number format")
+        
+        # Check if this is a test phone number (to avoid Message Central costs)
+        is_test_number = is_test_phone_number(phone_number)
+        if is_test_number:
+            print(f"🧪 TEST MODE: Detected test phone number {phone_number}")
+            return await handle_test_otp_request(phone_number)
         
         # Import database manager
         try:
@@ -606,6 +843,7 @@ async def verify_otp(otp_verification: OTPVerification):
     """
     Verify OTP code for phone number.
     Returns success if OTP is valid and not expired.
+    Supports test phone numbers for beta testing.
     """
     try:
         phone_number = otp_verification.phone_number.strip()
@@ -617,6 +855,11 @@ async def verify_otp(otp_verification: OTPVerification):
         
         if not otp_code.isdigit() or len(otp_code) != 6:
             raise HTTPException(status_code=400, detail="Invalid OTP format")
+        
+        # Check if this is a test phone number
+        if is_test_phone_number(phone_number):
+            print(f"🧪 TEST MODE: Verifying test OTP for {phone_number}")
+            return await handle_test_otp_verification(phone_number, otp_code)
         
         # Import database manager
         try:
@@ -982,30 +1225,53 @@ async def get_wallet(user_id: str):
     try:
         print(f"💰 Fetching wallet for user: {user_id}")
         
-        # In a real implementation, this would fetch from database
-        # For now, return mock data with consistent structure
-        wallet_data = {
-            "wallet_id": f"wallet_{user_id}",
-            "user_id": user_id,
-            "balance": 500.0,  # Mock balance
-            "currency": "INR",
-            "last_recharge": datetime.now().isoformat()
-        }
+        # Get wallet from database
+        wallet = db.get_wallet(user_id)
         
-        print(f"✅ Returning wallet data: balance={wallet_data['balance']}")
-        return wallet_data
+        if wallet:
+            wallet_data = {
+                "success": True,
+                "wallet_id": wallet['wallet_id'],
+                "user_id": wallet['user_id'],
+                "balance": float(wallet['balance']),
+                "currency": wallet['currency'],
+                "last_recharge": wallet['updated_at'].isoformat() if wallet['updated_at'] else None
+            }
+            print(f"✅ Returning wallet data: balance={wallet_data['balance']}")
+            return wallet_data
+        else:
+            # Create wallet if it doesn't exist
+            wallet_id = db.create_wallet(user_id, initial_balance=50.00)
+            if wallet_id:
+                wallet = db.get_wallet(user_id)
+                wallet_data = {
+                    "success": True,
+                    "wallet_id": wallet['wallet_id'],
+                    "user_id": wallet['user_id'],
+                    "balance": float(wallet['balance']),
+                    "currency": wallet['currency'],
+                    "last_recharge": wallet['updated_at'].isoformat() if wallet['updated_at'] else None
+                }
+                print(f"✅ Created new wallet: balance={wallet_data['balance']}")
+                return wallet_data
+            else:
+                raise HTTPException(status_code=500, detail="Failed to create wallet")
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ Error getting wallet: {e}")
         import traceback
         traceback.print_exc()
         # Return a valid wallet structure even on error
         return {
+            "success": False,
             "wallet_id": f"wallet_{user_id}",
             "user_id": user_id,
             "balance": 0.0,
             "currency": "INR",
-            "last_recharge": None
+            "last_recharge": None,
+            "error": str(e)
         }
 
 
@@ -1939,5 +2205,171 @@ async def submit_review(review_data: dict):
         raise
     except Exception as e:
         print(f"❌ Error submitting review: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Wallet Balance Deduction for Chat Sessions
+# ============================================================================
+
+class SessionDeduction(BaseModel):
+    """Session deduction model"""
+    user_id: str
+    conversation_id: str
+    astrologer_id: str
+    astrologer_name: str
+    amount: float
+    session_duration_minutes: int
+    deduction_type: str = 'per_minute'  # 'per_minute' or 'session_end'
+
+
+@router.post("/wallet/deduct-session")
+async def deduct_session_balance(deduction: SessionDeduction):
+    """
+    Deduct wallet balance for chat session usage.
+    This is called during active sessions (per minute) or at session end.
+    """
+    try:
+        print(f"💰 Processing session deduction:")
+        print(f"   User: {deduction.user_id}")
+        print(f"   Conversation: {deduction.conversation_id}")
+        print(f"   Astrologer: {deduction.astrologer_name}")
+        print(f"   Amount: ₹{deduction.amount}")
+        print(f"   Duration: {deduction.session_duration_minutes} minutes")
+        
+        # 1. Get user's wallet
+        wallet = db.get_wallet(deduction.user_id)
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+        
+        current_balance = float(wallet['balance'])
+        
+        # 2. Check if user has sufficient balance
+        if current_balance < deduction.amount:
+            print(f"⚠️ Insufficient balance: {current_balance} < {deduction.amount}")
+            return {
+                "success": False,
+                "error": "insufficient_balance",
+                "current_balance": current_balance,
+                "required_amount": deduction.amount,
+                "shortfall": deduction.amount - current_balance,
+                "message": "Insufficient wallet balance for this session"
+            }
+        
+        # 3. Create deduction transaction
+        transaction_data = {
+            'user_id': deduction.user_id,
+            'wallet_id': wallet['wallet_id'],
+            'transaction_type': 'deduction',
+            'amount': deduction.amount,
+            'payment_method': 'wallet',
+            'payment_status': 'completed',
+            'description': f"Chat session with {deduction.astrologer_name}",
+            'metadata': {
+                'conversation_id': deduction.conversation_id,
+                'astrologer_id': deduction.astrologer_id,
+                'astrologer_name': deduction.astrologer_name,
+                'session_duration_minutes': deduction.session_duration_minutes,
+                'deduction_type': deduction.deduction_type,
+                'deduction_timestamp': datetime.now().isoformat()
+            }
+        }
+        
+        transaction_id = db.add_transaction(transaction_data)
+        
+        if not transaction_id:
+            raise HTTPException(status_code=500, detail="Failed to create deduction transaction")
+        
+        # 4. Get updated wallet balance
+        updated_wallet = db.get_wallet(deduction.user_id)
+        new_balance = float(updated_wallet['balance'])
+        
+        print(f"✅ Session deduction completed:")
+        print(f"   Transaction ID: {transaction_id}")
+        print(f"   Previous balance: ₹{current_balance}")
+        print(f"   Deducted: ₹{deduction.amount}")
+        print(f"   New balance: ₹{new_balance}")
+        
+        return {
+            "success": True,
+            "transaction_id": transaction_id,
+            "amount_deducted": float(deduction.amount),
+            "previous_balance": current_balance,
+            "new_balance": new_balance,
+            "conversation_id": deduction.conversation_id,
+            "astrologer_name": deduction.astrologer_name,
+            "session_duration_minutes": deduction.session_duration_minutes,
+            "message": f"₹{deduction.amount} deducted for {deduction.session_duration_minutes} minutes with {deduction.astrologer_name}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error processing session deduction: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/wallet/products")
+async def get_recharge_products(platform: str = 'android'):
+    """Get available recharge products with bonus information"""
+    try:
+        products = db.get_recharge_products(platform)
+        
+        return {
+            'success': True,
+            'products': products,
+            'count': len(products),
+            'platform': platform
+        }
+    except Exception as e:
+        print(f"❌ Error getting recharge products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/wallet/transactions/{user_id}")
+async def get_filtered_transactions(user_id: str, type: str = None, limit: int = 20):
+    """
+    Get user transaction history with optional filtering by type.
+    Query params:
+    - type: 'recharge' or 'deduction' (optional)
+    - limit: max number of transactions (default 20)
+    """
+    try:
+        transactions = db.get_filtered_transactions(user_id, type, limit)
+        
+        # Format for mobile app
+        formatted_transactions = []
+        for txn in transactions:
+            formatted = {
+                'transaction_id': txn['transaction_id'],
+                'type': txn['transaction_type'],
+                'amount': float(txn['amount']),
+                'bonus_amount': float(txn.get('bonus_amount', 0)),
+                'status': txn['payment_status'],
+                'payment_method': txn.get('payment_method', ''),
+                'payment_reference': txn.get('payment_reference', ''),
+                'description': txn.get('description', ''),
+                'created_at': txn['created_at'].isoformat(),
+            }
+            
+            # Add session-specific fields for deductions
+            if txn['transaction_type'] == 'deduction':
+                formatted['astrologer_name'] = txn.get('astrologer_name', '')
+                formatted['session_duration'] = txn.get('session_duration_minutes', 0)
+            
+            formatted_transactions.append(formatted)
+        
+        return {
+            'success': True,
+            'transactions': formatted_transactions,
+            'count': len(formatted_transactions),
+            'user_id': user_id,
+            'filter_type': type
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting transactions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

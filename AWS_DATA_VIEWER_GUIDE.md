@@ -530,6 +530,137 @@ otp_verifications   -- OTP verification records
 session_reviews     -- User reviews and ratings
 ```
 
+### **Manual Wallet Operations**
+
+```bash
+# Add money to user's wallet manually
+python3 view_user_data.py --sql "
+UPDATE wallets 
+SET balance = balance + 100.00, updated_at = NOW() 
+WHERE user_id = 'USER_ID'"
+
+# Set specific wallet balance
+python3 view_user_data.py --sql "
+UPDATE wallets 
+SET balance = 500.00, updated_at = NOW() 
+WHERE user_id = 'USER_ID'"
+
+# Create manual recharge transaction
+python3 view_user_data.py --sql "
+INSERT INTO transactions (
+    transaction_id, user_id, wallet_id, transaction_type,
+    amount, balance_before, balance_after, payment_method,
+    payment_status, description, created_at
+) VALUES (
+    'manual_recharge_' || extract(epoch from now())::text,
+    'USER_ID',
+    (SELECT wallet_id FROM wallets WHERE user_id = 'USER_ID'),
+    'recharge',
+    100.00,
+    (SELECT balance FROM wallets WHERE user_id = 'USER_ID') - 100.00,
+    (SELECT balance FROM wallets WHERE user_id = 'USER_ID'),
+    'manual_admin',
+    'completed',
+    'Manual recharge by admin',
+    NOW()
+)"
+
+# Create manual deduction transaction
+python3 view_user_data.py --sql "
+INSERT INTO transactions (
+    transaction_id, user_id, wallet_id, transaction_type,
+    amount, balance_before, balance_after, payment_method,
+    payment_status, description, created_at
+) VALUES (
+    'manual_deduction_' || extract(epoch from now())::text,
+    'USER_ID',
+    (SELECT wallet_id FROM wallets WHERE user_id = 'USER_ID'),
+    'deduction',
+    50.00,
+    (SELECT balance FROM wallets WHERE user_id = 'USER_ID') + 50.00,
+    (SELECT balance FROM wallets WHERE user_id = 'USER_ID'),
+    'wallet',
+    'completed',
+    'Manual deduction by admin',
+    NOW()
+)"
+
+# Check wallet balance for specific user
+python3 view_user_data.py --sql "
+SELECT u.full_name, u.phone_number, w.balance, w.currency, w.updated_at
+FROM users u
+JOIN wallets w ON u.user_id = w.user_id
+WHERE u.user_id = 'USER_ID'"
+
+# Check all wallet balances (top 10)
+python3 view_user_data.py --sql "
+SELECT u.full_name, u.phone_number, w.balance, w.currency, w.updated_at
+FROM users u
+JOIN wallets w ON u.user_id = w.user_id
+ORDER BY w.balance DESC
+LIMIT 10"
+
+# Check wallet transactions for specific user
+python3 view_user_data.py --sql "
+SELECT t.transaction_id, t.transaction_type, t.amount, t.balance_before, 
+       t.balance_after, t.payment_method, t.description, t.created_at
+FROM transactions t
+WHERE t.user_id = 'USER_ID'
+ORDER BY t.created_at DESC
+LIMIT 20"
+
+# Check total wallet balance across all users
+python3 view_user_data.py --sql "
+SELECT 
+    COUNT(*) as total_wallets,
+    SUM(balance) as total_balance,
+    AVG(balance) as avg_balance,
+    MIN(balance) as min_balance,
+    MAX(balance) as max_balance
+FROM wallets"
+
+# Check users with zero balance
+python3 view_user_data.py --sql "
+SELECT u.full_name, u.phone_number, w.balance, w.updated_at
+FROM users u
+JOIN wallets w ON u.user_id = w.user_id
+WHERE w.balance = 0.00
+ORDER BY w.updated_at DESC"
+
+# Check users with high balance (>1000)
+python3 view_user_data.py --sql "
+SELECT u.full_name, u.phone_number, w.balance, w.updated_at
+FROM users u
+JOIN wallets w ON u.user_id = w.user_id
+WHERE w.balance > 1000.00
+ORDER BY w.balance DESC"
+
+# Reset user wallet to default amount
+python3 view_user_data.py --sql "
+UPDATE wallets 
+SET balance = 50.00, updated_at = NOW() 
+WHERE user_id = 'USER_ID'"
+
+# Delete all transactions for a user (clean slate)
+python3 view_user_data.py --sql "
+DELETE FROM transactions WHERE user_id = 'USER_ID'"
+
+# Check Google Play purchase transactions
+python3 view_user_data.py --sql "
+SELECT t.transaction_id, t.user_id, t.amount, t.bonus_amount,
+       t.google_play_product_id, t.google_play_order_id, t.created_at
+FROM transactions t
+WHERE t.google_play_purchase_token IS NOT NULL
+ORDER BY t.created_at DESC"
+
+# Check first-time bonus claims
+python3 view_user_data.py --sql "
+SELECT f.user_id, f.bonus_amount, f.claimed_at, u.full_name
+FROM first_recharge_bonuses f
+JOIN users u ON f.user_id = u.user_id
+ORDER BY f.claimed_at DESC"
+```
+
 ### **Safe User Deletion Commands**
 
 ```bash

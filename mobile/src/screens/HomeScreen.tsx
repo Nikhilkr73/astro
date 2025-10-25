@@ -20,6 +20,7 @@ import storage from '../utils/storage';
 import {colors, typography, spacing, borderRadius, shadows, gradients, touchableOpacity} from '../constants/theme';
 import LinearGradient from 'expo-linear-gradient';
 import { FEATURE_FLAGS } from '../config/featureFlags';
+import { joinAstrologerLanguages } from '../utils/astrologerHelpers';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -129,6 +130,60 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Fixed Header - MOVED OUTSIDE ScrollView */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          {/* Branding */}
+          <View style={styles.branding}>
+            <View style={styles.logo}>
+              <Text style={styles.logoIcon}>✨</Text>
+            </View>
+            <Text style={styles.appName}>Kundli</Text>
+          </View>
+          
+          {/* Wallet Button */}
+          <TouchableOpacity 
+            style={styles.walletButton}
+            onPress={handleWalletClick}
+            activeOpacity={touchableOpacity}
+          >
+            <Text style={styles.walletIcon}>Wallet</Text>
+            <Text style={styles.walletAmount}>₹{walletBalance}</Text>
+            <View style={styles.addButton}>
+              <Text style={styles.addIcon}>+</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Categories */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesContainer}
+        >
+          {categories.map((category) => {
+            const isSelected = selectedCategory === category.name;
+            return (
+              <TouchableOpacity
+                key={category.name}
+                style={[styles.categoryButton, isSelected && styles.categoryButtonSelected]}
+                onPress={() => setSelectedCategory(category.name)}
+                activeOpacity={touchableOpacity}
+              >
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <Text style={[
+                  styles.categoryText, 
+                  isSelected && styles.categoryTextSelected
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Scrollable Content - ONLY astrologer list */}
       <ScrollView 
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -139,69 +194,6 @@ const HomeScreen = () => {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            {/* Branding */}
-            <View style={styles.branding}>
-              <View style={styles.logo}>
-                <Text style={styles.logoIcon}>✨</Text>
-              </View>
-              <Text style={styles.appName}>Kundli</Text>
-            </View>
-            
-            {/* Wallet Button */}
-            <TouchableOpacity 
-              style={styles.walletButton}
-              onPress={handleWalletClick}
-              activeOpacity={touchableOpacity}
-            >
-              <Text style={styles.walletIcon}>Wallet</Text>
-              <Text style={styles.walletAmount}>₹{walletBalance}</Text>
-              <View style={styles.addButton}>
-                <Text style={styles.addIcon}>+</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Offer Banner */}
-          <View style={styles.offerBanner}>
-            <View style={styles.offerContent}>
-              <Text style={styles.offerTitle}>🎉 Special Offer!</Text>
-              <Text style={styles.offerText}>Get 50% OFF on your first consultation</Text>
-            </View>
-            <TouchableOpacity style={styles.claimButton} activeOpacity={touchableOpacity}>
-              <Text style={styles.claimButtonText}>Claim Now</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Categories */}
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContainer}
-          >
-            {categories.map((category) => {
-              const isSelected = selectedCategory === category.name;
-              return (
-                <TouchableOpacity
-                  key={category.name}
-                  style={[styles.categoryButton, isSelected && styles.categoryButtonSelected]}
-                  onPress={() => setSelectedCategory(category.name)}
-                  activeOpacity={touchableOpacity}
-                >
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  <Text style={[
-                    styles.categoryText, 
-                    isSelected && styles.categoryTextSelected
-                  ]}>
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
 
         {/* Error Message */}
         {error && (
@@ -279,7 +271,7 @@ const HomeScreen = () => {
                   {/* Experience & Languages */}
                   <View style={styles.detailsContainer}>
                     <Text style={styles.detailText}>
-                      💼 {astrologer.experience} • {astrologer.languages.join(", ")}
+                      💼 {astrologer.experience} • {joinAstrologerLanguages(astrologer.languages)}
                     </Text>
                   </View>
                 </View>

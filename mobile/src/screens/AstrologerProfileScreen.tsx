@@ -11,6 +11,7 @@ import {
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList, Astrologer} from '../types';
+import { getAstrologerLanguages, joinAstrologerLanguages } from '../utils/astrologerHelpers';
 
 type AstrologerProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AstrologerProfile'>;
 type AstrologerProfileScreenRouteProp = RouteProp<RootStackParamList, 'AstrologerProfile'>;
@@ -103,7 +104,7 @@ const AstrologerProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Languages</Text>
           <View style={styles.languagesContainer}>
-            {astrologer.languages.map((language, index) => (
+            {getAstrologerLanguages(astrologer.languages).map((language, index) => (
               <View key={index} style={styles.languageTag}>
                 <Text style={styles.languageText}>{language}</Text>
               </View>
@@ -128,7 +129,7 @@ const AstrologerProfileScreen = () => {
           <Text style={styles.aboutText}>
             Welcome! I am {astrologer.name}, a professional astrologer specializing in {astrologer.category}. 
             With {astrologer.experience} of experience, I have helped thousands of people find clarity and direction in their lives. 
-            I am fluent in {astrologer.languages.join(', ')} and provide personalized consultations to help you understand your path better.
+            I am fluent in {joinAstrologerLanguages(astrologer.languages)} and provide personalized consultations to help you understand your path better.
           </Text>
         </View>
 

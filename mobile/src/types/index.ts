@@ -30,7 +30,7 @@ export interface Astrologer {
   rating: number;
   reviews: number;
   experience: string;
-  languages: string[];
+  languages?: string[] | null;
   isOnline: boolean;
   image: string;
 }

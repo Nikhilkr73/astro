@@ -484,6 +484,58 @@ export const apiService = {
   },
 
   /**
+   * Deduct wallet balance for chat session usage
+   * Called during active sessions (per minute) or at session end
+   */
+  deductSessionBalance: async (
+    userId: string,
+    conversationId: string,
+    astrologerId: string,
+    astrologerName: string,
+    amount: number,
+    sessionDurationMinutes: number,
+    deductionType: 'per_minute' | 'session_end' = 'per_minute'
+  ) => {
+    try {
+      const deductionData = {
+        user_id: userId,
+        conversation_id: conversationId,
+        astrologer_id: astrologerId,
+        astrologer_name: astrologerName,
+        amount,
+        session_duration_minutes: sessionDurationMinutes,
+        deduction_type: deductionType,
+      };
+      
+      console.log('💰 Deducting session balance:', {
+        userId,
+        conversationId,
+        astrologerName,
+        amount,
+        sessionDurationMinutes,
+        deductionType,
+      });
+      
+      const response = await apiClient.post('/api/wallet/deduct-session', deductionData);
+      
+      if (response.data.success) {
+        console.log('✅ Session deduction successful:', {
+          transactionId: response.data.transaction_id,
+          amountDeducted: response.data.amount_deducted,
+          newBalance: response.data.new_balance,
+        });
+      } else {
+        console.warn('⚠️ Session deduction failed:', response.data.message);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Session deduction failed:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Get user's conversation history
    */
   getUserConversations: async (userId: string, limit: number = 20) => {

@@ -1,13 +1,15 @@
 # AstroVoice - Complete Project Specification & Context
 
-**Last Updated:** October 19, 2025  
-**Status:** Production Ready with Complete OTP Authentication System + Geoapify Location Autocomplete + Critical Bug Fixes
+**Last Updated:** October 25, 2025  
+**Status:** Production Ready with Complete OTP Authentication System + Google Play Wallet Integration + Astrologer Database Integration + Critical Bug Fixes
 
 ## 🌟 Project Overview
 
 AstroVoice is a comprehensive voice-based astrology consultation platform that combines:
 - **Real-time voice AI** using OpenAI Realtime API
 - **Complete OTP authentication** with Message Central SMS integration
+- **Google Play Wallet integration** with in-app purchases and billing
+- **Astrologer database integration** with real-time filtering
 - **Location autocomplete** with Geoapify API integration
 - **Mobile app** built with React Native + Expo
 - **Backend API** built with FastAPI + PostgreSQL
@@ -31,6 +33,7 @@ backend/
 │   └── chat_handler.py    # Text chat processing
 ├── services/
 │   ├── astrologer_manager.py  # Astrologer persona management
+│   ├── google_play_billing.py # Google Play billing integration
 │   └── user_service.py    # User management
 └── utils/
     ├── logger_utils.py    # Logging utilities
@@ -62,9 +65,11 @@ mobile/
 │   │   ├── AppNavigator.tsx
 │   │   └── MainTabNavigator.tsx
 │   ├── services/        # API services
-│   │   └── apiService.ts
+│   │   ├── apiService.ts
+│   │   └── billingService.ts
 │   ├── utils/          # Utilities
-│   │   └── storage.ts
+│   │   ├── storage.ts
+│   │   └── astrologerHelpers.ts
 │   ├── components/     # Reusable components
 │   └── constants/      # App constants and themes
 └── package.json         # Dependencies
@@ -101,6 +106,8 @@ infrastructure/
 - **Expo Audio** - Audio recording/playback
 - **AsyncStorage** - Local data persistence
 - **DeviceEventEmitter** - Custom event system
+- **react-native-iap** - Google Play in-app purchases
+- **Google Play Billing** - Android billing integration
 
 ### **Infrastructure Stack**
 - **AWS CDK** - Infrastructure as Code with TypeScript
@@ -110,7 +117,7 @@ infrastructure/
 - **AWS API Gateway** - API management
 - **AWS S3** - Static asset storage
 
-## 📊 Database Schema (11 Tables)
+## 📊 Database Schema (13 Tables)
 
 ### **Core Tables**
 ```sql
@@ -158,15 +165,23 @@ CREATE TABLE otp_verifications (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Astrologers with persona management
+-- Astrologers with persona management and database integration
 CREATE TABLE astrologers (
     astrologer_id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
+    display_name VARCHAR(100),
     specialization VARCHAR(100),
     gender VARCHAR(20),
     language_preference VARCHAR(20),
+    languages TEXT[], -- Array of languages
     system_prompt TEXT,
     voice_settings JSONB,
+    profile_picture_url VARCHAR(500),
+    bio TEXT,
+    experience_years INTEGER DEFAULT 10,
+    rating DECIMAL(3,2) DEFAULT 4.8,
+    total_reviews INTEGER DEFAULT 0,
+    price_per_minute DECIMAL(5,2) DEFAULT 8.00,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -194,11 +209,11 @@ CREATE TABLE messages (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Wallet and transaction management
+-- Wallet and transaction management with Google Play integration
 CREATE TABLE wallets (
     wallet_id VARCHAR(50) PRIMARY KEY,
     user_id VARCHAR(255) REFERENCES users(user_id),
-    balance DECIMAL(10, 2) DEFAULT 0.00,
+    balance DECIMAL(10, 2) DEFAULT 50.00, -- Default ₹50 for new users
     currency VARCHAR(3) DEFAULT 'INR',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -208,12 +223,37 @@ CREATE TABLE transactions (
     transaction_id VARCHAR(50) PRIMARY KEY,
     wallet_id VARCHAR(50) REFERENCES wallets(wallet_id),
     amount DECIMAL(10, 2) NOT NULL,
-    transaction_type VARCHAR(20),
+    transaction_type VARCHAR(20), -- 'recharge', 'deduction', 'bonus'
     status VARCHAR(20) DEFAULT 'pending',
-    payment_method VARCHAR(50),
+    payment_method VARCHAR(50), -- 'google_play', 'manual'
     payment_id VARCHAR(100),
+    google_play_order_id VARCHAR(100),
+    google_play_purchase_token VARCHAR(500),
+    google_play_package_name VARCHAR(100),
+    google_play_product_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Google Play recharge products
+CREATE TABLE recharge_products (
+    product_id VARCHAR(100) PRIMARY KEY,
+    platform VARCHAR(20) NOT NULL, -- 'android', 'ios'
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'INR',
+    bonus_percentage DECIMAL(5, 2) DEFAULT 0.00,
+    bonus_amount DECIMAL(10, 2) DEFAULT 0.00,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- First recharge bonuses tracking
+CREATE TABLE first_recharge_bonuses (
+    bonus_id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES users(user_id),
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_id VARCHAR(50) REFERENCES transactions(transaction_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Additional tables for comprehensive functionality
@@ -252,7 +292,7 @@ CREATE TABLE session_reviews (
 );
 ```
 
-## 🚀 API Endpoints (17 Total)
+## 🚀 API Endpoints (22 Total)
 
 ### **Authentication Endpoints**
 - `POST /api/auth/send-otp` - Send OTP via Message Central SMS
@@ -264,13 +304,16 @@ CREATE TABLE session_reviews (
 - `PUT /api/users/{user_id}` - Update user profile dynamically
 
 ### **Astrologer Endpoints**
-- `GET /api/astrologers` - List all available astrologers
+- `GET /api/astrologers` - List all available astrologers with database integration and category filtering
 - `GET /api/astrologers/{astrologer_id}` - Get specific astrologer details
 
 ### **Wallet Endpoints**
 - `GET /api/wallet/{user_id}` - Get wallet balance
 - `POST /api/wallet/recharge` - Recharge wallet
 - `GET /api/wallet/transactions/{user_id}` - Get transaction history
+- `GET /api/wallet/products` - Get available recharge products
+- `POST /api/wallet/verify-purchase` - Verify Google Play purchase
+- `POST /api/wallet/deduct-session` - Deduct session balance
 
 ### **Chat Endpoints**
 - `POST /api/chat/start` - Start new chat session
@@ -387,15 +430,30 @@ MESSAGE_CENTRAL_COUNTRY=IN
 MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com
 MESSAGE_CENTRAL_SENDER_ID=ASTROV
 
+# Google Play Billing Configuration
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON={"type": "service_account", ...}
+GOOGLE_PLAY_PACKAGE_NAME=com.astrovoice.app
+GOOGLE_PLAY_ENABLED=true
+FIRST_RECHARGE_BONUS_AMOUNT=50.00
+
 # Geoapify Location Autocomplete Configuration
 GEOAPIFY_API_KEY=5a3a573b36774482b168c56af6be0581
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=astrovoice
+DB_USER=nikhil
+DB_PASSWORD=your_password
+
+# Test Configuration
+TEST_MODE_ENABLED=false
+MESSAGE_CENTRAL_ENABLED=true
+BYPASS_OTP_COST=false
 
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
-
-# Database Configuration
-DATABASE_URL=postgresql://...
 
 # AWS Configuration
 AWS_REGION=ap-south-1
@@ -415,12 +473,31 @@ python3 -m backend.main
 
 ## 🚨 Common Issues & Solutions
 
-### **psycopg2 Error**
-**Problem:** `psycopg2 not available - database features disabled`
-**Solution:** Always run backend in virtual environment
+### **Google Play Billing Integration**
+**Problem:** Wallet integration with Google Play Store for in-app purchases
+**Solution:** Complete Google Play billing integration with purchase verification
 ```bash
-source venv/bin/activate
-python3 -m backend.main
+# Test Google Play purchases
+cd mobile && npx expo build:android
+# Upload AAB to Google Play Console for testing
+```
+
+### **Astrologer Database Integration**
+**Problem:** Astrologer profiles not coming from database, filtering not working
+**Solution:** Database integration with real-time filtering and category mapping
+```bash
+# Test astrologer API
+curl "http://localhost:8000/api/astrologers?category=Love"
+```
+
+### **Languages Null Error**
+**Problem:** `Cannot read properties of null (reading 'join')` error
+**Solution:** Comprehensive null safety with helper functions
+```typescript
+// Helper functions in utils/astrologerHelpers.ts
+export const joinAstrologerLanguages = (languages?: string[] | null): string => {
+  return getAstrologerLanguages(languages).join(', ');
+};
 ```
 
 ### **OTP Not Received**
@@ -505,10 +582,12 @@ curl http://localhost:8000/api/users/{user_id}
 - ✅ **Complete navigation** with splash, auth, onboarding, main app
 - ✅ **Profile management** with edit functionality
 - ✅ **Location autocomplete** with Geoapify API integration
-- ✅ **Wallet system** with transaction history
+- ✅ **Google Play Wallet system** with in-app purchases and transaction history
 - ✅ **Chat history** and session management
 - ✅ **Custom event system** for state management
 - ✅ **Persistent Chat Session Bar** with accurate timer billing
+- ✅ **Astrologer filtering** with real-time database integration
+- ✅ **Sticky header UI** with proper layout management
 
 ### **Location Autocomplete System**
 - ✅ **Geoapify API integration** for location suggestions
@@ -521,10 +600,12 @@ curl http://localhost:8000/api/users/{user_id}
 
 ### **Backend API**
 - ✅ **FastAPI** with async support and comprehensive endpoints
-- ✅ **PostgreSQL database** with 11 tables and proper relationships
+- ✅ **PostgreSQL database** with 13 tables and proper relationships
 - ✅ **UUID-based user IDs** for scalability
 - ✅ **Comprehensive error handling** and logging
 - ✅ **Message Central integration** for SMS OTP
+- ✅ **Google Play billing integration** with purchase verification
+- ✅ **Astrologer database integration** with real-time filtering
 - ✅ **Profile completion logic** with missing fields detection
 - ✅ **Duplicate user prevention** with critical logging
 
@@ -654,6 +735,21 @@ npx expo build:android
   - ✅ Timer synchronization between context and screen state
   - ✅ Fixed sessionType mismatch ('chat' vs 'text')
   - ✅ Second resume navigation bug fixed
+- ✅ GOOGLE PLAY WALLET INTEGRATION (October 25, 2025):
+  - ✅ Complete Google Play billing integration
+  - ✅ In-app purchase verification and acknowledgment
+  - ✅ Recharge products with bonus system
+  - ✅ First-time user bonus (₹50)
+  - ✅ Per-minute session deductions
+  - ✅ Transaction history and filtering
+  - ✅ Real-time wallet balance synchronization
+- ✅ ASTROLOGER DATABASE INTEGRATION (October 25, 2025):
+  - ✅ Database-driven astrologer profiles
+  - ✅ Real-time category filtering (Love, Career, Education, etc.)
+  - ✅ Server-side filtering with specialization mapping
+  - ✅ Enhanced astrologer schema with ratings, reviews, pricing
+  - ✅ Null-safe language handling with helper functions
+  - ✅ Sticky header UI with proper layout management
 
 ### **Phase 2: Features** 🔄
 - 🔄 Advanced astrological calculations
@@ -694,12 +790,16 @@ python3 view_user_data.py --limit 10
 
 ### **Key Files**
 - `backend/main.py` - Server entry point
-- `backend/api/mobile_endpoints.py` - Mobile API (17 endpoints) - **CRITICAL FIXES APPLIED**
-- `backend/database/schema.sql` - Database schema (11 tables) - **CLEANED UP**
+- `backend/api/mobile_endpoints.py` - Mobile API (22 endpoints) - **GOOGLE PLAY INTEGRATION ADDED**
+- `backend/database/schema.sql` - Database schema (13 tables) - **WALLET TABLES ADDED**
+- `backend/services/google_play_billing.py` - Google Play billing service
 - `mobile/src/navigation/AppNavigator.tsx` - Navigation logic - **DATABASE VERIFICATION ADDED**
 - `mobile/src/screens/PhoneAuthScreen.tsx` - OTP authentication - **DEBUG LOGS ADDED**
 - `mobile/src/screens/OnboardingFormScreen.tsx` - Profile completion - **FIELD NAMES FIXED**
 - `mobile/src/screens/ProfileScreen.tsx` - Profile management - **LOGOUT FIXED**
+- `mobile/src/screens/WalletScreen.tsx` - Google Play wallet integration
+- `mobile/src/screens/HomeScreen.tsx` - Astrologer filtering with database integration
+- `mobile/src/utils/astrologerHelpers.ts` - Null-safe language handling
 - `tests/run_tests.py` - Test runner
 - `view_user_data.py` - Database viewer
 
@@ -709,10 +809,13 @@ python3 view_user_data.py --limit 10
 - `MESSAGE_CENTRAL_EMAIL=kundli.ai30@gmail.com`
 - `OPENAI_API_KEY=sk-proj-...`
 - `OPENAI_REALTIME_MODEL=gpt-4o-mini-realtime-preview`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON={"type": "service_account", ...}`
+- `GOOGLE_PLAY_PACKAGE_NAME=com.astrovoice.app`
+- `DB_USER=nikhil`
 
 ---
 
-## 🔥 CRITICAL FIXES SUMMARY (October 19, 2025)
+## 🔥 CRITICAL FIXES SUMMARY (October 25, 2025)
 
 ### **Issues Resolved:**
 1. **Duplicate User Creation Regression** - Mobile app not sending user_id from OTP verification

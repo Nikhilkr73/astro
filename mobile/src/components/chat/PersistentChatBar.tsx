@@ -47,7 +47,7 @@ export function PersistentChatBar() {
       if (state.sessionType === 'chat') {
         const navigationParams = {
           astrologer: {
-            id: parseInt(state.astrologerId) || 999,
+            id: parseInt(state.astrologerId || '999'),
             name: state.astrologerName || 'Astrologer',
             category: 'Astrology',
             rating: 4.5,
@@ -57,7 +57,7 @@ export function PersistentChatBar() {
             isOnline: true,
             image: state.astrologerImage || 'https://via.placeholder.com/50',
           },
-          conversationId: state.conversationId,
+          conversationId: state.conversationId || undefined,
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
@@ -67,7 +67,7 @@ export function PersistentChatBar() {
       } else if (state.sessionType === 'voice') {
         const navigationParams = {
           astrologer: {
-            id: parseInt(state.astrologerId) || 999,
+            id: parseInt(state.astrologerId || '999'),
             name: state.astrologerName || 'Astrologer',
             category: 'Astrology',
             rating: 4.5,
@@ -77,7 +77,7 @@ export function PersistentChatBar() {
             isOnline: true,
             image: state.astrologerImage || 'https://via.placeholder.com/50',
           },
-          conversationId: state.conversationId,
+          conversationId: state.conversationId || undefined,
         };
         
         console.log('🔄 PersistentChatBar: Navigation params:', navigationParams);
@@ -101,6 +101,35 @@ export function PersistentChatBar() {
     }
   };
 
+  const handleEndSession = async () => {
+    try {
+      console.log('🔴 PersistentChatBar: Ending session...');
+      await actions.endSession();
+      
+      // Navigate to review screen with session details
+      const astrologer = {
+        id: parseInt(state.astrologerId || '999'),
+        name: state.astrologerName || 'Astrologer',
+        category: 'Astrology',
+        rating: 4.5,
+        reviews: 0,
+        experience: 'Expert',
+        languages: ['Hindi', 'English'],
+        isOnline: true,
+        image: state.astrologerImage || 'https://via.placeholder.com/50',
+      };
+      
+      navigation.navigate('ChatReview', {
+        astrologer,
+        sessionDuration: formatSeconds(state.sessionDuration),
+        conversationId: state.conversationId || ''
+      });
+      
+      console.log('✅ PersistentChatBar: Session ended and navigated to review');
+    } catch (error) {
+      console.error('❌ Failed to end session from persistent bar:', error);
+    }
+  };
 
   // Simple function to format seconds to MM:SS
   const formatSeconds = (seconds: number): string => {
@@ -144,13 +173,21 @@ export function PersistentChatBar() {
         {/* Action Buttons */}
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.resumeButton, !FEATURE_FLAGS.VOICE_CHAT_ENABLED && styles.disabledButton]}
-            onPress={FEATURE_FLAGS.VOICE_CHAT_ENABLED ? handleResume : null}
-            disabled={state.isLoading || !FEATURE_FLAGS.VOICE_CHAT_ENABLED}
+            style={styles.resumeButton}
+            onPress={handleResume}
+            disabled={state.isLoading}
           >
             <Text style={styles.resumeButtonText}>
-              {state.isLoading ? '...' : (FEATURE_FLAGS.VOICE_CHAT_ENABLED ? 'Resume' : 'Coming Soon')}
+              {state.isLoading ? '...' : 'Resume'}
             </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.endButton}
+            onPress={handleEndSession}
+            disabled={state.isLoading}
+          >
+            <Text style={styles.endButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -167,7 +204,7 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 80, // Position above bottom navigation (80px height)
     left: 0,
     right: 0,
     backgroundColor: '#FFF8F0', // Main Background from design system
@@ -175,7 +212,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#FFE4B5', // Border Gold from design system
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingBottom: 34, // Extra padding for safe area
+    paddingBottom: 12, // Reduced padding since bottom tabs handle safe area
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -268,8 +305,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'Poppins_500Medium', // Typography from design system
   },
-  disabledButton: {
-    opacity: 0.5,
+  endButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFE4B5', // Light peach from theme
+    borderWidth: 1,
+    borderColor: '#F7931E', // Orange border
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  endButtonText: {
+    color: '#F7931E', // Orange text
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
