@@ -18,6 +18,8 @@ import { colors, typography, spacing, borderRadius, shadows, touchableOpacity } 
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
 import ChatActionModal from '../components/chat/ChatActionModal';
+import ActiveChatModal from '../components/chat/ActiveChatModal';
+import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatHistoryScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -33,6 +35,11 @@ const ChatHistoryScreen = () => {
   // Modal state
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<ConversationHistory | null>(null);
+  
+  // Active chat modal state
+  const [showActiveChatModal, setShowActiveChatModal] = useState(false);
+  const [pendingAstrologer, setPendingAstrologer] = useState<any>(null);
+  const { state: sessionState, actions: sessionActions } = useChatSession();
 
   // Load conversations from API
   const loadConversations = async () => {
@@ -70,10 +77,26 @@ const ChatHistoryScreen = () => {
     loadConversations();
   };
 
-  // Handle chat item click
-  const handleChatClick = (conversation: ConversationHistory) => {
-    setSelectedConversation(conversation);
-    setShowActionModal(true);
+  // Handle chat item click - navigate directly to unified chat
+  const handleChatClick = async (conversation: ConversationHistory) => {
+    const astrologer = await findAstrologerById(conversation.astrologer_id);
+    
+    if (!astrologer) {
+      console.error('Astrologer not found:', conversation.astrologer_id);
+      return;
+    }
+    
+    // Check if there's an active session with a different astrologer
+    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== conversation.astrologer_id) {
+      // Show modal to ask user what to do
+      setPendingAstrologer(astrologer);
+      setShowActiveChatModal(true);
+      console.log(`⚠️ Active chat detected with ${sessionState.astrologerName}, showing modal`);
+      return;
+    }
+    
+    // No active session or same astrologer - proceed to unified chat
+    navigation.navigate('ChatSession', { astrologer });
   };
 
   // Find astrologer by ID - use database astrologer data
@@ -134,41 +157,43 @@ const ChatHistoryScreen = () => {
     return astrologer;
   };
 
-  // Handle continue chat
-  const handleContinueChat = async () => {
-    if (!selectedConversation) return;
+  // Active chat modal handlers
+  const handleEndAndSwitch = async () => {
+    if (!pendingAstrologer) return;
     
-    setShowActionModal(false);
-    const astrologer = await findAstrologerById(selectedConversation.astrologer_id);
-    
-    if (astrologer) {
-      navigation.navigate('ChatSession', { 
-        astrologer, 
-        conversationId: selectedConversation.conversation_id 
-      });
-    } else {
-      console.error('Astrologer not found:', selectedConversation.astrologer_id);
+    try {
+      // End the current session
+      await sessionActions.endSession();
+      console.log('✅ Previous session ended, starting new chat');
+      
+      // Close modal
+      setShowActiveChatModal(false);
+      
+      // Navigate to unified chat with the new astrologer
+      navigation.navigate('ChatSession', { astrologer: pendingAstrologer });
+      
+      // Clear pending astrologer
+      setPendingAstrologer(null);
+    } catch (error) {
+      console.error('❌ Failed to end session and switch:', error);
+      setShowActiveChatModal(false);
     }
   };
 
-  // Handle start new chat
-  const handleStartNewChat = async () => {
-    if (!selectedConversation) return;
+  const handleContinuePrevious = () => {
+    // Close modal and navigate to existing chat
+    setShowActiveChatModal(false);
+    setPendingAstrologer(null);
     
-    setShowActionModal(false);
-    const astrologer = await findAstrologerById(selectedConversation.astrologer_id);
-    
-    if (astrologer) {
-      navigation.navigate('ChatSession', { astrologer });
-    } else {
-      console.error('Astrologer not found:', selectedConversation.astrologer_id);
-    }
+    // Navigate to the existing chat session
+    navigation.navigate('ChatSession', { 
+      conversationId: sessionState.conversationId || undefined 
+    });
   };
 
-  // Handle modal cancel
   const handleCancelModal = () => {
-    setShowActionModal(false);
-    setSelectedConversation(null);
+    setShowActiveChatModal(false);
+    setPendingAstrologer(null);
   };
 
   // Render loading state
@@ -279,12 +304,13 @@ const ChatHistoryScreen = () => {
         )}
       </ScrollView>
 
-      {/* Chat Action Modal */}
-      <ChatActionModal
-        visible={showActionModal}
-        astrologerName={selectedConversation?.astrologer_name || ''}
-        onContinue={handleContinueChat}
-        onStartNew={handleStartNewChat}
+      {/* Active Chat Modal */}
+      <ActiveChatModal
+        visible={showActiveChatModal}
+        currentAstrologerName={sessionState.astrologerName || 'Astrologer'}
+        newAstrologerName={pendingAstrologer?.name || 'Astrologer'}
+        onEndAndSwitch={handleEndAndSwitch}
+        onContinuePrevious={handleContinuePrevious}
         onCancel={handleCancelModal}
       />
     </SafeAreaView>

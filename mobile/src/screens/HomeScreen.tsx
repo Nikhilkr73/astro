@@ -21,6 +21,8 @@ import {colors, typography, spacing, borderRadius, shadows, gradients, touchable
 import LinearGradient from 'expo-linear-gradient';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { joinAstrologerLanguages } from '../utils/astrologerHelpers';
+import ActiveChatModal from '../components/chat/ActiveChatModal';
+import { useChatSession } from '../contexts/ChatSessionContext';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -34,6 +36,11 @@ const HomeScreen = () => {
   const [walletBalance, setWalletBalance] = useState(50);
   const [astrologers, setAstrologers] = useState<Astrologer[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // Active chat modal state
+  const [showActiveChatModal, setShowActiveChatModal] = useState(false);
+  const [pendingAstrologer, setPendingAstrologer] = useState<Astrologer | null>(null);
+  const { state: sessionState, actions: sessionActions } = useChatSession();
 
   // Load astrologers from API
   const loadAstrologers = async () => {
@@ -101,6 +108,16 @@ const HomeScreen = () => {
   };
 
   const handleChatClick = (astrologer: Astrologer) => {
+    // Check if there's an active session with a different astrologer
+    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== astrologer.astrologer_id) {
+      // Show modal to ask user what to do
+      setPendingAstrologer(astrologer);
+      setShowActiveChatModal(true);
+      console.log(`⚠️ Active chat detected with ${sessionState.astrologerName}, showing modal`);
+      return;
+    }
+    
+    // No active session or same astrologer - proceed normally
     navigation.navigate('ChatSession', { astrologer });
   };
 
@@ -116,6 +133,45 @@ const HomeScreen = () => {
 
   const handleWalletClick = () => {
     navigation.navigate('Wallet');
+  };
+
+  // Active chat modal handlers
+  const handleEndAndSwitch = async () => {
+    if (!pendingAstrologer) return;
+    
+    try {
+      // End the current session
+      await sessionActions.endSession();
+      console.log('✅ Previous session ended, starting new chat');
+      
+      // Close modal
+      setShowActiveChatModal(false);
+      
+      // Navigate to new chat
+      navigation.navigate('ChatSession', { astrologer: pendingAstrologer });
+      
+      // Clear pending astrologer
+      setPendingAstrologer(null);
+    } catch (error) {
+      console.error('❌ Failed to end session and switch:', error);
+      setShowActiveChatModal(false);
+    }
+  };
+
+  const handleContinuePrevious = () => {
+    // Close modal and navigate to existing chat
+    setShowActiveChatModal(false);
+    setPendingAstrologer(null);
+    
+    // Navigate to the existing chat session
+    navigation.navigate('ChatSession', { 
+      conversationId: sessionState.conversationId || undefined 
+    });
+  };
+
+  const handleCancelModal = () => {
+    setShowActiveChatModal(false);
+    setPendingAstrologer(null);
   };
 
   if (isLoading) {
@@ -304,6 +360,16 @@ const HomeScreen = () => {
           )}
         </View>
       </ScrollView>
+      
+      {/* Active Chat Modal */}
+      <ActiveChatModal
+        visible={showActiveChatModal}
+        currentAstrologerName={sessionState.astrologerName || 'Astrologer'}
+        newAstrologerName={pendingAstrologer?.name || 'Astrologer'}
+        onEndAndSwitch={handleEndAndSwitch}
+        onContinuePrevious={handleContinuePrevious}
+        onCancel={handleCancelModal}
+      />
     </SafeAreaView>
   );
 };
