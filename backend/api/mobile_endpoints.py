@@ -1442,6 +1442,12 @@ User Information:
         # Create or get chat handler for this astrologer
         chat_handler = OpenAIChatHandler(astrologer_id=chat_request.astrologer_id)
         
+        # CRITICAL: Set conversation_id in handler's user_states before sending message
+        if chat_request.user_id not in chat_handler.user_states:
+            chat_handler.user_states[chat_request.user_id] = {}
+        chat_handler.user_states[chat_request.user_id]['conversation_id'] = chat_request.conversation_id
+        print(f"💾 Set conversation_id in handler: {chat_request.conversation_id}")
+        
         # For first message, inject user context
         message_with_context = chat_request.message
         
@@ -1750,8 +1756,8 @@ async def get_session_status(conversation_id: str):
 
 
 @router.get("/chat/history/{conversation_id}")
-async def get_chat_history(conversation_id: str, limit: int = 50):
-    """Get chat message history for a conversation"""
+async def get_chat_history(conversation_id: str, limit: int = 50, offset: int = 0):
+    """Get chat message history for a conversation with pagination"""
     try:
         # Import database manager
         try:
@@ -1760,16 +1766,18 @@ async def get_chat_history(conversation_id: str, limit: int = 50):
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
-        print(f"📜 Getting chat history: {conversation_id} (limit: {limit})")
+        print(f"📜 Getting chat history: {conversation_id} (limit: {limit}, offset: {offset})")
         
-        messages = db.get_conversation_history(conversation_id, limit)
+        # Get messages with offset and limit (for older messages)
+        messages = db.get_conversation_history(conversation_id, limit, offset)
         
         if messages is not None:
             return {
                 "success": True,
                 "conversation_id": conversation_id,
                 "messages": messages,
-                "total_count": len(messages)
+                "total_count": len(messages),
+                "has_more": len(messages) == limit  # Indicate if more messages might exist
             }
         else:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -1817,37 +1825,150 @@ def calculate_time_ago(timestamp):
 
 
 @router.get("/chat/conversations/{user_id}")
-async def get_user_conversations(user_id: str, limit: int = 20):
-    """Get user's conversation history"""
+async def get_user_conversations(
+    user_id: str,
+    limit: int = 20
+):
+    """
+    Get all conversations for a user, grouped by astrologer.
+    Returns the most recent conversation for each astrologer.
+    """
     try:
         # Import database manager
         try:
-            from backend.database.manager import DatabaseManager
-            db = DatabaseManager()
+            from backend.database.manager import db
+        except ImportError:
+            from database.manager import db
+        
+        print(f"📜 Getting conversations for user: {user_id}")
+        
+        # Get conversations grouped by astrologer
+        conversations = db.get_user_conversations(user_id, limit)
+        
+        print(f"✅ Found {len(conversations)} conversations")
+        
+        return {
+            "success": True,
+            "conversations": conversations
+        }
+        
+    except Exception as e:
+        print(f"❌ Error getting user conversations: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chat/unified-history/{user_id}/{astrologer_id}")
+async def get_unified_chat_history(
+    user_id: str, 
+    astrologer_id: str, 
+    limit: int = 50, 
+    offset: int = 0
+):
+    """
+    Get unified chat history for a user-astrologer pair.
+    Returns all messages from all conversations with date separators.
+    Supports pagination for loading older messages.
+    """
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
         except ImportError:
             from database_manager import DatabaseManager
             db = DatabaseManager()
         
-        conversations = db.get_user_conversations(user_id, limit)
+        print(f"📜 Getting unified chat history: {user_id} + {astrologer_id}")
+        print(f"   Limit: {limit}, Offset: {offset}")
         
-        # Format response with time ago calculation
-        formatted = []
-        for conv in conversations:
-            time_ago = calculate_time_ago(conv.get('last_message_at'))
-            formatted.append({
-                'conversation_id': conv['conversation_id'],
-                'astrologer_id': conv['astrologer_id'],
-                'astrologer_name': conv['astrologer_name'],
-                'astrologer_image': conv.get('astrologer_image'),
-                'last_message': conv.get('last_message_preview', 'No messages yet'),
-                'last_message_time': time_ago,
-                'status': conv['status'],
-                'total_messages': conv.get('total_messages', 0)
-            })
+        result = db.get_unified_chat_history(user_id, astrologer_id, limit, offset)
         
-        return {'success': True, 'conversations': formatted}
+        if result.get('success'):
+            print(f"✅ Unified history loaded: {len(result['messages'])} messages")
+            print(f"   Total conversations: {result['total_conversations']}")
+            print(f"   Has more: {result['has_more']}")
+            return result
+        else:
+            raise HTTPException(status_code=404, detail=result.get('error', 'History not found'))
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Error getting user conversations: {e}")
+        print(f"❌ Error getting unified chat history: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chat/start-unified")
+async def start_unified_chat_session(session_data: dict):
+    """
+    Start a new chat session that can be part of unified history.
+    Creates conversation linked to existing ones if available.
+    """
+    try:
+        # Import database manager
+        try:
+            from backend.database.manager import db
+        except ImportError:
+            from database_manager import DatabaseManager
+            db = DatabaseManager()
+        
+        user_id = session_data.get('user_id')
+        astrologer_id = session_data.get('astrologer_id')
+        topic = session_data.get('topic', 'general')
+        
+        if not user_id or not astrologer_id:
+            raise HTTPException(status_code=400, detail="user_id and astrologer_id are required")
+        
+        # Fetch user data from database
+        user_data = db.get_user(user_id)
+        
+        if not user_data:
+            print(f"⚠️ User not found in database: {user_id}")
+            user_data = {'user_id': user_id}
+        
+        # Create unified conversation
+        conversation_id = db.create_unified_conversation(user_id, astrologer_id, topic)
+        
+        if not conversation_id:
+            raise HTTPException(status_code=500, detail="Failed to create unified conversation")
+        
+        print(f"💬 Starting unified chat session: {conversation_id}")
+        print(f"   User: {user_id} ({user_data.get('full_name', 'Unknown')})")
+        print(f"   Astrologer: {astrologer_id}")
+        print(f"   Topic: {topic}")
+        
+        # Prepare user context for astrologer
+        user_context = {
+            'name': user_data.get('full_name', 'User'),
+            'display_name': user_data.get('display_name'),
+            'gender': user_data.get('gender'),
+            'birth_date': str(user_data.get('birth_date')) if user_data.get('birth_date') else None,
+            'birth_time': str(user_data.get('birth_time')) if user_data.get('birth_time') else None,
+            'birth_location': user_data.get('birth_location'),
+            'language_preference': user_data.get('language_preference', 'hi')
+        }
+        
+        print(f"📋 User context prepared: {user_context}")
+        
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "user_id": user_id,
+            "astrologer_id": astrologer_id,
+            "topic": topic,
+            "user_context": user_context,
+            "started_at": datetime.now().isoformat(),
+            "is_unified": True
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error starting unified chat: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

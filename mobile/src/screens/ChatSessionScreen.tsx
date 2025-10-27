@@ -37,7 +37,23 @@ const messageSuggestions = [
 const ChatSessionScreen = () => {
   const navigation = useNavigation<ChatSessionScreenNavigationProp>();
   const route = useRoute<ChatSessionScreenRouteProp>();
-  const { astrologer } = route.params;
+  const { astrologer: routeAstrologer, astrologerId } = route.params;
+  
+  // Chat Session Context Integration (for accessing context state)
+  const { state: sessionState, actions: sessionActions } = useChatSession();
+  
+  // If astrologer is missing from route (e.g., when resuming), get it from context
+  const astrologer = routeAstrologer || (sessionState.astrologerId && sessionState.astrologerName && sessionState.astrologerImage ? {
+    id: parseInt(sessionState.astrologerId),
+    name: sessionState.astrologerName,
+    category: 'Astrology',
+    rating: 4.5,
+    reviews: 0,
+    experience: 'Expert',
+    languages: ['Hindi', 'English'],
+    isOnline: true,
+    image: sessionState.astrologerImage,
+  } : null);
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -54,16 +70,121 @@ const ChatSessionScreen = () => {
   const [remainingTime, setRemainingTime] = useState(0); // Countdown timer in seconds
   const [astrologerRate, setAstrologerRate] = useState(8); // Per minute rate
   const [showRechargeBar, setShowRechargeBar] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // Flag to prevent timer race condition
+  const shouldLoadHistory = useRef(true); // Flag to prevent reloading history when returning to active session
+  const initialMountRef = useRef(true); // Track if this is the first mount
   const scrollViewRef = useRef<ScrollView>(null);
   const flatListRef = useRef<FlatList>(null);
   
-  // Chat Session Context Integration
-  const { state: sessionState, actions: sessionActions } = useChatSession();
+  // Pagination state for loading older messages
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const MESSAGES_PER_PAGE = 50;
   
   // Utility function to calculate remaining time based on wallet balance
   const calculateRemainingTime = (balance: number, ratePerMinute: number): number => {
     if (ratePerMinute === 0) return 0;
     return Math.floor((balance / ratePerMinute) * 60); // Returns seconds
+  };
+  
+  // Load older messages when user scrolls to top
+  const loadMoreMessages = async () => {
+    if (!hasMoreMessages || isLoadingMore || !conversationId) {
+      return;
+    }
+    
+    try {
+      setIsLoadingMore(true);
+      console.log('📜 Loading more messages, offset:', currentOffset + MESSAGES_PER_PAGE);
+      
+      // For unified conversations, use unified history endpoint
+      if (conversationId.startsWith('unified_')) {
+        const userId = await storage.getUserId() || 'test_user_demo';
+        const astrologerBackendId = sessionState.astrologerId || 'tina_kulkarni_vedic_marriage';
+        
+        console.log('📜 Loading more unified history for astrologer:', astrologerBackendId);
+        
+        const unifiedHistory = await apiService.getUnifiedChatHistory(
+          userId,
+          astrologerBackendId,
+          MESSAGES_PER_PAGE,
+          currentOffset
+        );
+        
+        if (unifiedHistory.success && unifiedHistory.messages) {
+          const newMessages = unifiedHistory.messages.map((msg: any) => {
+            if (msg.is_separator) {
+              return {
+                id: `separator_${msg.conversation_id}_${msg.date}`,
+                text: msg.separator_text,
+                sender: 'separator',
+                timestamp: '',
+                isSeparator: true
+              };
+            } else {
+              return {
+                id: msg.message_id,
+                text: msg.content,
+                sender: msg.sender_type,
+                timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+            }
+          });
+          
+          // Prepend older messages to the top
+          setMessages((prevMessages) => [...newMessages, ...prevMessages]);
+          setCurrentOffset(currentOffset + MESSAGES_PER_PAGE);
+          
+          // Check if we've loaded all messages
+          if (newMessages.length < MESSAGES_PER_PAGE) {
+            setHasMoreMessages(false);
+            console.log('✅ Loaded all unified messages');
+          }
+          
+          console.log('✅ Loaded', newMessages.length, 'more unified messages');
+        } else {
+          setHasMoreMessages(false);
+          console.log('⚠️ No more unified messages to load');
+        }
+      } else {
+        // Regular conversation history pagination
+        const historyResponse = await apiService.getChatHistory(
+          conversationId, 
+          MESSAGES_PER_PAGE, 
+          currentOffset  // Load next page
+        );
+        
+        if (historyResponse.success && historyResponse.messages) {
+          const newMessages = historyResponse.messages.map((msg: any) => ({
+            id: msg.message_id,
+            text: msg.content,
+            sender: msg.sender_type,
+            timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }));
+          
+          // Prepend older messages to the top
+          setMessages((prevMessages) => [...newMessages, ...prevMessages]);
+          setCurrentOffset(currentOffset + MESSAGES_PER_PAGE);
+          
+          // Check if we've loaded all messages
+          if (newMessages.length < MESSAGES_PER_PAGE) {
+            setHasMoreMessages(false);
+            console.log('✅ Loaded all messages');
+          }
+          
+          console.log('✅ Loaded', newMessages.length, 'more messages');
+        } else {
+          setHasMoreMessages(false);
+          console.log('⚠️ No more messages to load');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load more messages:', error);
+      setHasMoreMessages(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
   
   // Sync local sessionTime with context sessionDuration when resuming
@@ -89,51 +210,93 @@ const ChatSessionScreen = () => {
   const BALANCE_DEDUCTION_INTERVAL = TEST_MODE ? 30 : 60; // seconds
   const CHAT_RATE_PER_MINUTE = 8;
 
+  // Get route parameters
+  const existingConversationId = route.params?.conversationId;
+  const unifiedAstrologerId = route.params?.astrologerId;
+
   // Initialize chat session on mount
   useEffect(() => {
     const initializeSession = async () => {
       try {
         console.log('🎯 ChatSessionScreen: Starting initialization...');
+        console.log('🎯 Astrologer from route:', routeAstrologer?.name || 'MISSING');
+        console.log('🎯 Astrologer from context:', sessionState.astrologerName || 'MISSING');
+        
+        // Only load history if this is the FIRST mount (not a re-mount after navigation)
+        const shouldLoad = initialMountRef.current;
+        initialMountRef.current = false; // Mark that we've initialized
+        
+        console.log('📜 Should load history:', shouldLoad);
+        
+        // Validate astrologer is available
+        if (!astrologer) {
+          console.error('❌ Astrologer is missing from both route and context!');
+          Alert.alert(
+            'Error',
+            'Astrologer information is missing. Please go back and try again.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          setIsLoadingSession(false);
+          return;
+        }
+        
         setIsLoadingSession(true);
         
         // Hide the persistent bar when ChatSessionScreen loads
         sessionActions.hideSession();
         
-        // Check if we're resuming an existing session
-        const existingConversationId = route.params?.conversationId;
         if (existingConversationId) {
           console.log('🔄 Resuming existing session:', existingConversationId);
           
           // Initialize the session in context first
+          // IMPORTANT: Map frontend astrologer ID to backend ID for context
+          let astrologerIdForContext: string;
+          if ((astrologer as any).astrologer_id) {
+            astrologerIdForContext = (astrologer as any).astrologer_id;
+          } else {
+            const astrologerIdMap: { [key: string]: string } = {
+              '1': 'tina_kulkarni_vedic_marriage',
+              '2': 'arjun_sharma_career', 
+              '3': 'meera_nanda_love'
+            };
+            astrologerIdForContext = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+          }
+          
           sessionActions.updateSessionData({
             conversationId: existingConversationId,
-            astrologerId: astrologer.astrologer_id || astrologer.id.toString(),
-            astrologerName: astrologer.name,
-            astrologerImage: astrologer.image,
+            astrologerId: astrologerIdForContext, // Use backend ID, not frontend
+            astrologerName: astrologer?.name || '',
+            astrologerImage: astrologer?.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A',
             sessionType: 'chat',
-            sessionStartTime: Date.now(),
-            isActive: true,
-            isPaused: false,
+            sessionStartTime: Date.now()
             // Don't override isVisible - let the context manage it
-            sessionDuration: 0 // Will be updated from database if available
           });
 
           // Check if the session is actually paused before trying to resume
           try {
-            const statusResponse = await apiService.getSessionStatus(existingConversationId);
-            if (statusResponse.success) {
-              if (statusResponse.session_status === 'paused') {
-                await sessionActions.resumeSession();
-                console.log('✅ Session resumed successfully');
-              } else {
-                console.log('ℹ️ Session is active, no resume needed');
-              }
-              
-              // Update session duration from database if available
-              if (statusResponse.session_duration) {
-                sessionActions.updateSessionDuration(statusResponse.session_duration);
-                setSessionTime(statusResponse.session_duration);
-                console.log('🕐 Initialized session time from database:', statusResponse.session_duration);
+            // Skip status check for temporary unified conversation IDs
+            if (existingConversationId.startsWith('unified_')) {
+              console.log('⚠️ Skipping status check for temporary unified conversation ID');
+              // Just resume the session in context - no API call needed
+              await sessionActions.resumeSession();
+              console.log('✅ Session resumed successfully (unified - no API call)');
+            } else {
+              // For real conversation IDs, check status from API
+              const statusResponse = await apiService.getSessionStatus(existingConversationId);
+              if (statusResponse.success) {
+                if (statusResponse.session_status === 'paused') {
+                  await sessionActions.resumeSession();
+                  console.log('✅ Session resumed successfully');
+                } else {
+                  console.log('ℹ️ Session is active, no resume needed');
+                }
+                
+                // Update session duration from database if available
+                if (statusResponse.session_duration) {
+                  sessionActions.updateSessionDuration(statusResponse.session_duration);
+                  setSessionTime(statusResponse.session_duration);
+                  console.log('🕐 Initialized session time from database:', statusResponse.session_duration);
+                }
               }
             }
           } catch (error) {
@@ -141,20 +304,401 @@ const ChatSessionScreen = () => {
           }
           
           // Load existing conversation history
-          const historyResponse = await apiService.getChatHistory(existingConversationId);
-          if (historyResponse.success && historyResponse.messages) {
-            const formattedMessages = historyResponse.messages.map((msg: any) => ({
-              id: msg.message_id,
-              text: msg.content,
-              sender: msg.sender_type,
-              timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }));
-            setMessages(formattedMessages);
+          // For unified IDs, use unified history endpoint; otherwise use regular history
+          if (existingConversationId.startsWith('unified_')) {
+            // For unified conversations, only load history if this is the FIRST mount
+            // Don't reload if we're returning to an already-active session
+            // OR if messages already exist (session is active with messages)
+            if (shouldLoad && messages.length === 0) {
+              console.log('📜 Loading unified history for conversation (first mount, no messages):', existingConversationId);
+              try {
+                const userId = await storage.getUserId() || 'test_user_demo';
+                
+                // Extract astrologer ID from context if astrologer is null
+                console.log('🔍 DEBUG - astrologer:', astrologer);
+                console.log('🔍 DEBUG - sessionState.astrologerId:', sessionState.astrologerId);
+                console.log('🔍 DEBUG - sessionState:', JSON.stringify(sessionState));
+                
+                let astrologerIdForAPI: string;
+                if (astrologer && astrologer.id && !isNaN(astrologer.id)) {
+                  // Map frontend ID to backend ID
+                  const astrologerIdMap: { [key: string]: string } = {
+                    '1': 'tina_kulkarni_vedic_marriage',
+                    '2': 'arjun_sharma_career', 
+                    '3': 'meera_nanda_love'
+                  };
+                  astrologerIdForAPI = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+                  console.log('✅ Mapped frontend ID to backend:', astrologerIdForAPI);
+                } else if (sessionState.astrologerId && sessionState.astrologerId !== 'NaN' && sessionState.astrologerId.includes('_')) {
+                  astrologerIdForAPI = sessionState.astrologerId;
+                  console.log('✅ Using astrologer ID from context:', astrologerIdForAPI);
+                } else {
+                  // Last resort: try to extract from conversation ID
+                  // unified_tina_kulkarni_vedic_marriage_1761485576826
+                  // Extract everything between unified_ and the last _timestamp
+                  const match = existingConversationId.match(/unified_([^_]+(?:_[^_]+)*)_(\d+)$/);
+                  if (match && match[1]) {
+                    astrologerIdForAPI = match[1];
+                    console.log('✅ Extracted astrologer ID from conversation ID:', astrologerIdForAPI);
+                  } else {
+                    console.error('❌ Cannot find astrologer ID for unified history');
+                    setIsLoadingSession(false);
+                    return;
+                  }
+                }
+                
+                console.log('📜 Using astrologer ID:', astrologerIdForAPI);
+                const unifiedHistory = await apiService.getUnifiedChatHistory(userId, astrologerIdForAPI);
+                if (unifiedHistory.success && unifiedHistory.messages) {
+                  const formattedMessages = unifiedHistory.messages.map((msg: any) => {
+                    if (msg.is_separator) {
+                      return {
+                        id: `separator_${msg.conversation_id}_${msg.date}`,
+                        text: msg.separator_text,
+                        sender: 'separator',
+                        timestamp: '',
+                        isSeparator: true
+                      };
+                    } else {
+                      return {
+                        id: msg.message_id,
+                        text: msg.content,
+                        sender: msg.sender_type,
+                        timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      };
+                    }
+                  });
+                  
+                  // Remove duplicates by creating a Map with the latest message for each ID
+                  // Then sort by timestamp to maintain chronological order
+                  const messageMap = new Map<string, Message>();
+                  formattedMessages.forEach(msg => {
+                    // Keep the most recent occurrence of each ID
+                    if (!messageMap.has(msg.id)) {
+                      messageMap.set(msg.id, msg);
+                    }
+                  });
+                  
+                  // Convert to array and sort by timestamp if available
+                  const uniqueMessages = Array.from(messageMap.values()).sort((a, b) => {
+                    // Try to parse timestamps for proper chronological order
+                    const aTime = a.timestamp ? new Date('2000-01-01T' + a.timestamp).getTime() : 0;
+                    const bTime = b.timestamp ? new Date('2000-01-01T' + b.timestamp).getTime() : 0;
+                    return aTime - bTime;
+                  });
+                  
+                  setMessages(uniqueMessages);
+                  console.log('✅ Unified history loaded:', uniqueMessages.length, 'unique messages (deduplicated and sorted)');
+                  
+                  // Set pagination state
+                  if (unifiedHistory.has_more === false || formattedMessages.length < MESSAGES_PER_PAGE) {
+                    setHasMoreMessages(false);
+                  } else {
+                    setHasMoreMessages(true);
+                    setCurrentOffset(MESSAGES_PER_PAGE);
+                  }
+                }
+              } catch (error) {
+                console.warn('⚠️ Failed to load unified history on resume:', error);
+              }
+            } else {
+              console.log('✅ Not loading history - preserving existing session messages');
+            }
+          } else {
+            console.log('📜 Loading REGULAR conversation history:', existingConversationId);
+            
+            // FIRST: Try loading unified history for better UX (all messages with astrologer)
+            const userId = await storage.getUserId() || 'test_user_demo';
+            
+            // Determine the backend astrologer ID (not frontend ID)
+            // First try to extract from sessionState if available (this is more reliable on resume)
+            let astrologerBackendId: string;
+            
+            if (sessionState.astrologerId && sessionState.astrologerId.includes('_')) {
+              // If it's already a backend ID (contains underscore), use it directly
+              astrologerBackendId = sessionState.astrologerId;
+              console.log('✅ Using backend astrologer ID from context:', astrologerBackendId);
+            } else if (sessionState.astrologerId && sessionState.astrologerId !== 'NaN' && !sessionState.astrologerId.includes('_')) {
+              // It's a frontend ID, map it to backend ID
+              const astrologerIdFromContext = sessionState.astrologerId;
+              const astrologerIdMap: { [key: string]: string } = {
+                '1': 'tina_kulkarni_vedic_marriage',
+                '2': 'arjun_sharma_career', 
+                '3': 'meera_nanda_love'
+              };
+              astrologerBackendId = astrologerIdMap[astrologerIdFromContext] || astrologerIdFromContext;
+              console.log('✅ Mapped frontend ID to backend:', astrologerBackendId);
+            } else if ((astrologer as any).astrologer_id) {
+              astrologerBackendId = (astrologer as any).astrologer_id;
+            } else {
+              // Use the mapping for frontend astrologers
+              const astrologerIdMap: { [key: string]: string } = {
+                '1': 'tina_kulkarni_vedic_marriage',
+                '2': 'arjun_sharma_career', 
+                '3': 'meera_nanda_love'
+              };
+              astrologerBackendId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+            }
+            
+            console.log('📜 Attempting to load unified history for astrologer:', astrologerBackendId);
+            console.log('📜 Frontend astrologer ID:', astrologer.id);
+            console.log('📜 SessionState astrologer ID:', sessionState.astrologerId);
+            try {
+              const unifiedHistory = await apiService.getUnifiedChatHistory(userId, astrologerBackendId);
+              if (unifiedHistory.success && unifiedHistory.messages && unifiedHistory.messages.length > 0) {
+                const formattedMessages = unifiedHistory.messages.map((msg: any) => {
+                  if (msg.is_separator) {
+                    return {
+                      id: `separator_${msg.conversation_id}_${msg.date}`,
+                      text: msg.separator_text,
+                      sender: 'separator',
+                      timestamp: '',
+                      isSeparator: true
+                    };
+                  } else {
+                    return {
+                      id: msg.message_id,
+                      text: msg.content,
+                      sender: msg.sender_type,
+                      timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                  }
+                });
+                
+                // Remove duplicates by creating a Map with the latest message for each ID
+                const messageMap3 = new Map<string, Message>();
+                formattedMessages.forEach(msg => {
+                  if (!messageMap3.has(msg.id)) {
+                    messageMap3.set(msg.id, msg);
+                  }
+                });
+                const uniqueMessages3 = Array.from(messageMap3.values()).sort((a, b) => {
+                  const aTime = a.timestamp ? new Date('2000-01-01T' + a.timestamp).getTime() : 0;
+                  const bTime = b.timestamp ? new Date('2000-01-01T' + b.timestamp).getTime() : 0;
+                  return aTime - bTime;
+                });
+                
+                setMessages(uniqueMessages3);
+                console.log('✅ Unified history loaded:', uniqueMessages3.length, 'unique messages (deduplicated and sorted)');
+                
+                // Set pagination state
+                if (unifiedHistory.has_more === false || formattedMessages.length < MESSAGES_PER_PAGE) {
+                  setHasMoreMessages(false);
+                } else {
+                  setHasMoreMessages(true);
+                  setCurrentOffset(MESSAGES_PER_PAGE);
+                }
+                
+                // Skip loading regular history if unified worked
+                setConversationId(existingConversationId);
+                
+                // IMPORTANT: Reinitialize wallet and remaining time on resume
+                try {
+                  const userIdForWallet = await storage.getUserId() || 'test_user_demo';
+                  const walletResponse = await apiService.getWalletBalance(userIdForWallet);
+                  if (walletResponse.success) {
+                    const currentBalance = walletResponse.balance;
+                    setWalletBalance(currentBalance);
+                    setInitialWalletBalance(currentBalance);
+                    
+                    // Recalculate remaining time based on current balance
+                    const rate = (astrologer as any).price_per_minute || astrologerRate;
+                    setAstrologerRate(rate);
+                    const remaining = calculateRemainingTime(currentBalance, rate);
+                    setRemainingTime(remaining);
+                    setShowRechargeBar(false); // Reset recharge bar
+                    console.log(`💰 Unified Resume - Wallet: ₹${currentBalance}, Remaining: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`);
+                  }
+                } catch (error) {
+                  console.warn('⚠️ Could not load wallet on unified resume:', error);
+                }
+                
+                setIsLoadingSession(false);
+                return;
+              } else {
+                console.log('⚠️ Unified history empty, falling back to regular history');
+              }
+            } catch (error) {
+              console.warn('⚠️ Failed to load unified history:', error);
+              console.log('📜 Falling back to regular conversation history');
+            }
+            
+            // FALLBACK: Load only this conversation's messages
+            const historyResponse = await apiService.getChatHistory(existingConversationId, MESSAGES_PER_PAGE, 0);
+            if (historyResponse.success && historyResponse.messages && historyResponse.messages.length > 0) {
+              const formattedMessages = historyResponse.messages.map((msg: any) => ({
+                id: msg.message_id,
+                text: msg.content,
+                sender: msg.sender_type,
+                timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }));
+              setMessages(formattedMessages);
+              setCurrentOffset(MESSAGES_PER_PAGE);
+              
+              // Check if there are more messages to load
+              if (historyResponse.has_more === false || formattedMessages.length < MESSAGES_PER_PAGE) {
+                setHasMoreMessages(false);
+              }
+              
+              console.log('✅ Regular history loaded:', formattedMessages.length, 'messages');
+            } else {
+              console.warn('⚠️ Conversation has no messages or failed to load');
+              console.warn('⚠️ This might be an empty conversation - starting fresh');
+              // For empty conversations, start with a fresh greeting
+              setMessages([]);
+              setHasMoreMessages(false);
+            }
           }
           
           // Session time is now initialized from database status above
           
+          // IMPORTANT: Reinitialize wallet and remaining time on resume
+          try {
+            const userId = await storage.getUserId() || 'test_user_demo';
+            const walletResponse = await apiService.getWalletBalance(userId);
+            if (walletResponse.success) {
+              const currentBalance = walletResponse.balance;
+              setWalletBalance(currentBalance);
+              setInitialWalletBalance(currentBalance);
+              
+              // Recalculate remaining time based on current balance
+              const rate = (astrologer as any).price_per_minute || astrologerRate;
+              setAstrologerRate(rate);
+              const remaining = calculateRemainingTime(currentBalance, rate);
+              setRemainingTime(remaining);
+              setShowRechargeBar(false); // Reset recharge bar
+              console.log(`💰 Resume - Wallet: ₹${currentBalance}, Remaining: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`);
+            }
+          } catch (error) {
+            console.warn('⚠️ Could not load wallet on resume:', error);
+          }
+          
           setConversationId(existingConversationId);
+          setIsLoadingSession(false);
+          return;
+        }
+        
+        // Check if we're loading unified chat history
+        if (unifiedAstrologerId) {
+          console.log('📜 Loading unified chat history for astrologer:', unifiedAstrologerId);
+          
+          // Get user ID
+          let userId = await storage.getUserId();
+          if (!userId) {
+            console.log('⚠️ No user ID found, using test user for demo');
+            userId = 'test_user_demo';
+          }
+          
+          // Determine backend astrologer ID (map if frontend ID)
+          let backendAstrologerIdForUnified: string;
+          const astrologerIdMap: { [key: string]: string } = {
+            '1': 'tina_kulkarni_vedic_marriage',
+            '2': 'arjun_sharma_career', 
+            '3': 'meera_nanda_love'
+          };
+          backendAstrologerIdForUnified = astrologerIdMap[unifiedAstrologerId] || unifiedAstrologerId;
+          
+          console.log('📜 Unified history - Frontend ID:', unifiedAstrologerId);
+          console.log('📜 Unified history - Backend ID:', backendAstrologerIdForUnified);
+          
+          // Load unified chat history
+          try {
+            const unifiedHistory = await apiService.getUnifiedChatHistory(userId, backendAstrologerIdForUnified);
+            if (unifiedHistory.success) {
+              console.log('✅ Unified history loaded:', unifiedHistory.messages.length, 'messages');
+              
+              // Format messages with date separators
+              const formattedMessages = unifiedHistory.messages.map((msg: any) => {
+                if (msg.is_separator) {
+                  return {
+                    id: `separator_${msg.conversation_id}_${msg.date}`,
+                    text: msg.separator_text,
+                    sender: 'separator',
+                    timestamp: '',
+                    isSeparator: true
+                  };
+                } else {
+                  return {
+                    id: msg.message_id,
+                    text: msg.content,
+                    sender: msg.sender_type,
+                    timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  };
+                }
+              });
+              
+              // Remove duplicates by creating a Map with the latest message for each ID
+              const messageMap4 = new Map<string, Message>();
+              formattedMessages.forEach(msg => {
+                if (!messageMap4.has(msg.id)) {
+                  messageMap4.set(msg.id, msg);
+                }
+              });
+              const uniqueMessages4 = Array.from(messageMap4.values()).sort((a, b) => {
+                const aTime = a.timestamp ? new Date('2000-01-01T' + a.timestamp).getTime() : 0;
+                const bTime = b.timestamp ? new Date('2000-01-01T' + b.timestamp).getTime() : 0;
+                return aTime - bTime;
+              });
+              
+              setMessages(uniqueMessages4);
+              
+              // Update astrologer info from API response
+              if (unifiedHistory.astrologer) {
+                const updatedAstrologer = {
+                  ...astrologer,
+                  name: unifiedHistory.astrologer.display_name,
+                  image: unifiedHistory.astrologer.profile_picture_url || astrologer.image
+                };
+                // Note: We can't update route params, but we can use the updated info for display
+              }
+              
+              // Initialize wallet balance and timer for unified history
+              const walletResponse = await apiService.getWalletBalance(userId);
+              let currentBalance = 50; // Default fallback
+              if (walletResponse.success) {
+                currentBalance = walletResponse.balance;
+                setWalletBalance(currentBalance);
+                setInitialWalletBalance(currentBalance);
+              } else {
+                console.warn('⚠️ Failed to load wallet balance, using default');
+                setWalletBalance(currentBalance);
+                setInitialWalletBalance(currentBalance);
+              }
+              
+              // Get astrologer rate (default to 8 if not available)
+              const rate = (astrologer as any).price_per_minute || astrologerRate;
+              setAstrologerRate(rate);
+              
+              // Calculate and set remaining time based on balance
+              const remaining = calculateRemainingTime(currentBalance, rate);
+              setRemainingTime(remaining);
+              console.log(`💰 Unified History - Wallet: ₹${currentBalance}, Rate: ₹${rate}/min, Remaining time: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`);
+              console.log(`⏰ Unified History - Remaining time set to: ${remaining} seconds`);
+              
+              // Start session in context for unified history (this will make isActive=true)
+              const tempConversationId = `unified_${backendAstrologerIdForUnified}_${Date.now()}`;
+              sessionActions.startSession({
+                conversationId: tempConversationId,
+                astrologerId: backendAstrologerIdForUnified, // Use backend ID, not frontend
+                astrologerName: astrologer?.name || '',
+                astrologerImage: astrologer?.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A',
+                sessionType: 'chat',
+                sessionStartTime: Date.now(),
+                pausedTime: undefined,
+                totalPausedDuration: 0,
+              });
+              
+              // Set the conversation ID for message sending
+              setConversationId(tempConversationId);
+              
+              console.log('✅ Unified history session started in context with ID:', tempConversationId);
+            } else {
+              console.warn('⚠️ Failed to load unified history, starting new session');
+            }
+          } catch (error) {
+            console.warn('⚠️ Error loading unified history:', error);
+          }
+          
           setIsLoadingSession(false);
           return;
         }
@@ -187,6 +731,7 @@ const ChatSessionScreen = () => {
         const remaining = calculateRemainingTime(currentBalance, rate);
         setRemainingTime(remaining);
         console.log(`💰 Wallet: ₹${currentBalance}, Rate: ₹${rate}/min, Remaining time: ${Math.floor(remaining / 60)}:${(remaining % 60).toString().padStart(2, '0')}`);
+        console.log(`⏰ Remaining time set to: ${remaining} seconds`);
         
         // Start NEW chat session
         console.log('🚀 Starting NEW chat with', astrologer.name);
@@ -223,8 +768,8 @@ const ChatSessionScreen = () => {
           sessionActions.startSession({
             conversationId: sessionResponse.conversation_id,
             astrologerId: backendAstrologerId,
-            astrologerName: astrologer.name,
-            astrologerImage: astrologer.image,
+            astrologerName: astrologer?.name || '',
+            astrologerImage: astrologer?.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A',
             sessionType: 'chat',
             sessionStartTime: Date.now(),
             pausedTime: undefined,
@@ -256,6 +801,7 @@ const ChatSessionScreen = () => {
         );
       } finally {
         setIsLoadingSession(false);
+        setIsInitialized(true); // Mark initialization as complete
       }
     };
     
@@ -265,11 +811,25 @@ const ChatSessionScreen = () => {
   // Handle navigation events for session pause/resume
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', async (e) => {
+      console.log('🔙 beforeRemove triggered');
+      console.log('🔙 conversationId:', conversationId);
+      console.log('🔙 sessionEnded:', sessionEnded);
+      console.log('🔙 sessionState:', sessionState);
+      
       // Pause session when user navigates away
       if (conversationId && !sessionEnded) {
+        console.log('🔙 Attempting to pause session...');
         try {
+          // For temporary unified IDs, just show the persistent bar without API call
+          if (conversationId.startsWith('unified_')) {
+            console.log('⚠️ Temporary unified conversation - showing persistent bar directly');
+            sessionActions.showSession(); // Show persistent bar
+            return;
+          }
+          
           // Check if session is actually active before trying to pause
           const statusResponse = await apiService.getSessionStatus(conversationId);
+          console.log('🔙 Session status response:', statusResponse);
           if (statusResponse.success && statusResponse.session_status === 'active') {
             await sessionActions.pauseSession();
             sessionActions.showSession(); // Show persistent bar
@@ -280,6 +840,8 @@ const ChatSessionScreen = () => {
         } catch (error) {
           console.warn('⚠️ Could not pause session on navigation:', error);
         }
+      } else {
+        console.log('🔙 Skipping pause - conversationId:', conversationId, 'sessionEnded:', sessionEnded);
       }
     });
 
@@ -288,7 +850,8 @@ const ChatSessionScreen = () => {
 
   // Dual timer system: forward counter for session time + countdown for remaining time
   useEffect(() => {
-    if (!sessionEnded && sessionState.isActive && !sessionState.isPaused && !showRechargeBar) {
+    if (!sessionEnded && sessionState.isActive && !sessionState.isPaused && !showRechargeBar && isInitialized) {
+      console.log('⏰ Starting timer...');
       const timer = setInterval(() => {
         // Increment session time (for billing)
         setSessionTime((prev) => prev + 1);
@@ -312,7 +875,7 @@ const ChatSessionScreen = () => {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [sessionEnded, sessionState.isActive, sessionState.isPaused, showRechargeBar]);
+  }, [sessionEnded, sessionState.isActive, sessionState.isPaused, showRechargeBar, isInitialized]);
 
   // Update session duration in context when sessionTime changes
   useEffect(() => {
@@ -320,41 +883,34 @@ const ChatSessionScreen = () => {
       sessionActions.updateSessionDuration(sessionTime);
     }
   }, [sessionTime]); // Removed sessionActions from dependencies
-
-  // Prevent body scroll on web and auto scroll messages
+  
+  // Debug session state changes
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      // Prevent body from scrolling
-      document.body.style.overflow = 'hidden';
-      
-      // Auto scroll to bottom
-      setTimeout(() => {
-        const messageContainer = document.querySelector('[style*="overflowY: auto"]') as HTMLElement;
-        if (messageContainer) {
-          messageContainer.scrollTop = messageContainer.scrollHeight;
-        }
-      }, 100);
-      
-      // Cleanup: restore body scroll when component unmounts
-      return () => {
-        document.body.style.overflow = 'auto';
-      };
-    } else {
-      // For mobile, use ScrollView
+    console.log(`🔄 Session state changed: isActive=${sessionState.isActive}, isPaused=${sessionState.isPaused}, conversationId=${sessionState.conversationId}`);
+  }, [sessionState.isActive, sessionState.isPaused, sessionState.conversationId]);
+
+  // Deduplicate messages to prevent React key warnings AND remove excessive logging
+  const uniqueMessages = React.useMemo(() => {
+    const seen = new Set<string>();
+    const unique = new Map<string, Message>();
+    
+    // Keep the last occurrence of each message ID
+    // (This is important for unified history where the same message might appear multiple times)
+    messages.forEach(msg => {
+      unique.set(msg.id, msg);
+    });
+    
+    return Array.from(unique.values());
+  }, [messages]);
+  
+  // Auto scroll to bottom when new messages arrive
+  useEffect(() => {
+    setTimeout(() => {
       if (scrollViewRef.current) {
         scrollViewRef.current.scrollToEnd({ animated: true });
       }
-    }
+    }, 100);
   }, [messages]);
-
-  // Cleanup effect to restore body scroll when component unmounts
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      return () => {
-        document.body.style.overflow = 'auto';
-      };
-    }
-  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -373,7 +929,8 @@ const ChatSessionScreen = () => {
       isSessionPaused,
       conversationId,
       hasMessageText: !!messageText,
-      canSend: !!(messageText && !sessionEnded && !isSessionPaused && conversationId)
+      canSend: !!(messageText && !sessionEnded && !isSessionPaused && conversationId),
+      unifiedAstrologerId: unifiedAstrologerId
     });
     
     if (!messageText) {
@@ -422,19 +979,65 @@ const ChatSessionScreen = () => {
       // Get real AI response from OpenAI chat handler (this will also save the user message)
       try {
         console.log('🤖 Getting AI response...');
-        // Map mobile astrologer ID to backend astrologer ID
-        const astrologerIdMap: { [key: string]: string } = {
-          '1': 'tina_kulkarni_vedic_marriage',
-          '2': 'arjun_sharma_career', 
-          '3': 'meera_nanda_love'
-        };
-        const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
         
-        const aiResponse = await apiService.getAIResponse(conversationId, messageText, backendAstrologerId);
+        // Determine backend astrologer ID
+        let backendAstrologerId: string;
+        if (unifiedAstrologerId) {
+          // Use the unified astrologer ID directly
+          backendAstrologerId = unifiedAstrologerId;
+        } else if ((astrologer as any).astrologer_id) {
+          // Use custom astrologer_id from database
+          backendAstrologerId = (astrologer as any).astrologer_id;
+        } else {
+          // Map mobile astrologer ID to backend astrologer ID
+          const astrologerIdMap: { [key: string]: string } = {
+            '1': 'tina_kulkarni_vedic_marriage',
+            '2': 'arjun_sharma_career', 
+            '3': 'meera_nanda_love'
+          };
+          backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+        }
+        
+        // If we have a temporary conversation ID (unified history mode), start a new unified session
+        let actualConversationId = conversationId; // Track the actual ID to use
+        
+        if (conversationId && conversationId.startsWith('unified_') && unifiedAstrologerId) {
+          console.log('🚀 Starting new unified session for message');
+          const userId = await storage.getUserId() || 'test_user_demo';
+          
+          // Map frontend astrologer ID to backend ID if needed
+          const astrologerIdMap: { [key: string]: string } = {
+            '1': 'tina_kulkarni_vedic_marriage',
+            '2': 'arjun_sharma_career', 
+            '3': 'meera_nanda_love'
+          };
+          const backendAstrologerIdForSession = astrologerIdMap[unifiedAstrologerId] || unifiedAstrologerId;
+          
+          console.log('🔍 Creating real conversation ID. Frontend ID:', unifiedAstrologerId, 'Backend ID:', backendAstrologerIdForSession);
+          
+          const sessionResponse = await apiService.startChatSession(userId, backendAstrologerIdForSession, 'general');
+          if (sessionResponse.success) {
+            actualConversationId = sessionResponse.conversation_id;
+            setConversationId(actualConversationId);
+            
+            // Update context with real ID
+            sessionActions.updateSessionData({
+              conversationId: actualConversationId,
+            });
+            
+            // Save real conversation ID to storage
+            await storage.saveLastConversation(actualConversationId);
+            
+            console.log('✅ Unified session started with real conversation ID:', actualConversationId);
+          }
+        }
+        
+        console.log('📤 Sending message with conversation ID:', actualConversationId);
+        const aiResponse = await apiService.getAIResponse(actualConversationId, messageText, backendAstrologerId);
         
         const astrologerMessage: Message = {
           id: (Date.now() + 1).toString(),
-          text: aiResponse.ai_response || "I'm sorry, I couldn't process your request right now.",
+          text: aiResponse.message || aiResponse.ai_response || "I'm sorry, I couldn't process your request right now.",
           sender: "astrologer",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
@@ -505,7 +1108,7 @@ const ChatSessionScreen = () => {
           await apiService.deductSessionBalance(
             userId,
             conversationId,
-            astrologer.astrologer_id || astrologer.id.toString(),
+            astrologer.id.toString(),
             astrologer.name,
             astrologerRate,
             sessionDurationMinutes,
@@ -586,25 +1189,29 @@ const ChatSessionScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, Platform.OS === 'web' ? { height: '100vh', overflow: 'hidden' } : {}]}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleMinimize}
           activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
 
         <View style={styles.profileContainer}>
           <Image 
-            source={{ uri: astrologer.image }}
+            source={{ uri: astrologer?.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A' }}
             style={styles.profileImage}
+            onError={(error) => {
+              console.warn('⚠️ Failed to load astrologer image:', astrologer?.image);
+            }}
           />
           <View style={styles.profileInfo}>
             <Text style={styles.astrologerName} numberOfLines={1}>
-              {astrologer.name}
+              {astrologer?.name || 'Astrologer'}
             </Text>
             <View style={styles.sessionInfo}>
               <Text style={styles.sessionIcon}>⏱️</Text>
@@ -632,135 +1239,54 @@ const ChatSessionScreen = () => {
           onPress={handleEndSession}
           disabled={sessionEnded}
           activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.endIcon}>📞</Text>
           <Text style={styles.endText}>End</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Messages - Simple HTML scrolling for web */}
-      {Platform.OS === 'web' ? (
-        // Web: Use the exact same approach that worked in SimpleChatScreen
-        <>
-          <style>{`
-            @keyframes typingDot {
-              0%, 80%, 100% {
-                transform: scale(0.8);
-                opacity: 0.3;
-              }
-              40% {
-                transform: scale(1);
-                opacity: 1;
-              }
-            }
-          `}</style>
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            backgroundColor: '#f8f9fa',
-            height: 'calc(100vh - 200px)', // Fixed height to prevent whole window scroll
-            maxHeight: 'calc(100vh - 200px)'
-          }}>
-          {messages.map((message) => (
-            <div key={message.id} style={{
-              display: 'flex',
-              justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
-              marginBottom: '12px'
-            }}>
-              <div style={{
-                maxWidth: '70%',
-                padding: '12px 16px',
-                borderRadius: '18px',
-                backgroundColor: message.sender === 'user' ? '#007AFF' : '#E5E5EA',
-                color: message.sender === 'user' ? 'white' : 'black',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-              }}>
-                <div style={{ 
-                  fontSize: '16px', 
-                  marginBottom: '4px',
-                  fontFamily: 'inherit',
-                  lineHeight: '1.4'
-                }}>
-                  {message.text}
-                </div>
-                <div style={{ 
-                  fontSize: '12px', 
-                  opacity: 0.7,
-                  textAlign: 'right',
-                  fontFamily: 'inherit',
-                  lineHeight: '1.2'
-                }}>
-                  {message.timestamp}
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {/* Typing Indicator for Web */}
-          {isTyping && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-start',
-              marginBottom: '12px'
-            }}>
-              <div style={{
-                maxWidth: '70%',
-                padding: '12px 16px',
-                borderRadius: '18px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #FFE4B5',
-                boxShadow: '0 2px 4px rgba(247, 147, 30, 0.1)'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  fontSize: '14px',
-                  color: '#6B7280',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-                }}>
-                  <span style={{ marginRight: '8px' }}>{astrologer.name} is typing</span>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      backgroundColor: '#F7931E',
-                      margin: '0 2px',
-                      animation: 'typingDot 1.4s infinite ease-in-out both'
-                    }}></div>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      backgroundColor: '#F7931E',
-                      margin: '0 2px',
-                      animation: 'typingDot 1.4s infinite ease-in-out both 0.2s'
-                    }}></div>
-                    <div style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      backgroundColor: '#F7931E',
-                      margin: '0 2px',
-                      animation: 'typingDot 1.4s infinite ease-in-out both 0.4s'
-                    }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          </div>
-        </>
-      ) : (
-        // Mobile: Use ScrollView with map (simpler than FlatList)
+      {/* Messages */}
+      <View style={styles.scrollWrapper}>
         <ScrollView 
           ref={scrollViewRef}
           style={styles.scrollContainer}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={true}
+          onLayout={(e) => console.log('📏 ScrollView layout:', e.nativeEvent.layout)}
+          onContentSizeChange={(w, h) => console.log('📐 Content size:', w, h)}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            // When scrolled near the top (within 100px of top), load more messages
+            if (contentOffset.y < 100 && hasMoreMessages && !isLoadingMore) {
+              console.log('📜 User scrolled to top, loading more messages...');
+              loadMoreMessages();
+            }
+          }}
+          scrollEventThrottle={400}
         >
-          {messages.map((message) => (
+        {/* Loading indicator for older messages */}
+        {isLoadingMore && (
+          <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="small" color="#6366f1" />
+            <Text style={styles.loadingMoreText}>Loading older messages...</Text>
+          </View>
+        )}
+        
+        {uniqueMessages.map((message) => {
+          // Handle date separator
+          if (message.isSeparator) {
+            return (
+              <View key={message.id} style={styles.dateSeparatorContainer}>
+                <View style={styles.dateSeparatorLine} />
+                <Text style={styles.dateSeparatorText}>{message.text}</Text>
+                <View style={styles.dateSeparatorLine} />
+              </View>
+            );
+          }
+          
+          // Regular message
+          return (
             <View
               key={message.id}
               style={[
@@ -788,15 +1314,16 @@ const ChatSessionScreen = () => {
                 </Text>
               </View>
             </View>
-          ))}
+          );
+          })}
           
           {/* Typing Indicator */}
           <TypingIndicator 
             astrologerName={astrologer.name}
-            isVisible={isTyping || true} // Force visible for debugging
+            isVisible={isTyping}
           />
         </ScrollView>
-      )}
+      </View>
 
       {/* Input Bar or Recharge Bar - fixed bottom component */}
       {showRechargeBar ? (
@@ -858,6 +1385,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  scrollWrapper: {
+    flex: 1,
+    overflow: 'hidden', // Prevent wrapper from expanding
+  },
   scrollContainer: {
     flex: 1,
     paddingHorizontal: 16,
@@ -865,6 +1396,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingVertical: 16,
     paddingBottom: 100, // Space for fixed input
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 12,
+    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
@@ -889,6 +1431,8 @@ const styles = StyleSheet.create({
     elevation: 2,
     // Fixed height to prevent flex issues
     minHeight: 60,
+    zIndex: 10, // Ensure header is above ScrollView
+    position: 'relative',
   },
   backButton: {
     width: 40,
@@ -983,6 +1527,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#F7931E', // Orange text instead of white
+  },
+  dateSeparatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    paddingHorizontal: 16,
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginHorizontal: 12,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   messageContainer: {
     marginBottom: 16,
