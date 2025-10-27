@@ -108,8 +108,23 @@ const HomeScreen = () => {
   };
 
   const handleChatClick = (astrologer: Astrologer) => {
+    console.log(`🔍 handleChatClick - Active session:`, {
+      isActive: sessionState.isActive,
+      sessionAstrologerId: sessionState.astrologerId,
+      newAstrologerId: astrologer.id.toString(),
+      newAstrologerName: astrologer.name
+    });
+    
+    // Map frontend astrologer ID to backend ID for comparison
+    const astrologerIdMap: { [key: string]: string } = {
+      '1': 'tina_kulkarni_vedic_marriage',
+      '2': 'arjun_sharma_career',
+      '3': 'meera_nanda_love'
+    };
+    const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || astrologer.id.toString();
+    
     // Check if there's an active session with a different astrologer
-    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== astrologer.astrologer_id) {
+    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== backendAstrologerId) {
       // Show modal to ask user what to do
       setPendingAstrologer(astrologer);
       setShowActiveChatModal(true);
@@ -118,7 +133,10 @@ const HomeScreen = () => {
     }
     
     // No active session or same astrologer - proceed normally
-    navigation.navigate('ChatSession', { astrologer });
+    navigation.navigate('ChatSession', { 
+      astrologer, 
+      astrologerId: astrologer.id.toString() 
+    });
   };
 
   const handleCallClick = (astrologer: Astrologer) => {
@@ -127,7 +145,10 @@ const HomeScreen = () => {
       navigation.navigate('VoiceCall', { astrologer });
     } else {
       // Fallback to chat instead
-      navigation.navigate('ChatSession', { astrologer });
+      navigation.navigate('ChatSession', { 
+        astrologer, 
+        astrologerId: astrologer.id.toString() 
+      });
     }
   };
 
@@ -148,7 +169,10 @@ const HomeScreen = () => {
       setShowActiveChatModal(false);
       
       // Navigate to new chat
-      navigation.navigate('ChatSession', { astrologer: pendingAstrologer });
+      navigation.navigate('ChatSession', { 
+        astrologer: pendingAstrologer,
+        astrologerId: pendingAstrologer.id.toString()
+      });
       
       // Clear pending astrologer
       setPendingAstrologer(null);
@@ -163,9 +187,24 @@ const HomeScreen = () => {
     setShowActiveChatModal(false);
     setPendingAstrologer(null);
     
+    // Create a minimal astrologer object from session state
+    const astrologer: Astrologer = {
+      id: parseInt(sessionState.astrologerId || '0'),
+      name: sessionState.astrologerName || 'Unknown',
+      category: 'General',
+      rating: 4.8,
+      reviews: 0,
+      experience: '10 years',
+      languages: ['Hindi'],
+      isOnline: true,
+      image: sessionState.astrologerImage || 'https://via.placeholder.com/150'
+    };
+    
     // Navigate to the existing chat session
     navigation.navigate('ChatSession', { 
-      conversationId: sessionState.conversationId || undefined 
+      astrologer,
+      conversationId: sessionState.conversationId || undefined,
+      astrologerId: sessionState.astrologerId || undefined
     });
   };
 
