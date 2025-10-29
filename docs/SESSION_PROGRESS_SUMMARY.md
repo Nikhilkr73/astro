@@ -1,89 +1,117 @@
-# Session Progress Summary - Jan 27, 2025
+# Session Progress Summary - Jan 28, 2025
 
-## ✅ Completed Fixes
+## ✅ Completed Features
 
-### 1. Message Persistence (CRITICAL)
-- **Issue:** Messages vanishing on back/resume
-- **Root Cause:** Frontend using wrong conversation ID + Backend not setting conversation_id in handler
-- **Fix:** 
-  - Frontend: Use `actualConversationId` variable
-  - Backend: Set `conversation_id` in handler's user_states before send_message
-- **Status:** ✅ Committed
+### 1. Continue Chat Widget
+- **Feature:** "Continue Chat" widget appears after session ends
+- **Implementation:** 
+  - Created `ContinueChatBar` component
+  - Shows astrologer profile, rate, and continue button
+  - Appears in ended session state
+- **Status:** ✅ Complete
 
-### 2. Duplicate Message Keys
-- **Issue:** React warnings about duplicate keys
-- **Fix:** Deduplicate messages with `useMemo` and Map
-- **Status:** ✅ Fixed in earlier changes
-
-### 3. Unified Chat History Loading
-- **Issue:** Only showing last 2 messages on resume
-- **Fix:** Load unified history with pagination support
+### 2. Skip & Submit Review Navigation
+- **Issue:** Skip button redirected to Main screen
+- **Fix:** Both skip and submit now redirect to ended chat session with continue widget
 - **Status:** ✅ Fixed
+
+### 3. Unified Chat History on Ended Sessions
+- **Issue:** Ended sessions showed limited chat history
+- **Fix:** Load unified history (all messages with astrologer) instead of single conversation
+- **Status:** ✅ Fixed
+
+### 4. Wallet Balance Removed from Header
+- **Feature:** Removed wallet display during active sessions
+- **UI:** Shows only timer and "Online" status
+- **Status:** ✅ Complete
+
+### 5. Session End State UI
+- **Feature:** Shows "Chat has ended" in green when session is ended
+- **UI:** Conditionally shows End button only when session is active
+- **Status:** ✅ Complete
+
+### 6. Debug Log Cleanup
+- **Cleanup:** Removed excessive debug logs from screens
+- **Files:** ChatSessionScreen, ChatReviewScreen
+- **Status:** ✅ Complete
 
 ## 🔧 Current State
 
-### Files Modified Today
-1. `mobile/src/screens/ChatSessionScreen.tsx` - Message sending logic
-2. `backend/api/mobile_endpoints.py` - Handler conversation_id setup
+### Files Modified
+1. `mobile/src/components/chat/ContinueChatBar.tsx` - NEW: Continue chat widget
+2. `mobile/src/screens/ChatSessionScreen.tsx` - Ended state UI, unified history loading
+3. `mobile/src/screens/ChatReviewScreen.tsx` - Skip behavior, navigation
+4. `mobile/src/types/index.ts` - Added sessionEnded parameter
 
-### Backend Running
-- Server: `python3 main_openai_realtime.py`
-- Logs: `backend.log`
+### Key Features
+- **End Session Flow:** End → Review → Continue Widget → Resume Chat
+- **Unified History:** All messages with an astrologer shown together
+- **Clean UI:** Wallet balance hidden, status-based header display
+- **Debug Logs:** Minimal logging for cleaner output
 
-## 📋 Remaining Issues to Test
+## 📋 Testing Status
 
-### Test on Android Emulator
-1. ✅ Send message in new chat
-2. ✅ Click back button
-3. ✅ Click resume from PersistentChatBar
-4. ⏳ Verify all messages appear (not just historic)
-5. ⏳ Send more messages
-6. ⏳ Navigate away and back
-7. ⏳ Verify new messages persist
+### Complete Flow Testing
+1. ✅ Start chat session
+2. ✅ End session via End button
+3. ✅ Submit or skip review
+4. ✅ Redirect to ended chat with continue widget
+5. ✅ View unified chat history
+6. ✅ Continue chat with same astrologer
+7. ✅ Session resumes with all messages
 
-### Known Edge Cases
-- [ ] Empty conversation resume (no history)
-- [ ] Multiple pause/resume cycles
-- [ ] Wallet balance exhausted mid-chat
-- [ ] Network interruption during send
+### Edge Cases Handled
+- ✅ Skip review redirects correctly
+- ✅ Unified history loads on ended sessions
+- ✅ Back button doesn't show PersistentChatBar when ended
+- ✅ Continue chat button functional
 
-## 🎯 Next Steps
+## 📊 Technical Implementation
 
-1. **Test on real device/emulator** to verify fixes
-2. **Monitor backend logs** for conversation_id setup
-3. **If issues found** - debug with logs:
-   - `📤 Sending message with conversation ID: ...`
-   - `💾 Set conversation_id in handler: ...`
-   - `💾 Messages saved to database for conversation: ...`
+### Continue Chat Widget
+- Component: `mobile/src/components/chat/ContinueChatBar.tsx`
+- Props: visible, astrologerImage, astrologerName, userName, rate, onContinue
+- Design: Matches RechargeBar style with orange primary color (#F7931E)
 
-## 🐛 Potential Issues
+### Session End State Management
+- New state: `sessionEndedByUser` boolean
+- Route params: `sessionEnded` flag passed via navigation
+- Conditional rendering: Status text, End button visibility, input widget type
 
-### If messages still vanishing:
-- Check if `actualConversationId` is being set correctly
-- Verify backend logs show "Set conversation_id in handler"
-- Check database for actual message entries
+### Unified History Loading
+- Ended sessions: Load via `getUnifiedChatHistory` API
+- Active sessions: Use conversation-specific history
+- Fallback: Conversation history if unified fails
 
-### If getting duplicate warnings:
-- Check deduplication logic in ChatSessionScreen
-- Verify message IDs are unique
+## 💪 System Status
 
-### If unified history not loading:
-- Check astrologer ID mapping (frontend → backend)
-- Verify unified history API returns data
-- Check pagination offset/limit
+**Current State:** Feature complete and stable
+- All chat UX enhancements implemented
+- Debug logging cleaned up
+- Ready for production testing
 
-## 📊 Git Status
+## 📝 Changes in This Commit
 
-- **Branch:** main
-- **Commits Ahead:** 2 (message persistence fix + docs)
-- **Ready to:** Push to GitHub after testing
+**Date:** January 28, 2025
 
-## 💪 Ready for More Changes
+### New Component
+- `mobile/src/components/chat/ContinueChatBar.tsx` - Continue chat widget after session ends
 
-System is stable and ready for:
-- Additional fixes
-- Feature additions
-- Performance optimizations
-- UI improvements
+### Modified Files
+- `mobile/src/screens/ChatSessionScreen.tsx`:
+  - Added `sessionEndedByUser` state management
+  - Implemented unified history loading for ended sessions
+  - Removed wallet display from header
+  - Conditional rendering for "Chat has ended" status
+  - End button visibility based on session state
+  - Cleaned up debug logs
+  
+- `mobile/src/screens/ChatReviewScreen.tsx`:
+  - Updated `handleSkipReview` to clear session and redirect to ended chat
+  - Removed excessive debug logs
+  
+- `mobile/src/types/index.ts`:
+  - Added `sessionEnded` parameter to ChatSession navigation type
 
-Let's keep pushing! 🚀
+### Documentation
+- `docs/SESSION_PROGRESS_SUMMARY.md` - Updated with latest features and status

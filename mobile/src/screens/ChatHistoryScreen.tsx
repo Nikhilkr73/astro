@@ -86,17 +86,38 @@ const ChatHistoryScreen = () => {
       return;
     }
     
-    // Check if there's an active session with a different astrologer
+    console.log(`🔍 handleChatClick - Active session:`, {
+      isActive: sessionState.isActive,
+      sessionAstrologerId: sessionState.astrologerId,
+      conversationAstrologerId: conversation.astrologer_id,
+      astrologerName: astrologer.name
+    });
+    
+    // Check if there's an active session with a DIFFERENT astrologer
+    // Both conversation.astrologer_id and sessionState.astrologerId are backend IDs
+    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId === conversation.astrologer_id) {
+      // SAME astrologer - just navigate to resume their session
+      console.log(`✅ Same astrologer - resuming session`);
+      navigation.navigate('ChatSession', { 
+        astrologer, 
+        astrologerId: conversation.astrologer_id 
+      });
+      return;
+    }
+    
     if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== conversation.astrologer_id) {
-      // Show modal to ask user what to do
+      // DIFFERENT astrologer - show modal to ask user what to do
       setPendingAstrologer(astrologer);
       setShowActiveChatModal(true);
       console.log(`⚠️ Active chat detected with ${sessionState.astrologerName}, showing modal`);
       return;
     }
     
-    // No active session or same astrologer - proceed to unified chat
-    navigation.navigate('ChatSession', { astrologer });
+    // No active session - proceed to unified chat
+    navigation.navigate('ChatSession', { 
+      astrologer, 
+      astrologerId: conversation.astrologer_id 
+    });
   };
 
   // Find astrologer by ID - use database astrologer data

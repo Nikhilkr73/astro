@@ -22,6 +22,7 @@ import storage from '../utils/storage';
 import ChatInputBar from '../components/ChatInputBar';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import RechargeBar from '../components/chat/RechargeBar';
+import ContinueChatBar from '../components/chat/ContinueChatBar';
 import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatSessionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatSession'>;
@@ -38,6 +39,9 @@ const ChatSessionScreen = () => {
   const navigation = useNavigation<ChatSessionScreenNavigationProp>();
   const route = useRoute<ChatSessionScreenRouteProp>();
   const { astrologer: routeAstrologer, astrologerId } = route.params;
+  
+  // Debug: Log entire route params on mount
+  console.log('🔍 ChatSessionScreen MOUNTED - route.params:', JSON.stringify(route.params));
   
   // Chat Session Context Integration (for accessing context state)
   const { state: sessionState, actions: sessionActions } = useChatSession();
@@ -59,12 +63,14 @@ const ChatSessionScreen = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [sessionTime, setSessionTime] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionEndedByUser, setSessionEndedByUser] = useState(false); // NEW: Track if session was ended by user (via review screen)
   const [walletBalance, setWalletBalance] = useState(50);
   const [initialWalletBalance, setInitialWalletBalance] = useState(50);
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isSessionPaused, setIsSessionPaused] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [userName, setUserName] = useState(''); // For continue widget
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0); // Countdown timer in seconds
@@ -187,6 +193,112 @@ const ChatSessionScreen = () => {
     }
   };
   
+  // Handle session ended state from route params
+  useEffect(() => {
+    // Get sessionEnded from route params directly
+    const sessionEnded = route.params?.sessionEnded || false;
+    
+    // CRITICAL: Check if this is an ended session from route params
+    if (sessionEnded) {
+      setSessionEndedByUser(true);
+      setSessionEnded(true); // Also set aby the old sessionEnded flag for compatibility
+      
+      // Fetch user name for continue widget
+      const fetchUserName = async () => {
+        try {
+          const userId = await storage.getUserId();
+          if (userId) {
+            // Try to get user profile
+            const userResponse = await apiService.getUser(userId);
+            if (userResponse.success && userResponse.user) {
+              const userName = userResponse.user.first_name || userResponse.user.name || 'User';
+              setUserName(userName);
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not fetch user name, using default');
+          setUserName('User');
+        }
+      };
+      
+      const loadEndedSessionData = async () => {
+        await fetchUserName();
+        
+        // Load existing messages for ended session
+      // Try to get conversationId from route params or context
+      const convId = route.params?.conversationId || existingConversationId || conversationId || sessionState.conversationId;
+      
+      if (convId) {
+        try {
+          // For ended sessions, load unified history to show all messages with this astrologer
+          
+          const userId = await storage.getUserId() || 'test_user_demo';
+          
+          // Get astrologer backend ID from context or route
+          let astrologerBackendId: string;
+          if (sessionState.astrologerId) {
+            astrologerBackendId = sessionState.astrologerId;
+          } else {
+            // Map frontend ID to backend ID
+            const astrologerIdMap: { [key: string]: string } = {
+              '1': 'tina_kulkarni_vedic_marriage',
+              '2': 'arjun_sharma_career',
+              '3': 'meera_nanda_love'
+            };
+            astrologerBackendId = astrologerIdMap[route.params?.astrologerId || '1'] || 'tina_kulkarni_vedic_marriage';
+          }
+          
+          const unifiedHistory = await apiService.getUnifiedChatHistory(userId, astrologerBackendId);
+          
+          if (unifiedHistory.success && unifiedHistory.messages) {
+            const formattedMessages = unifiedHistory.messages.map((msg: any) => {
+              if (msg.is_separator) {
+                return {
+                  id: `separator_${msg.conversation_id}_${msg.date}`,
+                  text: msg.separator_text,
+                  sender: 'separator',
+                  timestamp: '',
+                  isSeparator: true
+                };
+              } else {
+                return {
+                  id: msg.message_id,
+                  text: msg.content,
+                  sender: msg.sender_type,
+                  timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+              }
+            });
+            
+            setMessages(formattedMessages);
+          } else {
+            console.warn('⚠️ Unified history not successful:', unifiedHistory);
+            
+              // Fallback to regular history
+              const historyResponse = await apiService.getChatHistory(convId);
+            if (historyResponse.success && historyResponse.messages) {
+              const loadedMessages = historyResponse.messages.map((msg: any) => ({
+                id: msg.message_id,
+                text: msg.content,
+                sender: msg.sender_type,
+                timestamp: new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }));
+              setMessages(loadedMessages);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Failed to load ended session messages:', error);
+        }
+      } else {
+        console.warn('⚠️ No conversation ID found for ended session');
+      }
+    };
+      
+      loadEndedSessionData();
+    }
+  }, [route.params]);
+  
+  
   // Sync local sessionTime with context sessionDuration when resuming
   useEffect(() => {
     if (sessionState.sessionDuration > 0 && sessionTime === 0) {
@@ -213,6 +325,11 @@ const ChatSessionScreen = () => {
   // Get route parameters
   const existingConversationId = route.params?.conversationId;
   const unifiedAstrologerId = route.params?.astrologerId;
+  const isSessionEnded = route.params?.sessionEnded || false; // NEW: Check if session was ended
+  
+  // Debug: Log route params
+  console.log('🔍 Route params:', JSON.stringify(route.params));
+  console.log('🔍 isSessionEnded:', isSessionEnded);
 
   // Initialize chat session on mount
   useEffect(() => {
@@ -244,6 +361,14 @@ const ChatSessionScreen = () => {
         
         // Hide the persistent bar when ChatSessionScreen loads
         sessionActions.hideSession();
+        
+        // If session was ended by user, don't try to resume - the other useEffect handles it
+        if (isSessionEnded) {
+          console.log('⏸️ Session was ended by user, skipping normal initialization');
+          setIsLoadingSession(false);
+          setIsInitialized(true);
+          return;
+        }
         
         if (existingConversationId) {
           console.log('🔄 Resuming existing session:', existingConversationId);
@@ -816,8 +941,8 @@ const ChatSessionScreen = () => {
       console.log('🔙 sessionEnded:', sessionEnded);
       console.log('🔙 sessionState:', sessionState);
       
-      // Pause session when user navigates away
-      if (conversationId && !sessionEnded) {
+      // Pause session when user navigates away (but not if session was ended by user)
+      if (conversationId && !sessionEnded && !sessionEndedByUser) {
         console.log('🔙 Attempting to pause session...');
         try {
           // For temporary unified IDs, just show the persistent bar without API call
@@ -841,12 +966,12 @@ const ChatSessionScreen = () => {
           console.warn('⚠️ Could not pause session on navigation:', error);
         }
       } else {
-        console.log('🔙 Skipping pause - conversationId:', conversationId, 'sessionEnded:', sessionEnded);
+        console.log('🔙 Skipping pause - conversationId:', conversationId, 'sessionEnded:', sessionEnded, 'sessionEndedByUser:', sessionEndedByUser);
       }
     });
 
     return unsubscribe;
-  }, [navigation, conversationId, sessionEnded, sessionActions]);
+  }, [navigation, conversationId, sessionEnded, sessionEndedByUser, sessionActions]);
 
   // Dual timer system: forward counter for session time + countdown for remaining time
   useEffect(() => {
@@ -1157,7 +1282,64 @@ const ChatSessionScreen = () => {
   };
 
   const handleMinimize = () => {
+    // If session was ended by user, just navigate back without pausing
+    // Session context was already cleared in ChatReviewScreen
+    if (sessionEndedByUser) {
+      console.log('🔙 Navigating back from ended session, no pause needed');
+      navigation.goBack();
+      return;
+    }
+    
+    // For active sessions, let the beforeRemove listener handle pausing
     navigation.goBack();
+  };
+
+  const handleContinueChat = async () => {
+    console.log('🔄 User clicked continue chat button');
+    
+    try {
+      // Reset ended state to show normal chat UI
+      setSessionEndedByUser(false);
+      setSessionEnded(false);
+      
+      // Restart session in context
+      if (astrologer && conversationId) {
+        // Map frontend astrologer ID to backend ID
+        const astrologerIdMap: { [key: string]: string } = {
+          '1': 'tina_kulkarni_vedic_marriage',
+          '2': 'arjun_sharma_career',
+          '3': 'meera_nanda_love'
+        };
+        const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || 'tina_kulkarni_vedic_marriage';
+        
+        sessionActions.startSession({
+          conversationId: conversationId, // Continue with same conversation ID
+          astrologerId: backendAstrologerId,
+          astrologerName: astrologer.name,
+          astrologerImage: astrologer.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A',
+          sessionType: 'chat',
+          sessionStartTime: Date.now(),
+          pausedTime: undefined,
+          totalPausedDuration: 0,
+        });
+        
+        // Fetch latest wallet balance
+        const userId = await storage.getUserId();
+        if (userId) {
+          const walletResponse = await apiService.getWalletBalance(userId);
+          if (walletResponse.success) {
+            setWalletBalance(walletResponse.balance);
+            setInitialWalletBalance(walletResponse.balance);
+            setRemainingTime(calculateRemainingTime(walletResponse.balance, astrologerRate));
+          }
+        }
+        
+        console.log('✅ Continue chat - Session restarted with conversation ID:', conversationId);
+      }
+    } catch (error) {
+      console.error('❌ Failed to continue chat:', error);
+      Alert.alert('Error', 'Failed to continue chat. Please try again.');
+    }
   };
 
   const handleRecharge = async () => {
@@ -1214,36 +1396,45 @@ const ChatSessionScreen = () => {
               {astrologer?.name || 'Astrologer'}
             </Text>
             <View style={styles.sessionInfo}>
-              <Text style={styles.sessionIcon}>⏱️</Text>
-              <Text style={[
-                styles.sessionTime,
-                remainingTime <= 60 && remainingTime > 0 && styles.sessionTimeWarning,
-                remainingTime === 0 && styles.sessionTimeZero
-              ]}>
-                {formatTime(remainingTime)}
-              </Text>
-              <Text style={styles.sessionDivider}>•</Text>
-              <Text style={styles.walletIcon}>💳</Text>
-              <Text style={[
-                styles.walletBalance,
-                walletBalance === 0 && styles.walletBalanceZero
-              ]}>
-                ₹{walletBalance}
-              </Text>
+              {sessionEndedByUser ? (
+                // Show "Chat has ended" status in green
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.statusText}>Chat has ended</Text>
+                </View>
+              ) : (
+                // Show timer and "Online" status for active sessions
+                <>
+                  <Text style={styles.sessionIcon}>⏱️</Text>
+                  <Text style={[
+                    styles.sessionTime,
+                    remainingTime <= 60 && remainingTime > 0 && styles.sessionTimeWarning,
+                    remainingTime === 0 && styles.sessionTimeZero
+                  ]}>
+                    {formatTime(remainingTime)}
+                  </Text>
+                  <Text style={styles.sessionDivider}>•</Text>
+                  <View style={styles.onlineDot} />
+                  <Text style={styles.statusText}>Online</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.endButton}
-          onPress={handleEndSession}
-          disabled={sessionEnded}
-          activeOpacity={0.8}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.endIcon}>📞</Text>
-          <Text style={styles.endText}>End</Text>
-        </TouchableOpacity>
+        {/* Conditionally render End button - only show when session is NOT ended */}
+        {!sessionEndedByUser && (
+          <TouchableOpacity
+            style={styles.endButton}
+            onPress={handleEndSession}
+            disabled={sessionEnded}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.endIcon}>📞</Text>
+            <Text style={styles.endText}>End</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Messages */}
@@ -1325,8 +1516,18 @@ const ChatSessionScreen = () => {
         </ScrollView>
       </View>
 
-      {/* Input Bar or Recharge Bar - fixed bottom component */}
-      {showRechargeBar ? (
+      {/* Input Bar or Recharge Bar or Continue Bar - fixed bottom component */}
+      {sessionEndedByUser ? (
+        // Show Continue Chat widget when session has ended
+        <ContinueChatBar
+          visible={true}
+          astrologerImage={astrologer?.image || 'https://via.placeholder.com/50/FF6B35/FFFFFF?text=A'}
+          astrologerName={astrologer?.name || 'Astrologer'}
+          userName={userName || 'User'}
+          rate={astrologerRate}
+          onContinue={handleContinueChat}
+        />
+      ) : showRechargeBar ? (
         <RechargeBar
           visible={showRechargeBar}
           onRecharge={handleRecharge}
@@ -1624,6 +1825,19 @@ const styles = StyleSheet.create({
   sessionPausedText: {
     fontSize: 12,
     color: '#92400e',
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981', // Success green
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#10B981', // Success green
+    fontFamily: 'Poppins_500Medium',
   },
   rechargeButton: {
     backgroundColor: '#f59e0b',

@@ -339,6 +339,11 @@ python3 database_manager.py
 - `INTEGRATION_SUMMARY.md` - Executive summary
 - `astro-voice-mobile/src/config/designTokens.ts` - Design system for React Native
 
+### **Performance & Improvement Planning** 🚀 **NEW**
+- `WORKSPACE_IMPROVEMENT_PLAN.md` - **NEW**: Comprehensive 3-phase improvement roadmap (1,247 lines)
+- `SESSION_PROGRESS_SUMMARY.md` - Current session progress tracking
+- `MESSAGE_PERSISTENCE_FIX.md` - Recent chat persistence fix documentation
+
 ### **Setup Guides**
 - `DATABASE_SETUP_GUIDE.md` - Database setup
 - `AWS_DATABASE_STATUS.md` - AWS database info
@@ -562,12 +567,12 @@ git push origin main
 - Backend: ~2,000 lines (Python)
 - Mobile: ~2,400 lines (TypeScript/TSX)
 - Database: ~900 lines (SQL + Python)
-- Documentation: ~15,000 lines (Markdown)
-- **Total:** ~20,000+ lines
+- Documentation: ~18,000 lines (Markdown) **Updated**
+- **Total:** ~23,000+ lines **Updated**
 
 ### **Files**
 - Source Files: ~60 files
-- Documentation: 26+ .md files
+- Documentation: 29+ .md files **Updated**
 - Configuration: 10+ config files
 
 ### **Git**

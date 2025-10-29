@@ -24,12 +24,12 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
                 toValue: 1,
                 duration: 600,
                 delay,
-                useNativeDriver: true,
+                useNativeDriver: false, // Changed to false for web compatibility
               }),
               Animated.timing(dot, {
                 toValue: 0.3,
                 duration: 600,
-                useNativeDriver: true,
+                useNativeDriver: false, // Changed to false for web compatibility
               }),
             ])
           );

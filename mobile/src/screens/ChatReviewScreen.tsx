@@ -16,6 +16,7 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../types';
 import apiService from '../services/apiService';
 import storage from '../utils/storage';
+import { useChatSession } from '../contexts/ChatSessionContext';
 
 type ChatReviewScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ChatReview'>;
 type ChatReviewScreenRouteProp = RouteProp<RootStackParamList, 'ChatReview'>;
@@ -24,6 +25,9 @@ const ChatReviewScreen = () => {
   const navigation = useNavigation<ChatReviewScreenNavigationProp>();
   const route = useRoute<ChatReviewScreenRouteProp>();
   const { astrologer, sessionDuration, conversationId } = route.params;
+  
+  // Import session actions from context to clear session after review
+  const { actions: sessionActions } = useChatSession();
   
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
@@ -63,6 +67,11 @@ const ChatReviewScreen = () => {
       
       if (response.success) {
         console.log('✅ Review submitted:', response.review_id);
+        
+        // CRITICAL: Clear session context BEFORE navigating
+        // This prevents PersistentChatBar from showing after chat ends
+        await sessionActions.endSession();
+        
         // Show thank you modal
         setShowThankYou(true);
       }
@@ -78,14 +87,36 @@ const ChatReviewScreen = () => {
     }
   };
 
-  const handleSkipReview = () => {
-    // Navigate directly to Main screen without confirmation
-    navigation.navigate('Main');
+  const handleSkipReview = async () => {
+    try {
+      // Clear session context BEFORE navigating (same as submit review)
+      await sessionActions.endSession();
+      
+      // Navigate to ended chat session (same as submit review)
+      const navParams = {
+        astrologer,
+        astrologerId: astrologer.id.toString(),
+        conversationId: conversationId, // Pass conversationId for loading messages
+        sessionEnded: true, // Flag to indicate session has ended
+      };
+      navigation.navigate('ChatSession', navParams);
+    } catch (error) {
+      console.error('❌ Failed to skip and navigate:', error);
+      // Fallback to Main screen if there's an error
+      navigation.navigate('Main');
+    }
   };
 
   const handleThankYouClose = () => {
     setShowThankYou(false);
-    navigation.navigate('Main');
+    // Navigate back to ChatSession with ended flag to show continue widget
+    const navParams = {
+      astrologer,
+      astrologerId: astrologer.id.toString(),
+      conversationId: conversationId, // CRITICAL: Pass conversationId for loading messages
+      sessionEnded: true, // Flag to indicate session has ended
+    };
+    navigation.navigate('ChatSession', navParams);
   };
 
   const renderStars = () => {

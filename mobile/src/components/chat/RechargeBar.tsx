@@ -5,10 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-
-// =============================================================================
-// COMPONENT
-// =============================================================================
+import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 
 interface RechargeBarProps {
   visible: boolean;
@@ -23,38 +20,36 @@ export function RechargeBar({ visible, onRecharge }: RechargeBarProps) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
+        {/* Warning Icon and Message */}
         <View style={styles.messageContainer}>
-          <Text style={styles.icon}>⚠️</Text>
+          <Text style={styles.warningIcon}>⚠️</Text>
           <View style={styles.textContainer}>
             <Text style={styles.title}>Balance Exhausted</Text>
             <Text style={styles.message}>Recharge to continue chatting</Text>
           </View>
         </View>
         
+        {/* Recharge Button */}
         <TouchableOpacity
           style={styles.rechargeButton}
           onPress={onRecharge}
           activeOpacity={0.8}
         >
-          <Text style={styles.rechargeButtonText}>Recharge Now</Text>
+          <Text style={styles.rechargeButtonText}>Recharge</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// =============================================================================
-// STYLES
-// =============================================================================
-
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF8F0', // Main Background from design system
+    backgroundColor: '#FFF8F0', // Light orange background
     borderTopWidth: 1,
-    borderTopColor: '#FFE4B5', // Border Gold from design system
+    borderTopColor: '#FFE4B5', // Light orange border
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    shadowColor: '#000',
+    paddingVertical: 12,
+    shadowColor: '#F7931E',
     shadowOffset: {
       width: 0,
       height: -2,
@@ -72,29 +67,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 12,
   },
-  icon: {
-    fontSize: 24,
+  warningIcon: {
+    fontSize: 20,
     marginRight: 12,
   },
   textContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#2E2E2E', // Primary Text from design system
-    marginBottom: 2,
+    color: '#F7931E', // Orange text
     fontFamily: 'Poppins_500Medium',
+    marginBottom: 2,
   },
   message: {
-    fontSize: 12,
-    color: '#6B7280', // Secondary Text from design system
+    fontSize: 14,
+    color: '#6B7280', // Secondary text
     fontFamily: 'Poppins_400Regular',
   },
   rechargeButton: {
-    backgroundColor: '#F7931E', // Primary Orange from design system
+    backgroundColor: '#F7931E', // Primary orange
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 12,
@@ -116,4 +110,3 @@ const styles = StyleSheet.create({
 });
 
 export default RechargeBar;
-

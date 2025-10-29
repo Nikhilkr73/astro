@@ -520,6 +520,27 @@ Remember: Real Indian astrologers don't just predict — they connect, soothe, a
             self.increment_conversation_turn(user_id, "user", message)
             self.increment_conversation_turn(user_id, "assistant", assistant_message)
             
+            # Save messages to database if we have a valid conversation ID
+            try:
+                if 'conversation_id' in self.user_states.get(user_id, {}):
+                    conversation_id = self.user_states[user_id]['conversation_id']
+                    
+                    # Only save to database if conversation_id doesn't start with 'unified_'
+                    if not conversation_id.startswith('unified_'):
+                        from backend.database.manager import db
+                        
+                        # Save user message
+                        db.add_message(conversation_id, 'user', message, 'text')
+                        
+                        # Save astrologer response
+                        db.add_message(conversation_id, 'assistant', assistant_message, 'text')
+                        
+                        print(f"💾 Messages saved to database for conversation: {conversation_id}")
+                    else:
+                        print(f"⚠️ Skipping database save for temporary unified conversation: {conversation_id}")
+            except Exception as db_error:
+                print(f"⚠️ Could not save messages to database: {db_error}")
+            
             # Extract and save user info if present
             self._extract_user_info(user_id, message, assistant_message)
             

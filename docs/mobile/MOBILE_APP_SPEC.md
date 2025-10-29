@@ -767,19 +767,66 @@ class AnalyticsService {
 
 ---
 
+## 📱 Building & Installing on Physical Android Device
+
+### Quick Start
+
+1. **Enable Developer Mode** on your Android phone (Settings → About Phone → Tap Build Number 7 times)
+2. **Enable USB Debugging** (Settings → Developer Options)
+3. **Connect phone** to your Mac via USB cable
+4. **Open Android Studio** → Open `mobile/android` folder
+5. **Select your device** from the dropdown (top toolbar)
+6. **Click Play button** (▶️) or press `Cmd+R`
+
+That's it! The app will build and install automatically.
+
+### Verify Connection
+
+```bash
+cd mobile
+adb devices
+# Should show: ABC123XYZ    device
+```
+
+### Build APK File
+
+```bash
+# Build debug APK
+cd mobile/android
+./gradlew assembleDebug
+
+# APK location:
+# mobile/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### View Logs on Physical Device
+
+```bash
+# Real-time logs
+adb logcat -s ReactNativeJS:* ReactNative:*
+
+# Or in Android Studio Logcat, filter by:
+package:com.astrovoice.kundli
+```
+
+**Important:** ✅ If the app runs on the Android Studio emulator, it will run on a physical device too!
+
+---
+
 ## 📝 Next Steps
 
-1. **Create React Native project structure**
-2. **Set up development environment**
-3. **Implement Phase 1 MVP features**
-4. **Establish CI/CD pipeline**
-5. **Deploy to staging environment**
+1. ✅ Create React Native project structure
+2. ✅ Set up development environment
+3. ✅ Implement Phase 1 MVP features
+4. **Test on physical devices**
+5. **Establish CI/CD pipeline**
+6. **Deploy to staging environment**
 
 This specification serves as the comprehensive guide for developing the Mobile Voice Astrology App from MVP to production-ready application.
 
 ---
 
 **Document Version:** 1.0
-**Last Updated:** $(date)
+**Last Updated:** January 28, 2025
 **Owner:** Development Team
 **Reviewers:** Product, Engineering, Business

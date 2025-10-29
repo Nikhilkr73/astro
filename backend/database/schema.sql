@@ -134,6 +134,9 @@ CREATE TABLE IF NOT EXISTS conversations (
     title VARCHAR(500),
     topic VARCHAR(255), -- love, career, health, general
     
+    -- Unified Chat History Support
+    parent_conversation_id VARCHAR(255), -- Links related conversations for unified history
+    
     -- Status
     status VARCHAR(50) DEFAULT 'active', -- active, completed, abandoned
     
@@ -154,13 +157,16 @@ CREATE TABLE IF NOT EXISTS conversations (
     metadata JSONB DEFAULT '{}'::jsonb,
     
     CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(user_id),
-    CONSTRAINT fk_astrologer FOREIGN KEY (astrologer_id) REFERENCES astrologers(astrologer_id)
+    CONSTRAINT fk_astrologer FOREIGN KEY (astrologer_id) REFERENCES astrologers(astrologer_id),
+    CONSTRAINT fk_parent_conversation FOREIGN KEY (parent_conversation_id) REFERENCES conversations(conversation_id)
 );
 
 CREATE INDEX idx_conversations_user ON conversations(user_id);
 CREATE INDEX idx_conversations_astrologer ON conversations(astrologer_id);
 CREATE INDEX idx_conversations_started_at ON conversations(started_at DESC);
 CREATE INDEX idx_conversations_status ON conversations(status);
+CREATE INDEX idx_conversations_parent ON conversations(parent_conversation_id);
+CREATE INDEX idx_conversations_user_astrologer_started ON conversations(user_id, astrologer_id, started_at DESC);
 
 -- =============================================================================
 -- MESSAGES TABLE

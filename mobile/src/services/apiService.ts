@@ -305,10 +305,10 @@ export const apiService = {
   /**
    * Get chat history
    */
-  getChatHistory: async (conversationId: string, limit: number = 50) => {
+  getChatHistory: async (conversationId: string, limit: number = 50, offset: number = 0) => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.CHAT_HISTORY(conversationId), {
-        params: { limit },
+        params: { limit, offset },
       });
       return response.data;
     } catch (error) {
@@ -641,6 +641,53 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Get session status failed:', error);
+      throw error;
+    }
+  },
+
+  // =============================================================================
+  // UNIFIED CHAT HISTORY APIs
+  // =============================================================================
+
+  /**
+   * Get unified chat history for a user-astrologer pair
+   * Returns all messages from all conversations with date separators
+   */
+  getUnifiedChatHistory: async (
+    userId: string, 
+    astrologerId: string, 
+    limit: number = 50, 
+    offset: number = 0
+  ) => {
+    try {
+      const response = await apiClient.get(
+        `/api/chat/unified-history/${userId}/${astrologerId}`,
+        {
+          params: { limit, offset },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Get unified chat history failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Start a new unified chat session
+   * Creates conversation linked to existing ones if available
+   */
+  startUnifiedChatSession: async (userId: string, astrologerId: string, topic: string = 'general') => {
+    try {
+      const sessionData = {
+        user_id: userId,
+        astrologer_id: astrologerId,
+        topic,
+      };
+      const response = await apiClient.post('/api/chat/start-unified', sessionData);
+      return response.data;
+    } catch (error) {
+      console.error('Start unified chat session failed:', error);
       throw error;
     }
   },

@@ -12,15 +12,17 @@ const isDevelopment = __DEV__;
 export const API_CONFIG = {
   // For local development:
   // - iOS Simulator: use localhost
-  // - Android Emulator: use 10.0.2.2
-  // - Physical Device: use your computer's IP address (e.g., 192.168.x.x)
+  // - Android Emulator: use 10.0.2.2 (emulator maps this to host's localhost)
+  // - Physical Device: use your Mac's IP address on same network
   BASE_URL: isDevelopment
-    ? Platform.select({
-        ios: 'http://localhost:8000',
-        android: 'http://10.0.2.2:8000',
-        web: 'http://localhost:8000',
-        default: 'http://localhost:8000',
-      })
+    ? __DEV__
+      ? 'http://192.168.0.105:8000' // Physical device - Mac's actual IP
+      : Platform.select({
+          ios: 'http://localhost:8000',
+          android: 'http://10.0.2.2:8000', // Emulator uses special IP
+          web: 'http://localhost:8000',
+          default: 'http://localhost:8000',
+        })
     : 'https://your-api-gateway-url.execute-api.ap-south-1.amazonaws.com/prod', // Will be updated after CDK deploy
   
   // Timeout settings

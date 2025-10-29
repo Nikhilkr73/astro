@@ -102,6 +102,7 @@ chat_handlers: Dict[str, OpenAIChatHandler] = {}
 # Pydantic models for request validation
 class ChatMessageRequest(BaseModel):
     """Request model for text chat message"""
+    conversation_id: str  # Add conversation_id for database saving
     user_id: str
     astrologer_id: str
     message: str
@@ -551,6 +552,11 @@ async def send_chat_message(request: ChatMessageRequest):
         
         # Get or create handler
         handler = get_or_create_chat_handler(request.user_id, request.astrologer_id)
+        
+        # Store conversation_id in user_states for database saving
+        if request.user_id not in handler.user_states:
+            handler.user_states[request.user_id] = {}
+        handler.user_states[request.user_id]['conversation_id'] = request.conversation_id
         
         # Send message and get response
         response = await handler.send_message(request.user_id, request.message)

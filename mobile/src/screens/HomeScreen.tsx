@@ -123,7 +123,18 @@ const HomeScreen = () => {
     };
     const backendAstrologerId = astrologerIdMap[astrologer.id.toString()] || astrologer.id.toString();
     
-    // Check if there's an active session with a different astrologer
+    // Check if active session is with the SAME astrologer
+    if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId === backendAstrologerId) {
+      // SAME astrologer - just navigate to resume their session
+      console.log(`✅ Same astrologer - resuming session`);
+      navigation.navigate('ChatSession', { 
+        astrologer, 
+        astrologerId: astrologer.id.toString() 
+      });
+      return;
+    }
+    
+    // Check if there's an active session with a DIFFERENT astrologer
     if (sessionState.isActive && sessionState.astrologerId && sessionState.astrologerId !== backendAstrologerId) {
       // Show modal to ask user what to do
       setPendingAstrologer(astrologer);
@@ -132,7 +143,7 @@ const HomeScreen = () => {
       return;
     }
     
-    // No active session or same astrologer - proceed normally
+    // No active session - proceed normally
     navigation.navigate('ChatSession', { 
       astrologer, 
       astrologerId: astrologer.id.toString() 
@@ -188,8 +199,15 @@ const HomeScreen = () => {
     setPendingAstrologer(null);
     
     // Create a minimal astrologer object from session state
+    // Map backend astrologer ID to frontend ID
+    const backendToFrontendIdMap: { [key: string]: number } = {
+      'tina_kulkarni_vedic_marriage': 1,
+      'arjun_sharma_career': 2,
+      'meera_nanda_love': 3
+    };
+    
     const astrologer: Astrologer = {
-      id: parseInt(sessionState.astrologerId || '0'),
+      id: backendToFrontendIdMap[sessionState.astrologerId || ''] || 0,
       name: sessionState.astrologerName || 'Unknown',
       category: 'General',
       rating: 4.8,

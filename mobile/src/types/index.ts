@@ -7,6 +7,8 @@ export type RootStackParamList = {
   ChatSession: { 
     astrologer: Astrologer; 
     conversationId?: string;  // Add this for continuing chats
+    astrologerId?: string;    // Add this for unified chat history
+    sessionEnded?: boolean;   // Add this to indicate session has ended
   };
   VoiceCall: { astrologer: Astrologer };
   ChatReview: { astrologer: Astrologer; sessionDuration: string; conversationId: string };
@@ -38,8 +40,9 @@ export interface Astrologer {
 export interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'astrologer';
+  sender: 'user' | 'astrologer' | 'separator';
   timestamp: string;
+  isSeparator?: boolean;
 }
 
 export interface ConversationHistory {

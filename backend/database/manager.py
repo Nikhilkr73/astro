@@ -527,46 +527,245 @@ class DatabaseManager:
             return None
     
     def get_conversation_history(self, conversation_id: str,
-                                 limit: int = 50) -> List[Dict]:
+                                 limit: int = 50, offset: int = 0) -> List[Dict]:
+        """
+        Get chat message history for a conversation with pagination.
+        
+        Args:
+            conversation_id: ID of the conversation
+            limit: Number of messages to return (default 50)
+            offset: Skip this many messages (for pagination)
+            
+        Returns:
+            List of message dictionaries in chronological order
+        """
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get messages ordered by sent_at DESC (newest first)
+                    # Then apply offset to skip messages
                     cursor.execute("""
                         SELECT * FROM messages
                         WHERE conversation_id = %s
                         ORDER BY sent_at DESC
-                        LIMIT %s
-                    """, (conversation_id, limit))
+                        LIMIT %s OFFSET %s
+                    """, (conversation_id, limit, offset))
                     
                     messages = [dict(row) for row in cursor.fetchall()]
-                    return list(reversed(messages))  # Return in chronological order
+                    # Return in chronological order (oldest first) for display
+                    return list(reversed(messages))
         except Exception as e:
             print(f"❌ Error getting conversation history: {e}")
             return []
     
     def get_user_conversations(self, user_id: str, limit: int = 20) -> List[Dict]:
-        """Get user's conversation history"""
+        """Get user's conversation history grouped by astrologer"""
         try:
             with self.get_connection() as conn:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get the most recent conversation for each astrologer
                     cursor.execute("""
-                        SELECT 
-                            c.*,
+                        SELECT DISTINCT ON (c.astrologer_id)
+                            c.conversation_id,
+                            c.astrologer_id,
                             a.display_name as astrologer_name,
                             a.profile_picture_url as astrologer_image,
-                            c.last_message_preview,
-                            c.last_message_at
+                            COALESCE(c.last_message_preview, 'No messages yet') as last_message,
+                            COALESCE(c.last_message_at, c.started_at) as last_message_time,
+                            c.status,
+                            COALESCE(c.total_messages, 0) as total_messages
                         FROM conversations c
                         JOIN astrologers a ON c.astrologer_id = a.astrologer_id
                         WHERE c.user_id = %s
-                        ORDER BY c.last_message_at DESC NULLS LAST
+                        ORDER BY c.astrologer_id, c.last_message_at DESC NULLS LAST, c.started_at DESC
                         LIMIT %s
                     """, (user_id, limit))
                     
-                    return [dict(row) for row in cursor.fetchall()]
+                    conversations = []
+                    for row in cursor.fetchall():
+                        conv = dict(row)
+                        # Format the timestamp
+                        if conv['last_message_time']:
+                            conv['last_message_time'] = conv['last_message_time'].isoformat()
+                        conversations.append(conv)
+                    
+                    return conversations
         except Exception as e:
             print(f"❌ Error getting user conversations: {e}")
             return []
+    
+    def get_unified_chat_history(self, user_id: str, astrologer_id: str, 
+                                limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """
+        Get unified chat history for a user-astrologer pair.
+        Returns all messages from all conversations with date separators.
+        """
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    # Get astrologer details
+                    cursor.execute("""
+                        SELECT astrologer_id, display_name, profile_picture_url, specialization
+                        FROM astrologers WHERE astrologer_id = %s
+                    """, (astrologer_id,))
+                    astrologer = cursor.fetchone()
+                    
+                    if not astrologer:
+                        return {"success": False, "error": "Astrologer not found"}
+                    
+                    # Get all conversations between user and astrologer
+                    cursor.execute("""
+                        SELECT conversation_id, started_at, ended_at, total_messages
+                        FROM conversations 
+                        WHERE user_id = %s AND astrologer_id = %s
+                        ORDER BY started_at ASC
+                    """, (user_id, astrologer_id))
+                    conversations = [dict(row) for row in cursor.fetchall()]
+                    
+                    if not conversations:
+                        return {
+                            "success": True,
+                            "astrologer": dict(astrologer),
+                            "messages": [],
+                            "total_conversations": 0,
+                            "has_more": False
+                        }
+                    
+                    # Get all messages from all conversations with pagination
+                    conversation_ids = [conv['conversation_id'] for conv in conversations]
+                    placeholders = ','.join(['%s'] * len(conversation_ids))
+                    
+                    cursor.execute(f"""
+                        SELECT 
+                            m.message_id,
+                            m.conversation_id,
+                            m.sender_type,
+                            m.content,
+                            m.sent_at,
+                            m.message_type,
+                            c.started_at as conversation_started_at
+                        FROM messages m
+                        JOIN conversations c ON m.conversation_id = c.conversation_id
+                        WHERE m.conversation_id IN ({placeholders})
+                        ORDER BY m.sent_at DESC
+                        LIMIT %s OFFSET %s
+                    """, conversation_ids + [limit, offset])
+                    
+                    messages = [dict(row) for row in cursor.fetchall()]
+                    
+                    # Reverse to get chronological order (oldest first)
+                    messages = list(reversed(messages))
+                    
+                    # Add date separators
+                    messages_with_separators = []
+                    current_date = None
+                    
+                    for i, msg in enumerate(messages):
+                        msg_date = msg['sent_at'].date()
+                        
+                        # Add separator if date changed
+                        if current_date != msg_date:
+                            if current_date is not None:  # Not the first message
+                                # Find the conversation that started on this date
+                                conv_started_today = None
+                                for conv in conversations:
+                                    if conv['started_at'].date() == msg_date:
+                                        conv_started_today = conv
+                                        break
+                                
+                                separator_text = f"Chat started on {msg_date.strftime('%b %d, %Y')}"
+                                if conv_started_today:
+                                    separator_text = f"Chat started on {msg_date.strftime('%b %d, %Y')}"
+                                
+                                messages_with_separators.append({
+                                    "is_separator": True,
+                                    "text": separator_text,
+                                    "separator_text": separator_text,
+                                    "conversation_id": msg['conversation_id'],
+                                    "date": msg_date.isoformat()
+                                })
+                            
+                            current_date = msg_date
+                        
+                        # Add the actual message
+                        messages_with_separators.append({
+                            "message_id": msg['message_id'],
+                            "conversation_id": msg['conversation_id'],
+                            "sender_type": msg['sender_type'],
+                            "content": msg['content'],
+                            "sent_at": msg['sent_at'].isoformat(),
+                            "message_type": msg['message_type'],
+                            "is_separator": False
+                        })
+                    
+                    # Check if there are more messages
+                    total_messages_query = f"""
+                        SELECT COUNT(*) FROM messages 
+                        WHERE conversation_id IN ({placeholders})
+                    """
+                    cursor.execute(total_messages_query, conversation_ids)
+                    result = cursor.fetchone()
+                    total_messages = result['count'] if result else 0
+                    has_more = (offset + limit) < total_messages
+                    
+                    return {
+                        "success": True,
+                        "astrologer": dict(astrologer),
+                        "messages": messages_with_separators,
+                        "total_conversations": len(conversations),
+                        "total_messages": total_messages,
+                        "has_more": has_more,
+                        "offset": offset,
+                        "limit": limit
+                    }
+                    
+        except Exception as e:
+            print(f"❌ Error getting unified chat history: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
+    
+    def create_unified_conversation(self, user_id: str, astrologer_id: str, 
+                                   topic: str = 'general') -> Optional[str]:
+        """
+        Create a new conversation that can be part of unified history.
+        Links to parent conversation if one exists.
+        """
+        try:
+            # Check if there's an existing active conversation
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT conversation_id FROM conversations 
+                        WHERE user_id = %s AND astrologer_id = %s 
+                        AND status = 'active'
+                        ORDER BY started_at DESC
+                        LIMIT 1
+                    """, (user_id, astrologer_id))
+                    
+                    existing_conv = cursor.fetchone()
+                    parent_conversation_id = existing_conv['conversation_id'] if existing_conv else None
+            
+            # Create new conversation
+            conversation_id = self.generate_conversation_id(user_id, astrologer_id)
+            
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        INSERT INTO conversations (
+                            conversation_id, user_id, astrologer_id, topic, parent_conversation_id
+                        ) VALUES (%s, %s, %s, %s, %s)
+                        RETURNING conversation_id
+                    """, (conversation_id, user_id, astrologer_id, topic, parent_conversation_id))
+                    
+                    result = cursor.fetchone()
+                    print(f"✅ Unified conversation created: {result['conversation_id']}")
+                    if parent_conversation_id:
+                        print(f"   Linked to parent: {parent_conversation_id}")
+                    return result['conversation_id']
+        except Exception as e:
+            print(f"❌ Error creating unified conversation: {e}")
+            return None
     
     # =============================================================================
     # READING OPERATIONS

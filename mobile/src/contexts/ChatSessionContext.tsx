@@ -261,6 +261,13 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
     const restoreSession = async () => {
       const savedState = await loadSessionState();
       if (savedState && savedState.conversationId) {
+        // Skip validation for temporary unified IDs
+        if (savedState.conversationId.startsWith('unified_')) {
+          console.log('⚠️ Skipping restore for temporary unified conversation');
+          await AsyncStorage.removeItem('chat_session_state');
+          return;
+        }
+        
         // Check if session is still valid on server
         try {
           const statusResponse = await apiService.getSessionStatus(savedState.conversationId);
@@ -340,6 +347,14 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
       dispatch({ type: 'SET_LOADING', payload: true });
       
       try {
+        // Skip status check for temporary unified conversation IDs
+        if (state.conversationId && state.conversationId.startsWith('unified_')) {
+          console.log('⚠️ Skipping status check for temporary unified conversation ID');
+          dispatch({ type: 'RESUME_SESSION' });
+          console.log('✅ Session resumed successfully (unified - no API call)');
+          return;
+        }
+        
         // Check if session is actually paused before trying to resume
         const statusResponse = await apiService.getSessionStatus(state.conversationId);
         if (statusResponse.success && statusResponse.session_status === 'paused') {
@@ -369,6 +384,15 @@ export function ChatSessionProvider({ children }: ChatSessionProviderProps) {
       try {
         // Use the tracked session duration for accurate billing
         const sessionDuration = state.sessionDuration || 0;
+
+        // Skip API call for temporary unified conversations
+        if (state.conversationId && state.conversationId.startsWith('unified_')) {
+          console.log('⚠️ Skipping API call for temporary unified conversation');
+          dispatch({ type: 'END_SESSION' });
+          await AsyncStorage.removeItem('chat_session_state');
+          console.log('✅ Temporary session ended (no API call)');
+          return;
+        }
 
         const response = await apiService.endChatSession(state.conversationId, sessionDuration);
         if (response.success) {
