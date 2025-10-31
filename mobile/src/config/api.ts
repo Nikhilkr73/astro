@@ -2,40 +2,48 @@
  * API Configuration for AstroVoice Mobile App
  * Handles environment-specific API URLs
  * 
- * IMPORTANT: Switch between EMULATOR and PHYSICAL_DEVICE modes:
- * - For Emulator: Set USE_PHYSICAL_DEVICE_IP = false
- * - For APK/AAB on Physical Device: Set USE_PHYSICAL_DEVICE_IP = true
+ * AUTOMATIC BEHAVIOR:
+ * - Production AAB (Google Play Store): Always uses AWS API Gateway
+ * - Development (Android Studio/Emulator): Always uses local backend
+ * 
+ * No manual switching needed - it's automatic based on __DEV__ flag!
  */
 
 import { Platform } from 'react-native';
 
 // ============================================
-// ⚙️ CONFIGURATION - Switch this flag as needed
+// ⚙️ CONFIGURATION - For Development Only
 // ============================================
-const USE_PHYSICAL_DEVICE_IP = false; // true = physical device APK/AAB, false = emulator
+// Only applies when __DEV__ = true (Android Studio, Expo, etc.)
+const USE_PHYSICAL_DEVICE_IP = false; // true = physical device testing with local backend, false = emulator
 const MAC_IP_ADDRESS = '192.168.0.105'; // Your Mac's IP address (find with: ifconfig | grep "inet " | grep -v 127.0.0.1)
 // ============================================
+
+// AWS Production API Gateway URL
+const AWS_API_URL = 'https://4rdm6zfg0f.execute-api.ap-south-1.amazonaws.com/prod';
 
 // Determine if we're in development mode
 const isDevelopment = __DEV__;
 
 // Get the appropriate base URL
 const getBaseURL = () => {
+  // Production builds (AAB from Play Store) always use AWS
   if (!isDevelopment) {
-    // Production: Use AWS API Gateway
-    return 'https://4rdm6zfg0f.execute-api.ap-south-1.amazonaws.com/prod';
+    return AWS_API_URL;
   }
 
-  // Development: Choose based on platform and device type
+  // Development mode: Use local backend for Android Studio/Emulator
   if (Platform.OS === 'ios') {
     return 'http://localhost:8000'; // iOS Simulator
   }
 
   if (Platform.OS === 'android') {
     if (USE_PHYSICAL_DEVICE_IP) {
-      return `http://${MAC_IP_ADDRESS}:8000`; // Physical device or APK/AAB
+      // Physical device with local backend (for testing)
+      return `http://${MAC_IP_ADDRESS}:8000`;
     } else {
-      return 'http://10.0.2.2:8000'; // Android Emulator (special IP maps to host's localhost)
+      // Android Emulator (special IP maps to host's localhost)
+      return 'http://10.0.2.2:8000';
     }
   }
 
