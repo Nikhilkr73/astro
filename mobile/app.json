@@ -25,7 +25,7 @@
         "backgroundColor": "#6366f1"
       },
       "backgroundColor": "#6366f1",
-      "package": "com.astrovoice.kundli.v2"
+      "package": "com.astrovoice.kundli"
     },
     "web": {
       "bundler": "metro"

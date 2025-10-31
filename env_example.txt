@@ -44,7 +44,7 @@ DB_PASSWORD=
 
 # Google Play Billing Configuration
 GOOGLE_PLAY_SERVICE_ACCOUNT_JSON=/path/to/google-play-service-account.json
-GOOGLE_PLAY_PACKAGE_NAME=com.astrovoice.app
+GOOGLE_PLAY_PACKAGE_NAME=com.astrovoice.kundli
 GOOGLE_PLAY_ENABLED=true
 
 # First Recharge Bonus
@@ -54,4 +54,10 @@ FIRST_RECHARGE_BONUS_AMOUNT=50.00
 TEST_MODE_ENABLED=true
 MESSAGE_CENTRAL_ENABLED=false
 BYPASS_OTP_COST=true
+
+# Android App Signing Configuration (for local builds)
+# Keystore files should be in credentials/ folder (git-ignored)
+ANDROID_KEYSTORE_PATH=credentials/new_keystore.jks
+ANDROID_KEYSTORE_ALIAS=kundli
+ANDROID_KEYSTORE_PASSWORD=kundli@123
 

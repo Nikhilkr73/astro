@@ -98,3 +98,11 @@ backend-deployment/
 # AI assistant
 .claude/
 backend/credentials/
+
+# Android signing credentials (CRITICAL: Never commit!)
+credentials/
+*.jks
+*.keystore
+*.pem
+upload_certificate.pem
+new_keystore.jks

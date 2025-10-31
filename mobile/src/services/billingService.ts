@@ -1,9 +1,6 @@
 /**
  * Google Play Billing Service
  * 
- * TEMPORARILY DISABLED FOR APK BUILD
- * TODO: Re-enable after adding react-native-iap properly
- * 
  * Handles all Google Play In-App Purchase operations using react-native-iap.
  * Supports consumable products for wallet recharges.
  * 
@@ -15,25 +12,19 @@
  *   await billingService.finalizePurchase(purchase);
  */
 
-// TEMPORARILY COMMENTED OUT FOR BUILD
-// import {
-//   initConnection,
-//   endConnection,
-//   getProducts,
-//   requestPurchase,
-//   finishTransaction,
-//   Purchase,
-//   Product,
-//   ProductPurchase,
-//   PurchaseError
-// } from 'react-native-iap';
+import {
+  initConnection,
+  endConnection,
+  getProducts,
+  requestPurchase,
+  finishTransaction,
+  type Purchase,
+  type Product,
+  type ProductPurchase,
+  type PurchaseError
+} from 'react-native-iap';
 import { Platform } from 'react-native';
 import { TEST_MODE, generateMockPurchase } from '../config/testMode';
-
-// Mock types for temporary build
-type Purchase = any;
-type Product = any;
-type ProductPurchase = any;
 
 class BillingService {
   private isInitialized = false;
@@ -41,29 +32,68 @@ class BillingService {
 
   /**
    * Initialize the billing connection with Google Play
-   * TEMPORARILY IN MOCK MODE ONLY
    */
   async init(): Promise<boolean> {
     try {
-      console.log('🧪 MOCK MODE: Billing initialized (IAP temporarily disabled for build)');
+      // Use mock mode if enabled (for testing without Google Play)
+      if (TEST_MODE.MOCK_PURCHASES && Platform.OS !== 'android') {
+        console.log('🧪 MOCK MODE: Billing initialized (IAP disabled in test mode)');
+        this.isInitialized = true;
+        return true;
+      }
+
+      // Initialize real Google Play billing connection
+      await initConnection();
       this.isInitialized = true;
+      console.log('✅ Billing connection initialized');
       return true;
     } catch (error: any) {
       console.error('❌ Billing init failed:', error);
+      // Fall back to mock mode if real IAP fails
+      if (TEST_MODE.MOCK_PURCHASES) {
+        console.log('⚠️ Falling back to mock mode');
+        this.isInitialized = true;
+        return true;
+      }
       return false;
     }
   }
 
   /**
    * Load available products from Google Play
-   * TEMPORARILY IN MOCK MODE ONLY
    */
   async loadProducts(): Promise<Product[]> {
     try {
-      console.log('🧪 MOCK MODE: Returning empty products (IAP temporarily disabled)');
-      return [];
+      if (!this.isInitialized) {
+        await this.init();
+      }
+
+      // Use mock mode if enabled
+      if (TEST_MODE.MOCK_PURCHASES && !this.isInitialized) {
+        console.log('🧪 MOCK MODE: Returning empty products');
+        return [];
+      }
+
+      // Get products from Google Play
+      const platform = Platform.OS === 'android' ? 'android' : 'ios';
+      const { BILLING_CONFIG } = require('../config/billing');
+      const productIds = BILLING_CONFIG[platform]?.productIds || [];
+      
+      if (productIds.length === 0) {
+        console.warn('⚠️ No product IDs configured');
+        return [];
+      }
+
+      const products = await getProducts({ skus: productIds });
+      this.products = products;
+      console.log(`✅ Loaded ${products.length} products from ${platform}`);
+      return products;
     } catch (error: any) {
       console.error('❌ Failed to get products:', error);
+      if (TEST_MODE.MOCK_PURCHASES) {
+        console.log('🧪 MOCK MODE: Returning empty products due to error');
+        return [];
+      }
       return [];
     }
   }
@@ -89,8 +119,8 @@ class BillingService {
         }
       }
 
-      // MOCK MODE: Simulate purchase
-      if (TEST_MODE.MOCK_PURCHASES) {
+      // MOCK MODE: Simulate purchase (for testing)
+      if (TEST_MODE.MOCK_PURCHASES && Platform.OS !== 'android') {
         console.log(`🧪 MOCK MODE: Simulating purchase for ${productId}`);
         
         // Simulate delay
@@ -102,18 +132,22 @@ class BillingService {
           console.log('   Transaction ID:', mockPurchase.transactionId);
           console.log('   Purchase Token:', mockPurchase.purchaseToken.substring(0, 20) + '...');
           
-          return mockPurchase as any as ProductPurchase;
+          return mockPurchase as ProductPurchase;
         } else {
           throw new Error('MOCK: Purchase failed (AUTO_SUCCEED is false)');
         }
       }
 
-      console.log(`🛒 MOCK: Initiating purchase for ${productId}`);
+      // Real Google Play purchase
+      console.log(`🛒 Initiating purchase for ${productId}`);
+      const purchase = await requestPurchase({ sku: productId });
       
-      // MOCK MODE ONLY
-      const mockPurchase = generateMockPurchase(productId);
-      console.log('✅ MOCK: Purchase successful');
-      return mockPurchase as any as ProductPurchase;
+      if (!purchase) {
+        throw new Error('Purchase failed: No purchase returned');
+      }
+
+      console.log('✅ Purchase successful:', purchase.transactionId);
+      return purchase as ProductPurchase;
       
     } catch (error: any) {
       // Handle user cancellation gracefully
@@ -124,6 +158,11 @@ class BillingService {
       
       // Handle IAP not available
       if (error.code === 'E_IAP_NOT_AVAILABLE') {
+        // Fall back to mock if enabled
+        if (TEST_MODE.MOCK_PURCHASES) {
+          console.log('🧪 MOCK MODE: IAP not available, using mock purchase');
+          return generateMockPurchase(productId) as ProductPurchase;
+        }
         throw new Error('In-app purchases not available. Please build app with EAS or use physical device with Google Play.');
       }
       
@@ -145,13 +184,14 @@ class BillingService {
       console.log('✅ Finalizing purchase:', purchase.transactionId);
       
       // MOCK MODE: Just log
-      if (TEST_MODE.MOCK_PURCHASES) {
+      if (TEST_MODE.MOCK_PURCHASES && Platform.OS !== 'android') {
         console.log('🧪 MOCK MODE: Purchase finalized (skipped actual finalization)');
         return;
       }
       
-      // MOCK MODE ONLY
-      console.log('✅ MOCK: Purchase finalized (consumable)');
+      // Finalize purchase with Google Play (mark as consumed)
+      await finishTransaction({ purchase, isConsumable: true });
+      console.log('✅ Purchase finalized (consumable)');
     } catch (error) {
       console.error('❌ Failed to finalize purchase:', error);
       throw error;
@@ -180,13 +220,15 @@ class BillingService {
 
   /**
    * Disconnect from billing service
-   * TEMPORARILY IN MOCK MODE ONLY
    */
   async disconnect(): Promise<void> {
     try {
+      if (this.isInitialized && !TEST_MODE.MOCK_PURCHASES) {
+        await endConnection();
+      }
       this.isInitialized = false;
       this.products = [];
-      console.log('✅ MOCK: Billing connection closed');
+      console.log('✅ Billing connection closed');
     } catch (error) {
       console.error('❌ Failed to disconnect:', error);
     }

@@ -39,7 +39,7 @@ class GooglePlayBillingService:
         - GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: Path to service account JSON file
         - GOOGLE_PLAY_PACKAGE_NAME: Android app package name
         """
-        self.package_name = os.getenv('GOOGLE_PLAY_PACKAGE_NAME', 'com.astrovoice.app')
+        self.package_name = os.getenv('GOOGLE_PLAY_PACKAGE_NAME', 'com.astrovoice.kundli')
         credentials_path = os.getenv('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON')
         
         if not credentials_path or not os.path.exists(credentials_path):
