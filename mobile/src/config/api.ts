@@ -23,7 +23,7 @@ const isDevelopment = __DEV__;
 const getBaseURL = () => {
   if (!isDevelopment) {
     // Production: Use AWS API Gateway
-    return 'https://your-api-gateway-url.execute-api.ap-south-1.amazonaws.com/prod';
+    return 'https://4rdm6zfg0f.execute-api.ap-south-1.amazonaws.com/prod';
   }
 
   // Development: Choose based on platform and device type
