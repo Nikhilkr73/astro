@@ -298,3 +298,202 @@ npx expo run:android
 
 **Perfect development setup with real IAP testing achieved!** 🚀
 
+
+---
+
+## 🔧 **Version Code Updates & Build Fixes**
+
+**Last Updated:** November 1, 2024  
+**Purpose:** Fix common build issues when updating version codes for Google Play Console uploads
+
+### **Common Issue: Version Code Already Used**
+
+Google Play Console tracks version codes even for failed uploads. If you get:
+```
+Error: Version code X has already been used. Try another version code.
+```
+
+**Solution:** Increment to the next unused version code.
+
+### **Step 1: Update Version Codes**
+
+```bash
+cd /Users/nikhil/workplace/voice_v1
+
+# Update app.json
+sed -i '' 's/"versionCode": [0-9]*/"versionCode": <NEW_VERSION>/' mobile/app.json
+sed -i '' 's/"version": "[^"]*"/"version": "<NEW_VERSION_NAME>"/' mobile/app.json
+
+# Update build.gradle
+sed -i '' 's/versionCode [0-9]*/versionCode <NEW_VERSION>/' mobile/android/app/build.gradle
+sed -i '' 's/versionName "[^"]*"/versionName "<NEW_VERSION_NAME>"/' mobile/android/app/build.gradle
+
+# Example for version code 4:
+# sed -i '' 's/"versionCode": 3/"versionCode": 4/' mobile/app.json
+# sed -i '' 's/"version": "1.0.2"/"version": "1.0.3"/' mobile/app.json
+```
+
+### **Step 2: Fix Expo Modules Core Plugin Error**
+
+If you encounter this error during build:
+```
+Could not get unknown property 'release' for SoftwareComponent container
+```
+
+**Fix:** Patch the expo-modules-core plugin to handle missing components gracefully:
+
+```bash
+# Backup original plugin
+cp mobile/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle.backup \
+   mobile/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle 2>/dev/null || \
+cp mobile/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle \
+   mobile/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle.backup
+
+# Apply fix
+python3 << 'PYTHON'
+import re
+
+expo_plugin = 'mobile/node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle'
+
+with open(expo_plugin, 'r') as f:
+    content = f.read()
+
+# Wrap publishing block in conditional check
+old_publishing = '''  project.afterEvaluate {
+    publishing {
+      publications {
+        release(MavenPublication) {
+          from components.release
+        }
+      }
+      repositories {
+        maven {
+          url = mavenLocal().url
+        }
+      }
+    }
+  }'''
+
+new_publishing = '''  project.afterEvaluate {
+    // Only configure publishing if release component exists
+    def hasReleaseComponent = false
+    try {
+      hasReleaseComponent = components.findByName('release') != null
+    } catch (Exception e) {
+      // Component doesn't exist yet, skip publishing config
+    }
+    
+    if (hasReleaseComponent) {
+      publishing {
+        publications {
+          release(MavenPublication) {
+            from components.release
+          }
+        }
+        repositories {
+          maven {
+            url = mavenLocal().url
+          }
+        }
+      }
+    }
+  }'''
+
+if old_publishing in content:
+    content = content.replace(old_publishing, new_publishing)
+    with open(expo_plugin, 'w') as f:
+        f.write(content)
+    print("✅ Applied expo-modules-core fix")
+else:
+    print("ℹ️  Plugin already patched or structure different")
+PYTHON
+```
+
+### **Step 3: Fix React Native IAP Product Flavor Ambiguity**
+
+If you get an error about ambiguous variants (amazonReleaseRuntimeElements vs playReleaseRuntimeElements):
+
+```bash
+# Add missingDimensionStrategy to defaultConfig in build.gradle
+sed -i '' '/versionName "[^"]*"/a\
+        missingDimensionStrategy '\''store'\'', '\''play'\''
+' mobile/android/app/build.gradle
+```
+
+### **Step 4: Ensure Android SDK Location**
+
+```bash
+# Create/update local.properties
+echo "sdk.dir=$HOME/Library/Android/sdk" > mobile/android/local.properties
+```
+
+### **Step 5: Clean Build**
+
+```bash
+cd mobile/android
+./gradlew clean
+./gradlew bundleRelease --no-daemon
+```
+
+### **Step 6: Verify Build**
+
+```bash
+# Check AAB exists and get version info
+ls -lh mobile/android/app/build/outputs/bundle/release/app-release.aab
+grep -E 'versionCode|versionName' mobile/android/app/build.gradle | head -2
+```
+
+### **Quick Script for Version Update**
+
+Save this script as `update-version.sh` in project root:
+
+```bash
+#!/bin/bash
+# Usage: ./update-version.sh <VERSION_CODE> <VERSION_NAME>
+# Example: ./update-version.sh 4 "1.0.3"
+
+VERSION_CODE=$1
+VERSION_NAME=$2
+
+if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
+    echo "Usage: $0 <VERSION_CODE> <VERSION_NAME>"
+    echo "Example: $0 4 \"1.0.3\""
+    exit 1
+fi
+
+cd "$(dirname "$0")"
+
+# Update app.json
+sed -i '' "s/\"versionCode\": [0-9]*/\"versionCode\": $VERSION_CODE/" mobile/app.json
+sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION_NAME\"/" mobile/app.json
+
+# Update build.gradle
+sed -i '' "s/versionCode [0-9]*/versionCode $VERSION_CODE/" mobile/android/app/build.gradle
+sed -i '' "s/versionName \"[^\"]*\"/versionName \"$VERSION_NAME\"/" mobile/android/app/build.gradle
+
+echo "✅ Updated to version code $VERSION_CODE, version name $VERSION_NAME"
+echo "Next: Run 'cd mobile/android && ./gradlew bundleRelease'"
+```
+
+### **Troubleshooting**
+
+1. **"SDK location not found"**
+   - Ensure `mobile/android/local.properties` exists with `sdk.dir=$HOME/Library/Android/sdk`
+
+2. **"Could not get unknown property 'release'"**
+   - Apply the expo-modules-core fix above
+   - Ensure you're running `./gradlew clean` before building
+
+3. **"Version code already used"**
+   - Check Google Play Console for all uploaded versions
+   - Increment to next unused version code
+
+4. **"Ambiguous product flavors"**
+   - Ensure `missingDimensionStrategy 'store', 'play'` is in `defaultConfig`
+
+5. **Build succeeds but AAB not found**
+   - Check `mobile/android/app/build/outputs/bundle/release/`
+   - Verify build completed without errors
+
+---
+

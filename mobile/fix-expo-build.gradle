@@ -1,0 +1,14 @@
+// Fix for expo-modules-core plugin issue with components.release
+// This file patches the expo-modules-core plugin configuration
+// Add this to android/app/build.gradle before other expo configurations
+
+project.afterEvaluate {
+    // Ensure buildTypes are defined before expo plugin accesses components
+    if (android.buildTypes.findByName('release') == null) {
+        android.buildTypes {
+            release {
+                // Will be configured later
+            }
+        }
+    }
+}
