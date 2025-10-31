@@ -1,7 +1,7 @@
 # AstroVoice - Complete Project Specification & Context
 
-**Last Updated:** October 25, 2025  
-**Status:** Production Ready with Complete OTP Authentication System + Google Play Wallet Integration + Astrologer Database Integration + Critical Bug Fixes
+**Last Updated:** January 2025  
+**Status:** Production Ready with Complete OTP Authentication System + Google Play Wallet Integration + Astrologer Database Integration + Chat UX Enhancements + Emulator/Physical Device Testing Setup
 
 ## 🌟 Project Overview
 
@@ -16,7 +16,7 @@ AstroVoice is a comprehensive voice-based astrology consultation platform that c
 - **AWS Infrastructure** managed with CDK
 - **Comprehensive testing framework** with automated test suites
 
-## 🏗️ Current Architecture (October 2025)
+## 🏗️ Current Architecture (January 2025)
 
 ### **Backend Structure**
 ```
@@ -588,6 +588,16 @@ curl http://localhost:8000/api/users/{user_id}
 - ✅ **Persistent Chat Session Bar** with accurate timer billing
 - ✅ **Astrologer filtering** with real-time database integration
 - ✅ **Sticky header UI** with proper layout management
+- ✅ **Chat UX Enhancements** (January 2025):
+  - Continue Chat widget after session ends
+  - Unified chat history across multiple conversations
+  - Session ended state with proper UI indicators
+  - Wallet balance hidden during active chat
+  - Skip/Submit review navigation fixes
+- ✅ **Development & Testing Setup** (January 2025):
+  - Emulator vs Physical Device configuration
+  - APK/AAB build guides
+  - Network configuration for local testing
 
 ### **Location Autocomplete System**
 - ✅ **Geoapify API integration** for location suggestions
@@ -815,7 +825,22 @@ python3 view_user_data.py --limit 10
 
 ---
 
-## 🔥 CRITICAL FIXES SUMMARY (October 25, 2025)
+## 🎉 Recent Updates (January 2025)
+
+### **Chat UX Enhancements**
+- ✅ **Continue Chat Widget** - Appears after session ends with astrologer info and rate
+- ✅ **Unified Chat History** - Shows all messages with astrologer across conversations
+- ✅ **Session Ended State** - Proper UI showing "Chat has ended" in green
+- ✅ **Wallet Balance Hidden** - Removed during active chat to reduce anxiety
+- ✅ **Review Navigation** - Skip button behaves same as Submit
+- ✅ **Debug Log Cleanup** - Removed unnecessary console logs
+
+### **Development Infrastructure**
+- ✅ **API Configuration** - Easy switching between emulator (`10.0.2.2`) and physical device (Mac IP)
+- ✅ **Build Documentation** - Complete guides for APK/AAB builds
+- ✅ **Testing Setup** - Clear workflow for emulator vs physical device testing
+
+## 🔥 CRITICAL FIXES SUMMARY
 
 ### **Issues Resolved:**
 1. **Duplicate User Creation Regression** - Mobile app not sending user_id from OTP verification

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kundli - Astrology App",
     "slug": "astrology-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -25,7 +25,8 @@
         "backgroundColor": "#6366f1"
       },
       "backgroundColor": "#6366f1",
-      "package": "com.astrovoice.kundli"
+      "package": "com.astrovoice.kundli",
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro"

@@ -25,6 +25,7 @@ import {
 } from 'react-native-iap';
 import { Platform } from 'react-native';
 import { TEST_MODE, generateMockPurchase } from '../config/testMode';
+import { BILLING_CONFIG } from '../config/billing';
 
 class BillingService {
   private isInitialized = false;
@@ -76,7 +77,6 @@ class BillingService {
 
       // Get products from Google Play
       const platform = Platform.OS === 'android' ? 'android' : 'ios';
-      const { BILLING_CONFIG } = require('../config/billing');
       const productIds = BILLING_CONFIG[platform]?.productIds || [];
       
       if (productIds.length === 0) {

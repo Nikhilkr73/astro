@@ -449,149 +449,54 @@ After refactoring, the project now has a professional structure:
 
 ---
 
-## 📱 Building APK for Physical Device
+## 📱 Building APK/AAB for Physical Device & Emulator Testing
 
-### Step 1: Enable Developer Mode on Your Device
+### ⚙️ Quick Setup: Switch Between Emulator and Physical Device
 
-1. Go to **Settings** → **About Phone**
-2. Tap **Build Number** 7 times (you'll see "You are now a developer!")
-3. Go back to **Settings** → **Developer Options**
-4. Enable:
-   - ✅ **USB Debugging**
-   - ✅ **Install via USB**
+**For Emulator Testing:**
+1. Edit `mobile/src/config/api.ts`:
+   ```typescript
+   const USE_PHYSICAL_DEVICE_IP = false; // Emulator mode
+   ```
+2. Run: `npx expo start` or `npx expo run:android`
+3. Uses `10.0.2.2:8000` automatically (emulator special IP)
 
-### Step 2: Connect Device via USB
+**For Physical Device (APK/AAB):**
+1. Edit `mobile/src/config/api.ts`:
+   ```typescript
+   const USE_PHYSICAL_DEVICE_IP = true; // Physical device mode
+   const MAC_IP_ADDRESS = '192.168.0.105'; // Your Mac's IP
+   ```
+2. Build APK: `cd mobile/android && ./gradlew assembleDebug`
+3. Install: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+4. Uses `192.168.0.105:8000` (your Mac's IP on same WiFi)
 
+### 📚 Complete Build Guide
+
+**See comprehensive guide:** [`BUILD_APK_AAB.md`](./BUILD_APK_AAB.md)
+
+**Quick Commands:**
 ```bash
-# Verify device is connected
-cd mobile
-adb devices
-# Should show: GY7PDEQWF6USXCW4    device
-```
+# Build debug APK (for testing)
+cd mobile/android && ./gradlew assembleDebug
 
-### Step 3: Start Metro Bundler & Forward Port
+# Build release APK (optimized)
+cd mobile/android && ./gradlew assembleRelease
 
-```bash
-# Kill any existing Metro processes
-lsof -ti:8081 | xargs kill -9
+# Build AAB (for Play Store)
+cd mobile/android && ./gradlew bundleRelease
 
-# Start Metro bundler
-cd /Users/nikhil/workplace/voice_v1/mobile
-npm start -- --reset-cache
+# Install APK
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-# In a NEW terminal, forward port 8081 to your device
-adb reverse tcp:8081 tcp:8081
-# Should output: 8081
-```
-
-### Step 4: Build & Install on Device
-
-**Option A: Via Android Studio (Easiest)**
-1. Open **Android Studio**
-2. Open `/Users/nikhil/workplace/voice_v1/mobile/android` folder
-3. Select your device from dropdown (top toolbar)
-4. Click **Play button (▶️)** or press `Cmd+R` (Mac) / `Ctrl+R` (Windows)
-5. App will build and install automatically
-
-**Option B: Via Command Line**
-```bash
-cd mobile/android
-./gradlew installDebug
-
-# App will install automatically
-```
-
-### Step 5: Fix "Could not connect to development server"
-
-If you see a red error screen:
-
-1. **Kill all Metro processes:**
-```bash
-lsof -ti:8081 | xargs kill -9
-```
-
-2. **Restart Metro with reset cache:**
-```bash
-cd mobile
-npm start -- --reset-cache
-```
-
-3. **Forward port:**
-```bash
-adb reverse tcp:8081 tcp:8081
-```
-
-4. **On your device:** Tap **"RELOAD"** or shake device → Reload
-
-### Step 6: View Logs
-
-```bash
-# Real-time filtered logs
+# View logs
 adb logcat | grep "ReactNative"
-
-# Or save errors to file
-adb logcat -d *:E > device_errors.txt
-
-# In Android Studio Logcat:
-# Filter by: package:com.astrovoice.kundli
 ```
 
-**Note:** ✅ If app runs on emulator, it WILL run on physical device too!
-
-### Build Standalone APK (No Metro Required!)
-
-For production distribution or testing without running Metro:
-
-```bash
-# Build standalone release APK
-cd /Users/nikhil/workplace/voice_v1/mobile/android
-
-# Clean previous builds
-./gradlew clean
-
-# Build release APK
-./gradlew assembleRelease
-
-# APK will be at:
-# mobile/android/app/build/outputs/apk/release/app-release.apk
-```
-
-**Important:** The release APK bundles JavaScript into the APK, so you don't need Metro running!
-
-**To install on your device:**
-```bash
-# Install release APK
-adb install -r mobile/android/app/build/outputs/apk/release/app-release.apk
-
-# Or transfer APK to device and install manually
-```
-
-**IMPORTANT:** For physical device testing:
-
-1. **Find your Mac's IP address:**
-```bash
-ifconfig | grep "inet " | grep -v 127.0.0.1
-# Look for something like: inet 192.168.1.100
-```
-
-2. **Update the API config in the app (already done):**
-Edit `mobile/src/config/api.ts` line 19 to your Mac's IP if it changes:
-```typescript
-android: 'http://192.168.0.105:8000', // Your Mac's IP
-```
-
-3. **Start the backend:**
-```bash
-cd /Users/nikhil/workplace/voice_v1
-source venv/bin/activate
-python3 main_openai_realtime.py > backend.log 2>&1 &
-```
-
-4. **Rebuild the app** after changing the config:
-```bash
-cd mobile/android
-./gradlew installDebug
-```
+**Important:** 
+- ✅ Backend must be running: `python3 main_openai_realtime.py`
+- ✅ Mac and device must be on same WiFi network
+- ✅ Rebuild APK after changing `api.ts` configuration
 
 **For production deployment:** Deploy backend to AWS/Heroku and update the API URL.
 
