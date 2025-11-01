@@ -4,6 +4,7 @@
 **Purpose:** Standardized process for releasing updates to Google Play Console
 
 ## Quick Checklist
+2. ✅ **Verify database schema initialized** (see Database Initialization section)
 
 Before each Play Store release:
 1. ✅ Test locally in Android Studio (uses local backend automatically)

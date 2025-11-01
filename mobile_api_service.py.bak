@@ -7,8 +7,6 @@ to maintain a single source of truth.
 """
 
 from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import the mobile endpoints router from the new backend structure
