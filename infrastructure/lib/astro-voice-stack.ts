@@ -363,6 +363,25 @@ export class AstroVoiceStack extends cdk.Stack {
     
     database.secret?.grantRead(createAllTablesLambda);
     database.connections.allowFrom(createAllTablesLambda, ec2.Port.tcp(5432));
+
+    // Lambda to sync astrologers from JSON to database
+    const syncAstrologersLambda = new lambda.Function(this, "SyncAstrologersLambda", {
+      runtime: lambda.Runtime.PYTHON_3_10,
+      handler: "sync_astrologers_lambda.lambda_handler",
+      code: lambda.Code.fromAsset("../backend-deployment"),
+      vpc: vpc,
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        DB_SECRET_ARN: database.secret?.secretArn || "",
+        REGION: this.region,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+    
+    database.secret?.grantRead(syncAstrologersLambda);
+    database.connections.allowFrom(syncAstrologersLambda, ec2.Port.tcp(5432));
+    
+    
     
         
     
