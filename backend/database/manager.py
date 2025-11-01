@@ -226,7 +226,14 @@ class DatabaseManager:
                     query = "SELECT * FROM astrologers"
                     if active_only:
                         query += " WHERE is_active = true"
-                    query += " ORDER BY updated_at DESC NULLS LAST, created_at DESC, rating DESC"
+                    query += """ ORDER BY 
+                        CASE 
+                            WHEN astrologer_id IN ('tina_kulkarni_vedic_marriage', 'arjun_sharma_career', 'meera_nanda_love') THEN 0
+                            ELSE 1
+                        END,
+                        updated_at DESC NULLS LAST,
+                        created_at DESC,
+                        rating DESC"""
                     
                     cursor.execute(query)
                     return [dict(row) for row in cursor.fetchall()]
