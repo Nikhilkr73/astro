@@ -57,6 +57,31 @@ AUDIO_SAMPLE_WIDTH = 2  # 16-bit
 
 def get_database_config() -> dict:
     """Get database configuration as dictionary"""
+    # Check if we should read from AWS Secrets Manager (for Lambda)
+    secret_arn = os.getenv("DB_SECRET_ARN")
+    if secret_arn:
+        try:
+            import boto3
+            import json
+            client = boto3.client('secretsmanager', region_name='ap-south-1')
+            response = client.get_secret_value(SecretId=secret_arn)
+            secret = json.loads(response['SecretString'])
+            
+            # Use database name from environment or default to astrovoice
+            db_name = os.getenv('DB_NAME', 'astrovoice')
+            
+            return {
+                'host': secret['host'],
+                'port': secret['port'],
+                'database': db_name,
+                'user': secret['username'],
+                'password': secret['password'],
+            }
+        except Exception as e:
+            print(f"⚠️ Error reading from Secrets Manager: {e}")
+            print("📋 Falling back to environment variables")
+    
+    # Fallback to environment variables (for local development)
     return {
         'host': DB_HOST,
         'port': DB_PORT,
