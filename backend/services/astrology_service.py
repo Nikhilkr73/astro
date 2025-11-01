@@ -151,7 +151,11 @@ class AstrologyProfileManager:
 
     def __init__(self, storage_dir: str = "astrology_data"):
         self.storage_dir = storage_dir
-        os.makedirs(storage_dir, exist_ok=True)
+        try:
+            os.makedirs(storage_dir, exist_ok=True)
+        except (OSError, PermissionError):
+            # Lambda has read-only filesystem, skip directory creation
+            pass
         self.profiles_file = os.path.join(storage_dir, "user_profiles.json")
         self._load_profiles()
 

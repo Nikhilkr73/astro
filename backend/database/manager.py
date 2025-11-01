@@ -226,7 +226,7 @@ class DatabaseManager:
                     query = "SELECT * FROM astrologers"
                     if active_only:
                         query += " WHERE is_active = true"
-                    query += " ORDER BY rating DESC, total_consultations DESC"
+                    query += " ORDER BY updated_at DESC NULLS LAST, created_at DESC, rating DESC"
                     
                     cursor.execute(query)
                     return [dict(row) for row in cursor.fetchall()]
@@ -501,13 +501,11 @@ class DatabaseManager:
                             c.conversation_id,
                             c.user_id,
                             c.astrologer_id,
-                            c.session_status,
-                            c.session_type,
+                            c.status as session_status,
+                            c.topic as session_type,
                             c.started_at,
-                            c.paused_at,
-                            c.resumed_at,
-                            c.total_paused_duration,
-                            c.total_duration_seconds,
+                            c.ended_at,
+                            c.last_message_at,
                             a.name as astrologer_name,
                             a.profile_picture_url as astrologer_image
                         FROM conversations c
