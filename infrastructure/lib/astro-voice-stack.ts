@@ -304,6 +304,7 @@ export class AstroVoiceStack extends cdk.Stack {
 
         AUDIO_BUCKET: audioBucket.bucketName,
 
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || "",
       },
 
       timeout: cdk.Duration.seconds(30),
