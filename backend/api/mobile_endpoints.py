@@ -256,7 +256,7 @@ async def register_user(user: UserRegistration):
         else:
             print(f"✅ Using provided user_id from OTP verification: {user.user_id}")
         
-        print(f"📝 Registering user: {user.user_id}")
+        print(f"phone_number : 📝 Registering user: {user.user_id}")
         print(f"   Name: {user.full_name}")
         print(f"   Phone: {user.phone_number}")
         print(f"   DOB: {user.date_of_birth}")
@@ -360,7 +360,7 @@ async def register_user(user: UserRegistration):
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        print(f"❌ Error registering user: {e}")
+        print(f"phone_number : ❌ Error registering user: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -374,13 +374,12 @@ async def get_user(user_id: str):
             with conn.cursor() as cursor:
                 cursor.execute("""
                     SELECT user_id, email, phone_number, full_name, display_name,
-                           date_of_birth, gender, profile_picture_url, language_preference,
+                           gender, profile_picture_url, language_preference,
                            birth_date, birth_time, birth_location, birth_timezone,
-                           birth_latitude, birth_longitude, preferred_astrology_system,
-                           notification_preferences, subscription_type, account_status,
+                           subscription_type, account_status,
                            email_verified, phone_verified, created_at, updated_at, last_login_at,
                            metadata
-                    FROM users 
+                    FROM users
                     WHERE user_id = %s
                 """, (user_id,))
                 
@@ -390,10 +389,9 @@ async def get_user(user_id: str):
                 
                 # Unpack all fields
                 (user_id_db, email, phone_number, full_name, display_name,
-                 date_of_birth, gender, profile_picture_url, language_preference,
+                 gender, profile_picture_url, language_preference,
                  birth_date, birth_time, birth_location, birth_timezone,
-                 birth_latitude, birth_longitude, preferred_astrology_system,
-                 notification_preferences, subscription_type, account_status,
+                 subscription_type, account_status,
                  email_verified, phone_verified, created_at, updated_at, last_login_at,
                  metadata) = result
                 
@@ -406,7 +404,7 @@ async def get_user(user_id: str):
                     "phone_number": phone_number,
                     "full_name": full_name,
                     "display_name": display_name,
-                    "date_of_birth": date_of_birth,
+                    "date_of_birth": birth_date.strftime("%d/%m/%Y") if birth_date else None,
                     "gender": gender,
                     "profile_picture_url": profile_picture_url,
                     "language_preference": language_preference,
@@ -414,10 +412,6 @@ async def get_user(user_id: str):
                     "birth_time": birth_time,
                     "birth_location": birth_location,
                     "birth_timezone": birth_timezone,
-                    "birth_latitude": birth_latitude,
-                    "birth_longitude": birth_longitude,
-                    "preferred_astrology_system": preferred_astrology_system,
-                    "notification_preferences": notification_preferences,
                     "subscription_type": subscription_type,
                     "account_status": account_status,
                     "email_verified": email_verified,
@@ -647,7 +641,7 @@ async def handle_test_otp_verification(phone_number: str, otp_code: str) -> OTPR
                 retry_after=None
             )
         
-        print(f"✅ TEST MODE: OTP verified for {phone_number}")
+        print(f"phone_number : ✅ TEST MODE: OTP verified for {phone_number}")
         
         # Create or find user for this phone number
         try:
@@ -785,7 +779,7 @@ async def send_otp(otp_request: OTPRequest):
         otp_code = ''.join(random.choices(string.digits, k=6))
         expires_at = datetime.now() + timedelta(minutes=5)  # 5 minutes expiry
         
-        print(f"📱 Sending OTP to {phone_number}: {otp_code}")
+        print(f"phone_number : 📱 Sending OTP to {phone_number}: {otp_code}")
         
         # Send OTP via Message Central
         message_result = await send_otp_via_message_central(phone_number, otp_code)
@@ -796,7 +790,7 @@ async def send_otp(otp_request: OTPRequest):
         
         if isinstance(message_result, dict) and message_result.get('success'):
             verification_id = message_result.get('verification_id')
-            print(f"✅ Message Central OTP sent with verification ID: {verification_id}")
+            print(f"phone_number : ✅ Message Central OTP sent with verification ID: {verification_id}")
         else:
             print(f"⚠️ Message Central failed, storing OTP for testing: {otp_code}")
         
@@ -911,7 +905,7 @@ async def verify_otp(otp_verification: OTPVerification):
                         # Verify with Message Central
                         mc_verified = await verify_otp_via_message_central(phone_number, otp_code, verification_id)
                         if mc_verified:
-                            print(f"✅ OTP verified via Message Central for {phone_number}")
+                            print(f"phone_number : ✅ OTP verified via Message Central for {phone_number}")
                         else:
                             # Fallback to local verification
                             if stored_otp != otp_code:
@@ -947,7 +941,7 @@ async def verify_otp(otp_verification: OTPVerification):
                         WHERE phone_number = %s AND otp_code = %s
                     """, (user_id, phone_number, otp_code))
                     
-                    print(f"✅ OTP verified successfully for {phone_number} and linked to user {user_id}")
+                    print(f"phone_number : ✅ OTP verified successfully for {phone_number} and linked to user {user_id}")
                     
                     # Check profile completion status
                     profile_complete, missing_fields = await check_profile_completion(user_id)
@@ -1094,7 +1088,7 @@ async def send_otp_via_message_central(phone_number: str, otp_code: str) -> bool
         otp_response = requests.post(otp_url, params=otp_params, headers=headers, timeout=10)
         
         if otp_response.status_code == 200:
-            print(f"✅ OTP sent successfully via Message Central")
+            print(f"phone_number : ✅ OTP sent successfully via Message Central")
             otp_data = otp_response.json()
             print(f"📋 Full response: {otp_data}")
             
@@ -1204,7 +1198,7 @@ async def verify_otp_via_message_central(phone_number: str, otp_code: str, verif
         verify_response = requests.get(verify_url, params=verify_params, headers=headers, timeout=10)
         
         if verify_response.status_code == 200:
-            print(f"✅ OTP verified successfully via Message Central")
+            print(f"phone_number : ✅ OTP verified successfully via Message Central")
             return True
         else:
             print(f"❌ Message Central verification failed: {verify_response.status_code} - {verify_response.text}")
@@ -1411,10 +1405,14 @@ async def send_ai_chat_message(chat_request: ChatRequest):
         try:
             from backend.database.manager import db
             from backend.handlers.openai_chat import OpenAIChatHandler
-        except ImportError:
-            from database_manager import DatabaseManager
-            from openai_chat_handler import OpenAIChatHandler
-            db = DatabaseManager()
+        except ImportError as import_err:
+            print(f"⚠️ Import error: {import_err}")
+            # Fallback - try to create handler without db if needed
+            try:
+                from backend.handlers.openai_chat import OpenAIChatHandler
+            except ImportError:
+                print("❌ OpenAIChatHandler not available")
+                raise HTTPException(status_code=500, detail="Chat service not available")
         
         print(f"💬 AI Chat request from user {chat_request.user_id}")
         print(f"   Conversation: {chat_request.conversation_id}")

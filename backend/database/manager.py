@@ -140,13 +140,12 @@ class DatabaseManager:
                         INSERT INTO users (
                             user_id, email, phone_number, full_name, display_name,
                             language_preference, subscription_type, metadata,
-                            birth_date, birth_time, birth_location, birth_timezone,
-                            birth_latitude, birth_longitude, gender
+                            birth_date, birth_time, birth_location, birth_timezone, gender
                         ) VALUES (
                             %(user_id)s, %(email)s, %(phone_number)s, %(full_name)s, %(display_name)s,
                             %(language_preference)s, %(subscription_type)s, %(metadata)s,
                             %(birth_date)s, %(birth_time)s, %(birth_location)s, %(birth_timezone)s,
-                            %(birth_latitude)s, %(birth_longitude)s, %(gender)s
+                            %(gender)s
                         )
                         ON CONFLICT (user_id) DO UPDATE SET
                             email = EXCLUDED.email,
@@ -156,8 +155,6 @@ class DatabaseManager:
                             birth_time = EXCLUDED.birth_time,
                             birth_location = EXCLUDED.birth_location,
                             birth_timezone = EXCLUDED.birth_timezone,
-                            birth_latitude = EXCLUDED.birth_latitude,
-                            birth_longitude = EXCLUDED.birth_longitude,
                             gender = EXCLUDED.gender,
                             updated_at = CURRENT_TIMESTAMP
                         RETURNING user_id

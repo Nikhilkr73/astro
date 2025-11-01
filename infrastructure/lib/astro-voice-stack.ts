@@ -330,6 +330,42 @@ export class AstroVoiceStack extends cdk.Stack {
     database.secret?.grantRead(initDbLambda);
     database.connections.allowFrom(initDbLambda, ec2.Port.tcp(5432));
 
+    // Quick Lambda to create otp_verifications table (if missing)
+    const createOtpTableLambda = new lambda.Function(this, "CreateOtpTableLambda", {
+      runtime: lambda.Runtime.PYTHON_3_10,
+      handler: "create_otp_table.lambda_handler",
+      code: lambda.Code.fromAsset("../backend-deployment"),
+      vpc: vpc,
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        DB_SECRET_ARN: database.secret?.secretArn || "",
+        REGION: this.region,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+    
+    database.secret?.grantRead(createOtpTableLambda);
+    database.connections.allowFrom(createOtpTableLambda, ec2.Port.tcp(5432));
+
+    // Lambda to create ALL essential tables
+    const createAllTablesLambda = new lambda.Function(this, "CreateAllTablesLambda", {
+      runtime: lambda.Runtime.PYTHON_3_10,
+      handler: "create_all_tables.lambda_handler",
+      code: lambda.Code.fromAsset("../backend-deployment"),
+      vpc: vpc,
+      securityGroups: [lambdaSecurityGroup],
+      environment: {
+        DB_SECRET_ARN: database.secret?.secretArn || "",
+        REGION: this.region,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+    
+    database.secret?.grantRead(createAllTablesLambda);
+    database.connections.allowFrom(createAllTablesLambda, ec2.Port.tcp(5432));
+    
+        
+    
 
 
 

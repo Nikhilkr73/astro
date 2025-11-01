@@ -421,7 +421,11 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled">
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -611,13 +615,16 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
                   value={birthPlace}
                   onChangeText={handleLocationInputChange}
                   onFocus={handleLocationInputFocus}
-                  onBlur={handleLocationInputBlur}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   autoFocus
                 />
                 
                 {/* Location Suggestions Dropdown */}
                 {showSuggestions && (
-                  <View style={styles.suggestionsContainer}>
+                  <View 
+                    style={styles.suggestionsContainer}
+                    onStartShouldSetResponder={() => true}
+                    onTouchEnd={(e) => e.stopPropagation()}>
                     {isLoadingLocations ? (
                       <View style={styles.suggestionsLoadingContainer}>
                         <ActivityIndicator size="small" color={colors.primary} />
@@ -630,13 +637,19 @@ export function OnboardingFormScreen({onComplete, onNavigate, userId, isEditMode
                         renderItem={({ item }) => (
                           <TouchableOpacity
                             style={styles.suggestionItem}
-                            onPress={() => handleLocationSuggestionSelect(item)}
+                            onPress={() => {
+                              handleLocationSuggestionSelect(item);
+                              setShowSuggestions(false);
+                            }}
                             activeOpacity={touchableOpacity}>
                             <Text style={styles.suggestionText}>{item.formatted}</Text>
                           </TouchableOpacity>
                         )}
                         style={styles.suggestionsList}
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="none"
                       />
                     ) : (
                       <View style={styles.noResultsContainer}>
@@ -820,7 +833,15 @@ function TimePicker({
         {/* Hour Picker */}
         <View style={styles.timePickerColumn}>
           <Text style={styles.pickerLabel}>Hour</Text>
-          <ScrollView style={styles.timePicker} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.timePicker} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            contentContainerStyle={styles.timePickerContent}
+            bounces={false}
+            snapToInterval={48}
+            decelerationRate="fast">
             {hours.map((h) => (
               <TouchableOpacity
                 key={h}
@@ -841,7 +862,15 @@ function TimePicker({
         {/* Minute Picker */}
         <View style={styles.timePickerColumn}>
           <Text style={styles.pickerLabel}>Minute</Text>
-          <ScrollView style={styles.timePicker} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.timePicker} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            scrollEnabled={true}
+            contentContainerStyle={styles.timePickerContent}
+            bounces={false}
+            snapToInterval={48}
+            decelerationRate="fast">
             {minutes.map((m) => (
               <TouchableOpacity
                 key={m}
@@ -1326,6 +1355,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundCard,
     width: '100%',
     ...shadows.sm,
+  },
+  timePickerContent: {
+    paddingVertical: 66, // Center items vertically (half of 132px height for centering)
+    alignItems: 'center',
   },
   periodButtonsContainer: {
     gap: spacing.sm,
