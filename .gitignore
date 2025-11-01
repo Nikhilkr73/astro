@@ -106,3 +106,4 @@ credentials/
 *.pem
 upload_certificate.pem
 new_keystore.jks
+infrastructure/cdk.out/
